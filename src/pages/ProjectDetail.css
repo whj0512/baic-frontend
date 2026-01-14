@@ -1,0 +1,286 @@
+.pd-container {
+  min-height: 100vh;
+  background-color: #f9fafb;
+}
+
+.pd-content {
+  margin-left: 90px;
+  margin-top: 64px;
+  padding: 2rem;
+}
+
+.pd-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.pd-title-section {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.back-btn {
+  background: none;
+  border: 1px solid #d1d5db;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #4b5563;
+  transition: all 0.2s;
+}
+
+.back-btn:hover {
+  background-color: #f3f4f6;
+  color: #1f2937;
+}
+
+.pd-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pd-info h2 {
+  font-size: 1.5rem;
+  color: #1f2937;
+  margin: 0;
+}
+
+.pd-type-badge {
+  background-color: #e5e7eb;
+  color: #374151;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.pd-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.create-req-btn {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.create-req-btn:hover {
+  background-color: #2563eb;
+}
+
+.delete-req-btn {
+  background-color: transparent;
+  color: #ef4444;
+  border: 1px solid #ef4444;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.delete-req-btn:hover {
+  background-color: #fee2e2;
+}
+
+.delete-req-btn.active {
+  background-color: #ef4444;
+  color: white;
+}
+
+.delete-req-btn.active:hover {
+  background-color: #dc2626;
+}
+
+.pd-list-container {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.pd-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.pd-table th {
+  background-color: #f9fafb;
+  padding: 1rem;
+  font-weight: 600;
+  color: #4b5563;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.pd-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  color: #1f2937;
+}
+
+.pd-table tr:hover {
+  background-color: #f9fafb;
+}
+
+.selection-col {
+  width: 40px;
+  text-align: center;
+}
+
+.desc-cell {
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #6b7280;
+}
+
+/* Priority Badges */
+.priority-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.priority-badge.high {
+  background-color: #fef2f2;
+  color: #ef4444;
+}
+
+.priority-badge.medium {
+  background-color: #fff7ed;
+  color: #f97316;
+}
+
+.priority-badge.low {
+  background-color: #f0f9ff;
+  color: #0ea5e9;
+}
+
+/* Status Badges */
+.status-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-badge.open {
+  background-color: #f3f4f6;
+  color: #4b5563;
+}
+
+.status-badge.in-progress {
+  background-color: #eff6ff;
+  color: #3b82f6;
+}
+
+.status-badge.done {
+  background-color: #ecfdf5;
+  color: #10b981;
+}
+
+.action-btn {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  cursor: pointer;
+  margin-right: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.action-btn:hover {
+  text-decoration: underline;
+}
+
+.pd-pagination {
+  padding: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .pd-container {
+    background-color: #111827;
+  }
+
+  .pd-info h2 {
+    color: #f3f4f6;
+  }
+
+  .back-btn {
+    border-color: #4b5563;
+    color: #d1d5db;
+  }
+
+  .back-btn:hover {
+    background-color: #374151;
+    color: #f3f4f6;
+  }
+
+  .pd-type-badge {
+    background-color: #374151;
+    color: #d1d5db;
+  }
+
+  .pd-list-container {
+    background-color: #1f2937;
+    box-shadow: none;
+  }
+
+  .pd-table th {
+    background-color: #374151;
+    color: #d1d5db;
+    border-bottom-color: #4b5563;
+  }
+
+  .pd-table td {
+    border-bottom-color: #374151;
+    color: #e5e7eb;
+  }
+
+  .pd-table tr:hover {
+    background-color: #374151;
+  }
+
+  .desc-cell {
+    color: #9ca3af;
+  }
+
+  .pd-pagination {
+    border-top-color: #374151;
+  }
+
+  .delete-req-btn {
+    color: #f87171;
+    border-color: #f87171;
+  }
+
+  .delete-req-btn:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+  }
+
+  .delete-req-btn.active {
+    background-color: #b91c1c;
+    color: #fecaca;
+    border-color: #b91c1c;
+  }
+
+  .delete-req-btn.active:hover {
+    background-color: #991b1b;
+  }
+}

@@ -133,7 +133,12 @@ function ProjectManagement() {
             >
               {isSelectionMode ? (selectedProjectIds.length > 0 ? '确认删除' : '取消选择') : '删除项目'}
             </button>
-            <button className="create-btn">新建项目</button>
+            <button 
+              className="create-btn"
+              onClick={() => navigate('/create-project')}
+            >
+              新建项目
+            </button>
           </div>
         </div>
 
@@ -200,8 +205,12 @@ function ProjectManagement() {
                     </select>
                   </td>
                   <td>
-                    <button className="action-btn">查看</button>
-                    <button className="action-btn">编辑</button>
+                    <button 
+                      className="action-btn"
+                      onClick={() => navigate(`/project/${project.type.toLowerCase()}/${project.id}`)}
+                    >
+                      查看
+                    </button>
                   </td>
                 </tr>
               ))}

@@ -3,6 +3,8 @@ import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import ProjectManagement from './pages/ProjectManagement'
+import CreateProject from './pages/CreateProject'
+import ProjectDetail from './pages/ProjectDetail'
 import './App.css'
 
 function App() {
@@ -14,6 +16,8 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/project" element={<ProjectManagement />} />
         <Route path="/project/:type" element={<ProjectManagement />} />
+        <Route path="/project/:type/:id" element={<ProjectDetail />} />
+        <Route path="/create-project" element={<CreateProject />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
