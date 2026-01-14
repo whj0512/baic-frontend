@@ -1,17 +1,8 @@
-.home-container {
-  min-height: 100vh;
-  background-color: #f9fafb;
-}
-
-.main-content {
-  margin-left: 90px; /* Width of LeftBar */
-  margin-top: 64px; /* Height of TopBar */
-  padding: 2rem;
+.home-content-wrapper {
   display: flex;
   flex-direction: column;
   gap: 2rem;
   max-width: 1000px;
-  /* margin-right: auto; depends if we want it centered or fluid. Let's keep it fluid but max-width */
 }
 
 /* Banner Placeholder */
@@ -77,10 +68,6 @@
 
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
-  .home-container {
-    background-color: #111827;
-  }
-
   .banner-placeholder {
     background-color: #1f2937;
     border-color: #374151;

@@ -1,0 +1,18 @@
+.main-layout {
+  min-height: 100vh;
+  background-color: #f9fafb;
+}
+
+.layout-content {
+  margin-left: 90px; /* Width of LeftBar */
+  margin-top: 64px; /* Height of TopBar */
+  padding: 2rem;
+  min-height: calc(100vh - 64px);
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .main-layout {
+    background-color: #111827;
+  }
+}

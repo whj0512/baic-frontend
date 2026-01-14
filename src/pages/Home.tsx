@@ -1,6 +1,4 @@
 import { useNavigate } from 'react-router-dom'
-import TopBar from '../components/TopBar'
-import LeftBar from '../components/LeftBar'
 import './Home.css'
 
 function Home() {
@@ -19,30 +17,25 @@ function Home() {
   }
 
   return (
-    <div className="home-container">
-      <TopBar />
-      <LeftBar />
-      
-      <main className="main-content">
-        {/* 上方留空供后续填充图片 */}
-        <div className="banner-placeholder">
-          <span className="placeholder-text">Banner Image Placeholder</span>
-        </div>
+    <div className="home-content-wrapper">
+      {/* 上方留空供后续填充图片 */}
+      <div className="banner-placeholder">
+        <span className="placeholder-text">Banner Image Placeholder</span>
+      </div>
 
-        {/* 下方目录导航项 */}
-        <div className="navigation-list">
-          {navItems.map((item) => (
-            <div 
-              key={item.id} 
-              className="nav-item"
-              onClick={() => handleNavClick(item.path)}
-            >
-              <span className="nav-text">{item.label}</span>
-              <span className="nav-arrow">›</span>
-            </div>
-          ))}
-        </div>
-      </main>
+      {/* 下方目录导航项 */}
+      <div className="navigation-list">
+        {navItems.map((item) => (
+          <div 
+            key={item.id} 
+            className="nav-item"
+            onClick={() => handleNavClick(item.path)}
+          >
+            <span className="nav-text">{item.label}</span>
+            <span className="nav-arrow">›</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

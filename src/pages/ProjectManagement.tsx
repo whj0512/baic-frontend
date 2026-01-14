@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Pagination, Modal, message } from 'antd'
-import TopBar from '../components/TopBar'
-import LeftBar from '../components/LeftBar'
 import type { Project } from '../models/Project'
 import './ProjectManagement.css'
 
@@ -119,114 +117,110 @@ function ProjectManagement() {
   const isAllSelected = currentProjects.length > 0 && currentProjects.every(p => selectedProjectIds.includes(p.id))
 
   return (
-    <div className="pm-container">
-      <TopBar />
-      <LeftBar />
-      
-      <main className="pm-content">
-        <div className="pm-header">
-          <h2>需求项目总览</h2>
-          <div className="pm-actions">
-            <button 
-              className={`delete-btn ${isSelectionMode ? 'active' : ''}`} 
-              onClick={toggleSelectionMode}
-            >
-              {isSelectionMode ? (selectedProjectIds.length > 0 ? '确认删除' : '取消选择') : '删除项目'}
-            </button>
-            <button 
-              className="create-btn"
-              onClick={() => navigate('/create-project')}
-            >
-              新建项目
-            </button>
+    <div className="pm-content-wrapper">
+      <div className="pm-header">
+        <h2>需求项目总览</h2>
+        <div className="pm-actions">
+          <button 
+            className={`delete-btn ${isSelectionMode ? 'active' : ''}`} 
+            onClick={toggleSelectionMode}
+          >
+            {isSelectionMode ? (selectedProjectIds.length > 0 ? '确认删除' : '取消选择') : '删除项目'}
+          </button>
+          <button 
+            className="create-btn"
+            onClick={() => navigate('/create-project')}
+          >
+            新建项目
+          </button>
+        </div>
+      </div>
+
+      <div className="pm-tabs">
+        {tabs.map((tab) => (
+          <div
+            key={tab.id}
+            className={`pm-tab-item ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => handleTabClick(tab.id)}
+          >
+            {tab.label}
           </div>
-        </div>
+        ))}
+      </div>
 
-        <div className="pm-tabs">
-          {tabs.map((tab) => (
-            <div
-              key={tab.id}
-              className={`pm-tab-item ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => handleTabClick(tab.id)}
-            >
-              {tab.label}
-            </div>
-          ))}
-        </div>
-
-        <div className="pm-list-container">
-          <table className="pm-table">
-            <thead>
-              <tr>
+      <div className="pm-list-container">
+        <table className="pm-table">
+          <thead>
+            <tr>
+              {isSelectionMode && (
+                <th className="selection-col">
+                  <input 
+                    type="checkbox" 
+                    checked={isAllSelected}
+                    onChange={handleSelectAll}
+                  />
+                </th>
+              )}
+              <th>项目ID</th>
+              <th>项目名称</th>
+              <th>项目类型</th>
+              <th>最新修改时间</th>
+              <th>需求数</th>
+              <th>版本</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {currentProjects.map((project) => (
+              <tr key={project.id}>
                 {isSelectionMode && (
-                  <th className="selection-col">
+                  <td className="selection-col">
                     <input 
                       type="checkbox" 
-                      checked={isAllSelected}
-                      onChange={handleSelectAll}
+                      checked={selectedProjectIds.includes(project.id)}
+                      onChange={() => handleSelectOne(project.id)}
                     />
-                  </th>
+                  </td>
                 )}
-                <th>项目ID</th>
-                <th>项目名称</th>
-                <th>项目类型</th>
-                <th>最新修改时间</th>
-                <th>需求数</th>
-                <th>版本</th>
-                <th>操作</th>
+                <td>{project.id}</td>
+                <td>{project.name}</td>
+                <td>{project.type}</td>
+                <td>{project.lastModified}</td>
+                <td>{project.requirementCount}</td>
+                <td>
+                  <select 
+                    className="version-select" 
+                    defaultValue={project.version}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <option value={project.version}>{project.version}</option>
+                    <option value="v1.0">v1.0</option>
+                    <option value="v1.1">v1.1</option>
+                  </select>
+                </td>
+                <td>
+                  <button 
+                    className="action-btn"
+                    onClick={() => navigate(`/project/${project.type.toLowerCase()}/${project.id}`)}
+                  >
+                    查看
+                  </button>
+                  <button className="action-btn">编辑</button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {currentProjects.map((project) => (
-                <tr key={project.id}>
-                  {isSelectionMode && (
-                    <td className="selection-col">
-                      <input 
-                        type="checkbox" 
-                        checked={selectedProjectIds.includes(project.id)}
-                        onChange={() => handleSelectOne(project.id)}
-                      />
-                    </td>
-                  )}
-                  <td>{project.id}</td>
-                  <td>{project.name}</td>
-                  <td>{project.type}</td>
-                  <td>{project.lastModified}</td>
-                  <td>{project.requirementCount}</td>
-                  <td>
-                    <select 
-                      className="version-select" 
-                      defaultValue={project.version}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <option value={project.version}>{project.version}</option>
-                      <option value="v1.0">v1.0</option>
-                      <option value="v1.1">v1.1</option>
-                    </select>
-                  </td>
-                  <td>
-                    <button 
-                      className="action-btn"
-                      onClick={() => navigate(`/project/${project.type.toLowerCase()}/${project.id}`)}
-                    >
-                      查看
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="pm-pagination">
-            <Pagination 
-              current={currentPage} 
-              total={projects.length} 
-              pageSize={pageSize}
-              onChange={handlePageChange}
-              align="end" 
-            />
-          </div>
+            ))}
+          </tbody>
+        </table>
+        <div className="pm-pagination">
+          <Pagination 
+            current={currentPage} 
+            total={projects.length} 
+            pageSize={pageSize}
+            onChange={handlePageChange}
+            align="end" 
+          />
         </div>
-      </main>
+      </div>
     </div>
   )
 }

@@ -1,12 +1,5 @@
-.create-project-container {
-  min-height: 100vh;
-  background-color: #f9fafb;
-}
-
-.create-project-content {
-  margin-left: 90px; /* Width of LeftBar */
-  margin-top: 64px; /* Height of TopBar */
-  padding: 2rem;
+.create-project-wrapper {
+  max-width: 800px;
 }
 
 .create-project-header {
@@ -106,10 +99,6 @@
 
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
-  .create-project-container {
-    background-color: #111827;
-  }
-
   .create-project-header h2 {
     color: #f3f4f6;
   }

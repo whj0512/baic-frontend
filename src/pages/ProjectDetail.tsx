@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Pagination, Modal, message } from 'antd'
-import TopBar from '../components/TopBar'
-import LeftBar from '../components/LeftBar'
 import type { Requirement } from '../models/Requirement'
 import './ProjectDetail.css'
 
@@ -99,98 +97,93 @@ function ProjectDetail() {
   const isAllSelected = currentRequirements.length > 0 && currentRequirements.every(req => selectedReqIds.includes(req.id))
 
   return (
-    <div className="pd-container">
-      <TopBar />
-      <LeftBar />
-      
-      <main className="pd-content">
-        <div className="pd-header">
-          <div className="pd-title-section">
-            <button className="back-btn" onClick={handleBack}>
-              ← 返回
-            </button>
-            <div className="pd-info">
-              <h2>项目详情 (ID: {id})</h2>
-              <span className="pd-type-badge">{type?.toUpperCase()}</span>
-            </div>
-          </div>
-          <div className="pd-actions">
-            <button 
-              className={`delete-req-btn ${isSelectionMode ? 'active' : ''}`}
-              onClick={toggleSelectionMode}
-            >
-              {isSelectionMode ? (selectedReqIds.length > 0 ? '确认删除' : '取消选择') : '删除需求'}
-            </button>
-            <button className="create-req-btn">新建需求</button>
+    <div className="pd-content-wrapper">
+      <div className="pd-header">
+        <div className="pd-title-section">
+          <button className="back-btn" onClick={handleBack}>
+            ← 返回
+          </button>
+          <div className="pd-info">
+            <h2>项目详情 (ID: {id})</h2>
+            <span className="pd-type-badge">{type?.toUpperCase()}</span>
           </div>
         </div>
+        <div className="pd-actions">
+          <button 
+            className={`delete-req-btn ${isSelectionMode ? 'active' : ''}`}
+            onClick={toggleSelectionMode}
+          >
+            {isSelectionMode ? (selectedReqIds.length > 0 ? '确认删除' : '取消选择') : '删除需求'}
+          </button>
+          <button className="create-req-btn">新建需求</button>
+        </div>
+      </div>
 
-        <div className="pd-list-container">
-          <table className="pd-table">
-            <thead>
-              <tr>
+      <div className="pd-list-container">
+        <table className="pd-table">
+          <thead>
+            <tr>
+              {isSelectionMode && (
+                <th className="selection-col">
+                  <input 
+                    type="checkbox" 
+                    checked={isAllSelected}
+                    onChange={handleSelectAll}
+                  />
+                </th>
+              )}
+              <th>ID</th>
+              <th>需求标题</th>
+              <th>描述</th>
+              <th>优先级</th>
+              <th>状态</th>
+              <th>负责人</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {currentRequirements.map((req) => (
+              <tr key={req.id}>
                 {isSelectionMode && (
-                  <th className="selection-col">
+                  <td className="selection-col">
                     <input 
                       type="checkbox" 
-                      checked={isAllSelected}
-                      onChange={handleSelectAll}
+                      checked={selectedReqIds.includes(req.id)}
+                      onChange={() => handleSelectOne(req.id)}
                     />
-                  </th>
+                  </td>
                 )}
-                <th>ID</th>
-                <th>需求标题</th>
-                <th>描述</th>
-                <th>优先级</th>
-                <th>状态</th>
-                <th>负责人</th>
-                <th>操作</th>
+                <td>{req.id}</td>
+                <td>{req.title}</td>
+                <td className="desc-cell" title={req.description}>{req.description}</td>
+                <td>
+                  <span className={`priority-badge ${req.priority.toLowerCase()}`}>
+                    {req.priority}
+                  </span>
+                </td>
+                <td>
+                  <span className={`status-badge ${req.status.toLowerCase().replace(' ', '-')}`}>
+                    {req.status}
+                  </span>
+                </td>
+                <td>{req.assignee}</td>
+                <td>
+                  <button className="action-btn">编辑</button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {currentRequirements.map((req) => (
-                <tr key={req.id}>
-                  {isSelectionMode && (
-                    <td className="selection-col">
-                      <input 
-                        type="checkbox" 
-                        checked={selectedReqIds.includes(req.id)}
-                        onChange={() => handleSelectOne(req.id)}
-                      />
-                    </td>
-                  )}
-                  <td>{req.id}</td>
-                  <td>{req.title}</td>
-                  <td className="desc-cell" title={req.description}>{req.description}</td>
-                  <td>
-                    <span className={`priority-badge ${req.priority.toLowerCase()}`}>
-                      {req.priority}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`status-badge ${req.status.toLowerCase().replace(' ', '-')}`}>
-                      {req.status}
-                    </span>
-                  </td>
-                  <td>{req.assignee}</td>
-                  <td>
-                    <button className="action-btn">编辑</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="pd-pagination">
-            <Pagination 
-              current={currentPage} 
-              total={requirements.length} 
-              pageSize={pageSize}
-              onChange={handlePageChange}
-              align="end" 
-            />
-          </div>
+            ))}
+          </tbody>
+        </table>
+        <div className="pd-pagination">
+          <Pagination 
+            current={currentPage} 
+            total={requirements.length} 
+            pageSize={pageSize}
+            onChange={handlePageChange}
+            align="end" 
+          />
         </div>
-      </main>
+      </div>
     </div>
   )
 }

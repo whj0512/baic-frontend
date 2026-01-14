@@ -1,12 +1,6 @@
-.pd-container {
-  min-height: 100vh;
-  background-color: #f9fafb;
-}
-
-.pd-content {
-  margin-left: 90px;
-  margin-top: 64px;
-  padding: 2rem;
+.pd-content-wrapper {
+  display: flex;
+  flex-direction: column;
 }
 
 .pd-header {
@@ -214,10 +208,6 @@
 
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
-  .pd-container {
-    background-color: #111827;
-  }
-
   .pd-info h2 {
     color: #f3f4f6;
   }
