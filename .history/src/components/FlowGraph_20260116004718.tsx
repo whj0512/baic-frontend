@@ -97,20 +97,9 @@ const FlowGraph = ({ data, onChange, readOnly = false, sectionKey = 'default' }:
     if (data && Object.keys(data).length > 0) {
       graph.fromJSON(data)
     } else if (!readOnly) {
-      // Only show demo nodes if completely empty and no palette used yet
-      // But with sidebar, maybe better to start empty or with a simple instruction?
-      // Keeping empty is cleaner for a "drawing" tool.
-      // 添加节点
-      graph.addNode({
-        shape: 'call-node',
-        x: 100,
-        y: 100,
-        data: {
-          nodeName: '计算函数',
-          stroke: '#1890ff',
-          fill: '#e6f7ff',
-        },
-      });
+       // Only show demo nodes if completely empty and no palette used yet
+       // But with sidebar, maybe better to start empty or with a simple instruction?
+       // Keeping empty is cleaner for a "drawing" tool.
     }
 
     // Listen for changes
@@ -118,7 +107,7 @@ const FlowGraph = ({ data, onChange, readOnly = false, sectionKey = 'default' }:
       const updateData = () => {
         onChange(graph.toJSON())
       }
-
+      
       graph.on('node:change:position', updateData)
       graph.on('node:added', updateData)
       graph.on('node:removed', updateData)
@@ -136,16 +125,16 @@ const FlowGraph = ({ data, onChange, readOnly = false, sectionKey = 'default' }:
     return () => {
       graph.dispose()
     }
-  }, [])
+  }, []) 
 
   const startDrag = (e: React.MouseEvent, item: typeof NODE_PALETTES['default'][0]) => {
     if (!graphRef.current || !dndRef.current) return
 
     let node
-
+    
     if (item.shape === 'polygon') {
       // Create a rhombus for events/decisions
-      node = graphRef.current.createNode({
+       node = graphRef.current.createNode({
         shape: 'polygon',
         width: 100,
         height: 60,
@@ -163,7 +152,7 @@ const FlowGraph = ({ data, onChange, readOnly = false, sectionKey = 'default' }:
         },
       })
     } else {
-      node = graphRef.current.createNode({
+       node = graphRef.current.createNode({
         shape: item.shape,
         width: 100,
         height: 40,
@@ -190,34 +179,34 @@ const FlowGraph = ({ data, onChange, readOnly = false, sectionKey = 'default' }:
 
   return (
     <div className="flow-graph-container">
-      {!readOnly && (
-        <div className="graph-sidebar" ref={dndContainerRef}>
-          <div className="sidebar-title">组件库</div>
-          <div className="sidebar-items">
-            {currentPalette.map((item) => (
-              <div
-                key={item.type}
-                className="sidebar-item"
-                onMouseDown={(e) => startDrag(e, item)}
-                style={{
-                  borderColor: item.color === '#ffffff' ? '#d9d9d9' : item.color,
-                  backgroundColor: item.color
-                }}
-              >
-                {item.label}
-              </div>
-            ))}
-          </div>
-          <div className="sidebar-help">
-            拖拽组件到画布
-          </div>
-        </div>
-      )}
-
-      <div className="graph-content-wrapper">
-        <div ref={containerRef} className="x6-graph-container" />
-        {!readOnly && <div className="graph-help-text">按住 Ctrl + 滚轮缩放画布，拖拽空白处平移</div>}
-      </div>
+       {!readOnly && (
+         <div className="graph-sidebar" ref={dndContainerRef}>
+           <div className="sidebar-title">组件库</div>
+           <div className="sidebar-items">
+             {currentPalette.map((item) => (
+               <div 
+                 key={item.type} 
+                 className="sidebar-item" 
+                 onMouseDown={(e) => startDrag(e, item)}
+                 style={{ 
+                   borderColor: item.color === '#ffffff' ? '#d9d9d9' : item.color,
+                   backgroundColor: item.color 
+                 }}
+               >
+                 {item.label}
+               </div>
+             ))}
+           </div>
+           <div className="sidebar-help">
+             拖拽组件到画布
+           </div>
+         </div>
+       )}
+       
+       <div className="graph-content-wrapper">
+         <div ref={containerRef} className="x6-graph-container" />
+         {!readOnly && <div className="graph-help-text">按住 Ctrl + 滚轮缩放画布，拖拽空白处平移</div>}
+       </div>
     </div>
   )
 }

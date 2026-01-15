@@ -84,7 +84,7 @@ const FlowGraph = ({ data, onChange, readOnly = false, sectionKey = 'default' }:
     graphRef.current = graph
 
     // Initialize Dnd
-    if (!readOnly) {
+    if (!readOnly && dndContainerRef.current) {
       const dnd = new Dnd({
         target: graph,
         scaled: false,
@@ -134,7 +134,10 @@ const FlowGraph = ({ data, onChange, readOnly = false, sectionKey = 'default' }:
     )
 
     return () => {
-      graph.dispose()
+      // Defer disposal to avoid synchronous unmount error in React 18+
+      setTimeout(() => {
+        graph.dispose()
+      }, 0)
     }
   }, [])
 

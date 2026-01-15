@@ -134,6 +134,7 @@ const FlowGraph = ({ data, onChange, readOnly = false, sectionKey = 'default' }:
     )
 
     return () => {
+      // Defer disposal to avoid synchronous unmount error in React 18+
       graph.dispose()
     }
   }, [])
