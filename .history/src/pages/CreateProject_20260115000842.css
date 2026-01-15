@@ -55,6 +55,51 @@
   resize: vertical;
 }
 
+/* Accordion List Section */
+.detail-list {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.detail-item:not(:last-child) {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.detail-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  background-color: #f9fafb;
+}
+
+.detail-item-header:hover {
+  background-color: #f3f4f6;
+}
+
+.detail-text {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.detail-arrow {
+  font-size: 1.2rem;
+  color: #9ca3af;
+  transition: transform 0.2s;
+}
+
+.detail-item-content {
+  padding: 1rem 1.25rem;
+  background-color: #ffffff;
+}
+
+.detail-item-content .form-textarea {
+  min-height: 150px;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;

@@ -1,12 +1,15 @@
 .create-project-wrapper {
-  max-width: 900px;
-  margin: 0 auto;
+  max-width: 800px;
 }
 
 .create-project-header {
   margin-bottom: 2rem;
+}
+
+.create-project-header h2 {
   font-size: 1.5rem;
   color: #1f2937;
+  margin: 0;
 }
 
 .create-project-form {
@@ -53,6 +56,7 @@
 
 .form-textarea {
   resize: vertical;
+  min-height: 120px;
 }
 
 .form-actions {
@@ -91,4 +95,76 @@
 .cancel-btn:hover {
   background-color: #f3f4f6;
   border-color: #9ca3af;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .create-project-header h2 {
+    color: #f3f4f6;
+  }
+
+  .create-project-form {
+    background-color: #1f2937;
+    box-shadow: none;
+  }
+
+  .form-group label {
+    color: #d1d5db;
+  }
+
+  .form-input,
+  .form-select,
+  .form-textarea {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f3f4f6;
+  }
+
+  .form-input:focus,
+  .form-select:focus,
+  .form-textarea:focus {
+    border-color: #60a5fa;
+  }
+  
+  .tabs-container {
+    border-color: #4b5563;
+  }
+  
+  .tabs-nav {
+    background-color: #374151;
+    border-bottom-color: #4b5563;
+  }
+  
+  .tab-btn {
+    color: #d1d5db;
+    border-right-color: #4b5563;
+  }
+  
+  .tab-btn:hover {
+    background-color: #4b5563;
+  }
+  
+  .tab-btn.active {
+    background-color: #1f2937;
+    color: #60a5fa;
+  }
+  
+  .tab-content {
+    background-color: #1f2937;
+  }
+
+  .tab-content .form-textarea {
+    background-color: #1f2937;
+  }
+
+  .cancel-btn {
+    background-color: #374151;
+    color: #d1d5db;
+    border-color: #4b5563;
+  }
+
+  .cancel-btn:hover {
+    background-color: #4b5563;
+    color: white;
+  }
 }

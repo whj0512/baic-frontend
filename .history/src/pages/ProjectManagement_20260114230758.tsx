@@ -8,7 +8,7 @@ import './ProjectManagement.css'
 const INITIAL_PROJECTS: Project[] = Array.from({ length: 50 }, (_, i) => ({
   id: i + 1,
   name: `示例项目 ${i + 1}`,
-  type: i % 4 === 0 ? 'System' : i % 4 === 1 ? 'Subsystem' : i % 4 === 2 ? 'Software' : 'Component',
+  type: i % 5 === 0 ? 'System' : i % 5 === 1 ? 'Subsystem' : i % 5 === 2 ? 'Software' : 'Component',
   lastModified: `2023-10-${(i % 30) + 1}`.replace(/-(\d)$/, '-0$1'), // Simple date formatting
   requirementCount: Math.floor(Math.random() * 500) + 10,
   version: `v${Math.floor(Math.random() * 3)}.${Math.floor(Math.random() * 10)}`

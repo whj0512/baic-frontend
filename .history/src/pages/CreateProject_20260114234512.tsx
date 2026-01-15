@@ -3,12 +3,20 @@ import { useNavigate } from 'react-router-dom'
 import { message } from 'antd'
 import './CreateProject.css'
 
+type TabKey = 'environment' | 'interaction' | 'internalComposition' | 'moduleResponses';
+
 function CreateProject() {
   const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState<TabKey>('environment')
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     type: 'system',
+    // Fields for the new tabs
+    environment: '',
+    interaction: '',
+    internalComposition: '',
+    moduleResponses: '',
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

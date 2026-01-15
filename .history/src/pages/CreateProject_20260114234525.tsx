@@ -9,6 +9,11 @@ function CreateProject() {
     name: '',
     description: '',
     type: 'system',
+    // Fields for the new tabs
+    environment: '',
+    interaction: '',
+    internalComposition: '',
+    moduleResponses: '',
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

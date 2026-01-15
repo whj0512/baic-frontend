@@ -5,10 +5,15 @@ import './CreateProject.css'
 
 function CreateProject() {
   const navigate = useNavigate()
+  const [activeSection, setActiveSection] = useState<SectionKey | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     type: 'system',
+    environment: '',
+    interaction: '',
+    internalComposition: '',
+    moduleResponses: '',
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

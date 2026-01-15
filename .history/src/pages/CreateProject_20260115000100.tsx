@@ -3,12 +3,26 @@ import { useNavigate } from 'react-router-dom'
 import { message } from 'antd'
 import './CreateProject.css'
 
+type SectionKey = 'environment' | 'interaction' | 'internalComposition' | 'moduleResponses';
+
+const SECTIONS: { key: SectionKey, label: string, placeholder: string }[] = [
+  { key: 'environment', label: '所处环境', placeholder: '描述项目所处的物理和逻辑环境...' },
+  { key: 'interaction', label: '与环境交互', placeholder: '描述项目与外部环境、用户或其他系统的交互方式...' },
+  { key: 'internalComposition', label: '内部组成', placeholder: '描述项目的内部模块、组件或子系统构成...' },
+  { key: 'moduleResponses', label: '组成模块间的响应', placeholder: '描述内部模块之间如何响应彼此的事件或状态变化...' },
+]
+
 function CreateProject() {
   const navigate = useNavigate()
+  const [activeSection, setActiveSection] = useState<SectionKey | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     type: 'system',
+    environment: '',
+    interaction: '',
+    internalComposition: '',
+    moduleResponses: '',
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

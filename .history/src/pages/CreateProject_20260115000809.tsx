@@ -9,6 +9,10 @@ function CreateProject() {
     name: '',
     description: '',
     type: 'system',
+    environment: '',
+    interaction: '',
+    internalComposition: '',
+    moduleResponses: '',
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

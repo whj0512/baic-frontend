@@ -8,7 +8,7 @@ function CreateProject() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    type: 'system',
+    type: 'system'
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

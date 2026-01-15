@@ -3,12 +3,20 @@ import { useNavigate } from 'react-router-dom'
 import { message } from 'antd'
 import './CreateProject.css'
 
+type TabKey = 'environment' | 'interaction' | 'internalComposition' | 'moduleResponses';
+
 function CreateProject() {
   const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState<TabKey>('environment')
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     type: 'system',
+    // Fields for the new tabs
+    environment: '',
+    interaction: '',
+    internalComposition: '',
+    moduleResponses: '',
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -30,6 +38,57 @@ function CreateProject() {
 
   const handleCancel = () => {
     navigate(-1)
+  }
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'environment':
+        return (
+          <textarea
+            name="environment"
+            className="form-textarea"
+            placeholder="描述项目所处的物理和逻辑环境..."
+            value={formData.environment}
+            onChange={handleChange}
+            rows={8}
+          />
+        )
+      case 'interaction':
+        return (
+          <textarea
+            name="interaction"
+            className="form-textarea"
+            placeholder="描述项目与外部环境、用户或其他系统的交互方式..."
+            value={formData.interaction}
+            onChange={handleChange}
+            rows={8}
+          />
+        )
+      case 'internalComposition':
+        return (
+          <textarea
+            name="internalComposition"
+            className="form-textarea"
+            placeholder="描述项目的内部模块、组件或子系统构成..."
+            value={formData.internalComposition}
+            onChange={handleChange}
+            rows={8}
+          />
+        )
+      case 'moduleResponses':
+        return (
+          <textarea
+            name="moduleResponses"
+            className="form-textarea"
+            placeholder="描述内部模块之间如何响应彼此的事件或状态变化..."
+            value={formData.moduleResponses}
+            onChange={handleChange}
+            rows={8}
+          />
+        )
+      default:
+        return null
+    }
   }
 
   return (
