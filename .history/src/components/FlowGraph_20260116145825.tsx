@@ -3,6 +3,8 @@ import { Graph, Snapline, Dnd } from '@antv/x6'
 import './FlowGraph.css'
 import { register } from '@antv/x6-react-shape'
 import NodeWrapper from './nodes/common/NodeWrapper'
+import CallNode from './nodes/internalConstraints/CallNode'
+import GraphSidebar, { NODE_PALETTES } from './GraphSidebar'
 
 interface FlowGraphProps {
   data?: any
@@ -11,40 +13,12 @@ interface FlowGraphProps {
   sectionKey?: string
 }
 
-// Define available nodes for each section
-const NODE_PALETTES: Record<string, Array<{ type: string, label: string, shape: string, color: string }>> = {
-  environment: [
-    { type: 'physical', label: '物理实体', shape: 'rect', color: '#eff4ff' },
-    { type: 'logical', label: '逻辑实体', shape: 'rect', color: '#fff7e6' },
-    { type: 'env-factor', label: '环境因素', shape: 'ellipse', color: '#f6ffed' },
-  ],
-  interaction: [
-    { type: 'user', label: '用户/角色', shape: 'ellipse', color: '#fff0f6' },
-    { type: 'system', label: '外部系统', shape: 'rect', color: '#e6f7ff' },
-    { type: 'process', label: '交互过程', shape: 'rect', color: '#fffbe6' },
-  ],
-  internalComposition: [
-    { type: 'module', label: '子模块', shape: 'rect', color: '#f9f0ff' },
-    { type: 'component', label: '组件', shape: 'rect', color: '#e6fffb' },
-    { type: 'interface', label: '接口', shape: 'ellipse', color: '#fff2e8' },
-  ],
-  moduleResponses: [
-    { type: 'state', label: '状态', shape: 'ellipse', color: '#fcffe6' },
-    { type: 'action', label: '动作响应', shape: 'rect', color: '#fff1b8' },
-    { type: 'event', label: '触发事件', shape: 'polygon', color: '#ffccc7' }, // We'll handle polygon separately
-  ],
-}
-
 register({
   shape: 'custom-rect-node',
   width: 120,
   height: 60,
   component: NodeWrapper,
 })
-
-const CallNode = (props: any) => (
-  <NodeWrapper {...props} defaultContent="fx" nodeType="call" />
-);
 
 register({
   shape: 'call-node',
@@ -60,7 +34,7 @@ const FlowGraph = ({ data, onChange, readOnly = false, sectionKey = 'default' }:
   const dndRef = useRef<Dnd | null>(null)
 
   useEffect(() => {
-    if (!containerRef.current || !dndContainerRef.current) return
+    if (!containerRef.current) return
 
     // Initialize Graph
     const graph = new Graph({
@@ -84,7 +58,7 @@ const FlowGraph = ({ data, onChange, readOnly = false, sectionKey = 'default' }:
     graphRef.current = graph
 
     // Initialize Dnd
-    if (!readOnly) {
+    if (!readOnly && dndContainerRef.current) {
       const dnd = new Dnd({
         target: graph,
         scaled: false,
@@ -162,6 +136,17 @@ const FlowGraph = ({ data, onChange, readOnly = false, sectionKey = 'default' }:
           }
         },
       })
+    } else if (item.shape === 'call-node') {
+      node = graphRef.current.createNode({
+        shape: 'call-node',
+        width: 120,
+        height: 60,
+        data: {
+          nodeName: item.label,
+          stroke: '#1890ff',
+          fill: item.color,
+        },
+      })
     } else {
       node = graphRef.current.createNode({
         shape: item.shape,
@@ -186,32 +171,14 @@ const FlowGraph = ({ data, onChange, readOnly = false, sectionKey = 'default' }:
     dndRef.current.start(node, e.nativeEvent as any)
   }
 
-  const currentPalette = NODE_PALETTES[sectionKey] || NODE_PALETTES['environment'] // Fallback
-
   return (
     <div className="flow-graph-container">
       {!readOnly && (
-        <div className="graph-sidebar" ref={dndContainerRef}>
-          <div className="sidebar-title">组件库</div>
-          <div className="sidebar-items">
-            {currentPalette.map((item) => (
-              <div
-                key={item.type}
-                className="sidebar-item"
-                onMouseDown={(e) => startDrag(e, item)}
-                style={{
-                  borderColor: item.color === '#ffffff' ? '#d9d9d9' : item.color,
-                  backgroundColor: item.color
-                }}
-              >
-                {item.label}
-              </div>
-            ))}
-          </div>
-          <div className="sidebar-help">
-            拖拽组件到画布
-          </div>
-        </div>
+        <GraphSidebar 
+          sectionKey={sectionKey} 
+          onDragStart={startDrag} 
+          dndContainerRef={dndContainerRef as React.RefObject<HTMLDivElement>} 
+        />
       )}
 
       <div className="graph-content-wrapper">

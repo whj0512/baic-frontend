@@ -1,0 +1,25 @@
+.start-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+
+  .start-circle {
+    width: 90%;
+    height: 90%;
+    background-color: #333;
+    border-radius: 50%;
+    position: absolute;
+  }
+
+  .start-label {
+    position: relative;
+    z-index: 2;
+    color: #fff;
+    font-size: 12px;
+    text-align: center;
+    font-style: italic;
+  }

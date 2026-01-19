@@ -1,0 +1,176 @@
+/* ============================================
+     State 节点样式 - 状态机状态 (矩形 + 头部 + 列表)
+     适用于 antv/x6
+     ============================================ */
+
+/* CSS 变量定义 */
+:root {
+    --state-node-bg: #ffffff;
+    --state-node-border: #333333;
+    --state-node-text: #333333;
+    --state-node-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 深色主题 */
+[data-theme="dark"] {
+    --state-node-bg: #1e1e1e;
+    --state-node-border: #555555;
+    --state-node-text: #cccccc;
+    --state-node-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* 容器 */
+.state-node {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    user-select: none;
+    background-color: var(--state-fill, var(--state-node-bg));
+    border: 2px solid var(--state-stroke, var(--state-node-border));
+    border-radius: 4px;
+    box-shadow: var(--state-node-shadow);
+    /* 确保容器不会小于内容 */
+    overflow: visible;
+}
+
+/* ============================================
+     画布模式
+     ============================================ */
+
+/* 头部 */
+.state-node__header {
+    width: 100%;
+    padding: 6px 12px;
+    text-align: center;
+    font-weight: 500;
+    border-bottom: 1px solid var(--state-stroke, var(--state-node-border));
+    box-sizing: border-box;
+    background-color: rgba(0,0,0,0.02);
+    white-space: nowrap; /* 标题不换行 */
+}
+
+/* 内容区 */
+.state-node__content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 6px;
+    font-size: 12px;
+    gap: 4px;
+    /* 确保内容能撑开宽度 */
+    min-width: 100%; 
+}
+
+/* 动作详情容器 */
+.state-node__detail {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+}
+
+/* 动作行 */
+.state-node__row {
+    padding: 2px 4px;
+    word-break: break-all; /* 允许长单词换行 */
+    line-height: 1.4;
+    white-space: pre-wrap; /* 保留空白符并允许换行 */
+}
+
+/* During 动作高亮 */
+.state-node__row--during {
+    background: rgba(24, 144, 255, 0.1);
+    border-radius: 4px;
+    color: #1890ff;
+}
+
+/* 右下角 Badge (S) */
+.state-node__badge {
+    position: absolute;
+    bottom: -9px;
+    right: 10px;
+    background-color: var(--state-fill, var(--state-node-bg));
+    padding: 0 4px;
+    border-radius: 2px;
+    z-index: 10;
+}
+
+.state-node__badge-text {
+    font-size: 12px;
+    font-weight: 500;
+    font-style: italic;
+    color: var(--state-stroke, var(--state-node-border));
+    line-height: 1;
+}
+
+/* ============================================
+     Stencil 面板模式
+     ============================================ */
+
+.state-node__stencil {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border: none;
+}
+
+/* Stencil 里的文字 */
+.state-node__stencil-text {
+    font-size: 12px;
+    color: var(--state-node-text);
+    text-align: center;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.state-node__stencil-badge {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 10px;
+    font-style: italic;
+    color: var(--state-stroke, var(--state-node-border));
+}
+
+/* ============================================
+     节点状态样式
+     ============================================ */
+
+/* 选中状态 */
+.state-node.is-selected {
+    border-color: #1890ff;
+    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+.state-node.is-selected .state-node__header {
+    border-bottom-color: #1890ff;
+}
+
+/* 悬停状态 */
+.state-node:hover {
+    border-color: #40a9ff;
+}
+
+/* 禁用状态 */
+.state-node.is-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* 错误状态 */
+.state-node.is-error {
+    border-color: #ff4d4f;
+}
+
+/* 成功状态 */
+.state-node.is-success {
+    border-color: #52c41a;
+}

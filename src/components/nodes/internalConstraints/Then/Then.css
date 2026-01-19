@@ -1,0 +1,149 @@
+/* ============================================
+     then 节点样式 - 圆形
+     适用于 antv/x6
+     ============================================ */
+
+/* CSS 变量定义 */
+:root {
+    --then-node-bg: #d9d9d9;
+    --then-node-border: #000000;
+    --then-node-text: #000000;
+    --then-node-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 深色主题 */
+[data-theme="dark"] {
+    --then-node-bg: #333333;
+    --then-node-border: #cccccc;
+    --then-node-text: #cccccc;
+    --then-node-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* 容器 */
+.then-node {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    user-select: none;
+}
+
+/* ============================================
+     画布模式 - 形状样式
+     ============================================ */
+
+/* 外层 (边框) */
+.then-node__shape {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--then-stroke, var(--then-node-border));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 0;
+    filter: drop-shadow(var(--then-node-shadow));
+}
+
+/* 内层 (填充) */
+.then-node__shape-inner {
+    position: absolute;
+    top: 2px; /* 边框宽度模拟 */
+    bottom: 2px;
+    left: 2px;
+    right: 2px;
+    background-color: var(--then-fill, var(--then-node-bg));
+    border-radius: 50%;
+    z-index: 1;
+}
+
+/* 节点内容 */
+.then-node__content {
+    position: relative;
+    z-index: 2;
+    max-width: 80%;
+    padding: 0 4px;
+    text-align: center;
+    word-break: break-word;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-style: italic; /* 匹配图片中的斜体 */
+    font-weight: 500;
+}
+
+/* ============================================
+     Stencil 面板模式
+     ============================================ */
+
+.then-node__stencil {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: var(--then-node-border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.then-node__stencil-inner {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    left: 2px;
+    right: 2px;
+    background-color: var(--then-node-bg);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.then-node__stencil-text {
+    font-size: 12px;
+    font-weight: bold;
+    font-style: italic;
+    color: var(--then-node-text);
+    text-align: center;
+    line-height: 1;
+}
+
+/* ============================================
+     节点状态样式
+     ============================================ */
+
+/* 选中状态 */
+.then-node.is-selected .then-node__shape,
+.then-node.is-selected .then-node__stencil {
+    background-color: #1890ff; /* 选中时边框变蓝 */
+}
+
+/* 悬停状态 */
+.then-node:hover .then-node__shape,
+.then-node:hover .then-node__stencil {
+    background-color: #40a9ff;
+}
+
+/* 禁用状态 */
+.then-node.is-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* 错误状态 */
+.then-node.is-error .then-node__shape,
+.then-node.is-error .then-node__stencil {
+    background-color: #ff4d4f;
+}
+
+/* 成功状态 */
+.then-node.is-success .then-node__shape,
+.then-node.is-success .then-node__stencil {
+    background-color: #52c41a;
+}

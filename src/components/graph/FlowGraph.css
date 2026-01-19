@@ -19,6 +19,7 @@
   flex-direction: column;
   gap: 1rem;
   flex-shrink: 0;
+  overflow-y: auto;
 }
 
 .sidebar-title {
@@ -102,11 +103,7 @@
 
   .sidebar-item {
     border-color: #4b5563;
-    color: #1f2937; /* Backgrounds are light, so text needs to be dark-ish or adaptive. Since we hardcode bg colors, let's keep text dark or use specific styles */
-    /* Wait, I set specific BG colors in style prop. Text color depends on that. 
-       Most pale colors work with dark text. 
-       But the border needs to be visible.
-    */
+    color: #1f2937;
   }
 
   .graph-help-text {

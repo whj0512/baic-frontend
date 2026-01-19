@@ -2,8 +2,8 @@ import { useState, useRef } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Button } from 'antd'
 import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons'
-import FlowGraph from '../components/FlowGraph'
 import './RequirementSectionEditor.css'
+import FlowGraph from '../components/graph'
 
 function RequirementSectionEditor() {
   const navigate = useNavigate()
@@ -93,9 +93,9 @@ function RequirementSectionEditor() {
           <label>可视化模型 (Flow/Logic)</label>
           <div style={{ height: '500px' }}>
             <FlowGraph 
-              data={graphData} 
-              onChange={handleGraphChange}
               sectionKey={sectionKey}
+              data={graphData} 
+              onChange={handleGraphChange} 
             />
           </div>
         </div>
