@@ -15,19 +15,6 @@ import TruthTable from '../../nodes/internalConstraints/TruthTable';
 import Params from '../../form-panel/controls/internalConstraints/Params'
 import Script from '../../form-panel/controls/internalConstraints/Script'
 
-// 导入 Condition 节点的自定义控件
-import ConditionExpression from '../../form-panel/controls/internalConstraints/ConditionExpression'
-import TimeTolerance from '../../form-panel/controls/internalConstraints/TimeTolerance'
-import TestLayer from '../../form-panel/controls/internalConstraints/TestLayer'
-
-// 导入 Goto 节点的自定义控件
-import TargetSelecter from '../../form-panel/controls/internalConstraints/TargetSelecter'
-
-// 导入 Graph 节点的自定义控件
-import RefGraphs from '../../form-panel/controls/internalConstraints/RefGraphs'
-import PathCoverage from '../../form-panel/controls/internalConstraints/PathCoverage'
-import DeleteCoverageButton from '../../form-panel/controls/internalConstraints/DeleteCoverageButton'
-
 // 表单配置
 const formConfig: FormConfig = {
   // 边表单
@@ -118,7 +105,7 @@ const formConfig: FormConfig = {
                 controls: [
                   { label: '节点名称', name: 'nodeName', shape: 'InputText' },
                   { label: '备注', name: 'comment', shape: 'InputText' },
-                  { label: '目标节点', name: 'friend', shape: 'TargetSelecter' },
+                  { label: '目标节点', name: 'targetNode', shape: 'InputText' },
                 ],
               },
             ],
@@ -135,9 +122,6 @@ const formConfig: FormConfig = {
             ],
           },
         ],
-      },
-      controlMap: {
-        'TargetSelecter': TargetSelecter,
       },
     },
 
@@ -150,17 +134,8 @@ const formConfig: FormConfig = {
               {
                 controls: [
                   { label: '节点名称', name: 'nodeName', shape: 'InputText' },
+                  { label: '条件表达式', name: 'expression', shape: 'InputText' },
                   { label: '备注', name: 'comment', shape: 'InputText' },
-                  { label: '条件', name: 'condition', shape: 'ConditionExpression' },
-                  { label: '时间偏差', name: 'time_tolerance', shape: 'TimeTolerance' },
-                ],
-              },
-              {
-                title: '测试样点',
-                controls: [
-                  { label: '样点集', name: 'test_layer.data', shape: 'TestLayer' },
-                  { label: '是否排序', name: 'test_layer.is_order', shape: 'Checkbox' },
-                  { label: '是否分组', name: 'test_layer.is_group', shape: 'Checkbox' },
                 ],
               },
             ],
@@ -177,12 +152,6 @@ const formConfig: FormConfig = {
             ],
           },
         ],
-      },
-      // 注册自定义控件
-      controlMap: {
-        'ConditionExpression': ConditionExpression,
-        'TimeTolerance': TimeTolerance,
-        'TestLayer': TestLayer,
       },
     },
 
@@ -261,91 +230,8 @@ const formConfig: FormConfig = {
               {
                 controls: [
                   { label: '节点名称', name: 'nodeName', shape: 'InputText' },
+                  { label: '引用图', name: 'refGraph', shape: 'InputText' },
                   { label: '备注', name: 'comment', shape: 'InputText' },
-                  { label: '引用图', name: 'graph', shape: 'RefGraphs' },
-                ],
-              },
-              {
-                title: '引用图路径覆盖策略',
-                controls: [
-                  { label: '是否包含用例', name: 'test_coverage.contain_test_layer', shape: 'Checkbox' },
-                  { label: '路径覆盖策略', name: 'test_coverage.path_coverage.path_coverage_method', shape: 'PathCoverage' },
-                ],
-              },
-              {
-                title: '引用图条件覆盖策略',
-                controls: [
-                  {
-                    label: '',
-                    name: 'test_coverage',
-                    shape: 'DeleteCoverageButton',
-                    propertyName: 'condition_points_coverage',
-                  },
-                  {
-                    label: '条件覆盖策略',
-                    name: 'test_coverage.condition_points_coverage.coverage_type',
-                    shape: 'Select',
-                    options: [
-                      { value: 'Functional Safety', label: '功能安全' },
-                      { value: 'Customize', label: '自定义' },
-                    ],
-                  },
-                  {
-                    label: '安全等级',
-                    name: 'test_coverage.condition_points_coverage.asil_level',
-                    shape: 'Select',
-                    options: [
-                      { value: 'ASILA', label: 'ASILA' },
-                      { value: 'ASILB', label: 'ASILB' },
-                      { value: 'ASILC', label: 'ASILC' },
-                      { value: 'ASILD', label: 'ASILD' },
-                    ],
-                    hidden: true,
-                    dependencies: [
-                      {
-                        name: 'test_coverage.condition_points_coverage.coverage_type',
-                        condition: 'Functional Safety',
-                        hidden: false,
-                      },
-                    ],
-                  },
-                  {
-                    label: '条件组合方法',
-                    name: 'test_coverage.condition_points_coverage.condition_coverage_method',
-                    shape: 'Select',
-                    options: [
-                      { value: 'MCDC', label: 'MCDC' },
-                      { value: 'DC', label: 'DC' },
-                      { value: 'DT', label: 'DT' },
-                      { value: 'All_DT', label: 'All_DT' },
-                    ],
-                    hidden: true,
-                    dependencies: [
-                      {
-                        name: 'test_coverage.condition_points_coverage.coverage_type',
-                        condition: 'Customize',
-                        hidden: false,
-                      },
-                    ],
-                  },
-                  {
-                    label: '点数量',
-                    name: 'test_coverage.condition_points_coverage.point_coverage_method',
-                    shape: 'Select',
-                    options: [
-                      { value: '1-point', label: '1-point' },
-                      { value: '3-points', label: '3-points' },
-                      { value: '5-points', label: '5-points' },
-                    ],
-                    hidden: true,
-                    dependencies: [
-                      {
-                        name: 'test_coverage.condition_points_coverage.coverage_type',
-                        condition: 'Customize',
-                        hidden: false,
-                      },
-                    ],
-                  },
                 ],
               },
             ],
@@ -362,11 +248,6 @@ const formConfig: FormConfig = {
             ],
           },
         ],
-      },
-      controlMap: {
-        'RefGraphs': RefGraphs,
-        'PathCoverage': PathCoverage,
-        'DeleteCoverageButton': DeleteCoverageButton,
       },
     },
 

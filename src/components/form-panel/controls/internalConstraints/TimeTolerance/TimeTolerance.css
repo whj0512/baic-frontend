@@ -1,0 +1,59 @@
+.time-tolerance-control {
+  width: 100%;
+}
+
+.time-tolerance-toolbar {
+  margin-bottom: 8px;
+}
+
+.time-tolerance-type-select {
+  padding: 6px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.time-tolerance-type-select:hover {
+  border-color: #1890ff;
+}
+
+.time-tolerance-type-select:focus {
+  border-color: #1890ff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+
+.time-tolerance-input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.time-tolerance-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.time-tolerance-input:focus {
+  border-color: #1890ff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+
+.time-tolerance-label {
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #666;
+  white-space: nowrap;
+}

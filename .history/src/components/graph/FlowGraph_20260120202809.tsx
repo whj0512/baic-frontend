@@ -61,7 +61,7 @@ const FlowGraph = ({ sectionKey, data, onChange, readOnly = false }: FlowGraphPr
       const stencil = new Stencil({
         title: '组件库',
         target: graph,
-        stencilGraphWidth: 160,
+        stencilGraphWidth: 200,
         stencilGraphHeight: 0,
         collapsable: true,
         groups: [
@@ -72,7 +72,7 @@ const FlowGraph = ({ sectionKey, data, onChange, readOnly = false }: FlowGraphPr
         ],
         layoutOptions: {
           columns: 1,
-          columnWidth: 140,
+          columnWidth: 150,
           rowHeight: 80,
         },
       })
@@ -141,12 +141,12 @@ const FlowGraph = ({ sectionKey, data, onChange, readOnly = false }: FlowGraphPr
         {!readOnly && <div className="graph-help-text">按住 Ctrl + 滚轮缩放画布，拖拽空白处平移</div>}
       </div>
       {/* 右侧表单面板 */}
-      {!readOnly && graphReady && graphRef.current && (
+      {/* {!readOnly && graphReady && graphRef.current && (
         <FormPanelContainer
           graph={graphRef.current}
           formConfig={strategy.formConfig}
         />
-      )}
+      )} */}
     </div>
   )
 }

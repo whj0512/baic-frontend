@@ -1,0 +1,59 @@
+.params-control {
+  width: 100%;
+}
+
+.params-toolbar {
+  margin-bottom: 8px;
+}
+
+.params-add-btn {
+  padding: 6px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+  color: #1890ff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.params-add-btn:hover {
+  border-color: #1890ff;
+  background: #f0f8ff;
+}
+
+.params-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.params-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.params-item > .editable-switch {
+  flex: 1;
+}
+
+.params-delete-btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+  color: #ff4d4f;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.params-delete-btn:hover {
+  border-color: #ff4d4f;
+  background: #fff1f0;
+}

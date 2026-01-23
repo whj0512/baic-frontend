@@ -1,0 +1,12 @@
+.ref-graphs-container {
+  width: 100%;
+}
+
+.ref-graphs-container .ant-select {
+  width: 100%;
+}
+
+.ref-graphs-container .ant-select-tree-node-content-wrapper {
+  display: flex;
+  align-items: center;
+}

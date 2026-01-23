@@ -1,0 +1,22 @@
+.editable-switch {
+  width: 100%;
+}
+
+.editable-switch-readonly {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 14px;
+  background: #fafafa;
+  cursor: pointer;
+  transition: all 0.2s;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editable-switch-readonly:hover {
+  border-color: #1890ff;
+  background: #fff;
+}

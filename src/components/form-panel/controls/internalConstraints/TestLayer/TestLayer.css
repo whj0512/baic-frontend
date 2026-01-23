@@ -1,0 +1,35 @@
+.test-layer-control {
+  width: 100%;
+}
+
+.test-layer-toolbar {
+  margin-bottom: 8px;
+}
+
+.test-layer-menu {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.test-layer-menu-btn {
+  padding: 4px 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+  color: #1890ff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.test-layer-menu-btn:hover {
+  border-color: #1890ff;
+  background: #f0f8ff;
+}
+
+.test-layer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

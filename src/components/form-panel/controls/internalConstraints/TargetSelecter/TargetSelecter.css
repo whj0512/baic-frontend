@@ -1,0 +1,62 @@
+.target-selecter {
+  position: relative;
+  width: 100%;
+}
+
+.target-selecter-editor {
+  position: relative;
+  width: 100%;
+}
+
+.target-selecter-input {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 2px;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.3s;
+}
+
+.target-selecter-input:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+.target-selecter-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #d9d9d9;
+  border-radius: 2px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+}
+
+.target-selecter-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.target-selecter-option:hover {
+  background-color: #f5f5f5;
+}
+
+.target-selecter-empty {
+  padding: 8px 12px;
+  color: #999;
+  text-align: center;
+}
+
+/* 虚线流动动画 */
+@keyframes ant-line {
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
