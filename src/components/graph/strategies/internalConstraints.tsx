@@ -28,6 +28,9 @@ import RefGraphs from '../../form-panel/controls/internalConstraints/RefGraphs'
 import PathCoverage from '../../form-panel/controls/internalConstraints/PathCoverage'
 import DeleteCoverageButton from '../../form-panel/controls/internalConstraints/DeleteCoverageButton'
 
+// 导入 Truth 节点的自定义控件
+import TruthTableControl from '../../form-panel/controls/internalConstraints/TruthTable'
+
 // 表单配置
 const formConfig: FormConfig = {
   // 边表单
@@ -163,6 +166,82 @@ const formConfig: FormConfig = {
                   { label: '是否分组', name: 'test_layer.is_group', shape: 'Checkbox' },
                 ],
               },
+              {
+                title: '测试覆盖策略',
+                controls: [
+                  {
+                    label: '',
+                    name: 'test_coverage',
+                    shape: 'DeleteCoverageButton',
+                    propertyName: 'condition_points_coverage',
+                  },
+                  {
+                    label: '条件覆盖策略',
+                    name: 'test_coverage.condition_points_coverage.coverage_type',
+                    shape: 'Select',
+                    options: [
+                      { value: 'Functional Safety', label: '功能安全' },
+                      { value: 'Customize', label: '自定义' },
+                    ],
+                  },
+                  {
+                    label: '安全等级',
+                    name: 'test_coverage.condition_points_coverage.asil_level',
+                    shape: 'Select',
+                    options: [
+                      { value: 'ASILA', label: 'ASILA' },
+                      { value: 'ASILB', label: 'ASILB' },
+                      { value: 'ASILC', label: 'ASILC' },
+                      { value: 'ASILD', label: 'ASILD' },
+                    ],
+                    hidden: true,
+                    dependencies: [
+                      {
+                        name: 'test_coverage.condition_points_coverage.coverage_type',
+                        condition: 'Functional Safety',
+                        hidden: false,
+                      },
+                    ],
+                  },
+                  {
+                    label: '条件组合方法',
+                    name: 'test_coverage.condition_points_coverage.condition_coverage_method',
+                    shape: 'Select',
+                    options: [
+                      { value: 'MCDC', label: 'MCDC' },
+                      { value: 'DC', label: 'DC' },
+                      { value: 'DT', label: 'DT' },
+                      { value: 'All_DT', label: 'All_DT' },
+                    ],
+                    hidden: true,
+                    dependencies: [
+                      {
+                        name: 'test_coverage.condition_points_coverage.coverage_type',
+                        condition: 'Customize',
+                        hidden: false,
+                      },
+                    ],
+                  },
+                  {
+                    label: '点数量',
+                    name: 'test_coverage.condition_points_coverage.point_coverage_method',
+                    shape: 'Select',
+                    options: [
+                      { value: '1-point', label: '1-point' },
+                      { value: '3-points', label: '3-points' },
+                      { value: '5-points', label: '5-points' },
+                    ],
+                    hidden: true,
+                    dependencies: [
+                      {
+                        name: 'test_coverage.condition_points_coverage.coverage_type',
+                        condition: 'Customize',
+                        hidden: false,
+                      },
+                    ],
+                  },
+                ],
+              },
             ],
           },
           {
@@ -183,6 +262,7 @@ const formConfig: FormConfig = {
         'ConditionExpression': ConditionExpression,
         'TimeTolerance': TimeTolerance,
         'TestLayer': TestLayer,
+        'DeleteCoverageButton': DeleteCoverageButton,
       },
     },
 
@@ -407,8 +487,8 @@ const formConfig: FormConfig = {
               {
                 controls: [
                   { label: '节点名称', name: 'nodeName', shape: 'InputText' },
-                  { label: '真值表', name: 'truthTable', shape: 'InputText' },
                   { label: '备注', name: 'comment', shape: 'InputText' },
+                  { label: '真值表', name: 'truthTable', shape: 'TruthTable' },
                 ],
               },
             ],
@@ -425,6 +505,9 @@ const formConfig: FormConfig = {
             ],
           },
         ],
+      },
+      controlMap: {
+        'TruthTable': TruthTableControl,
       },
     },
   },

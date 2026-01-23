@@ -1,0 +1,64 @@
+.table {
+  overflow-x: auto;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 12px;
+  display: table;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.row {
+  display: table-row;
+}
+
+.th,
+.td {
+  display: table-cell;
+  min-width: 80px;
+  max-width: 200px;
+  width: 120px;
+  cursor: pointer;
+  overflow: hidden;
+  padding: 2px 6px;
+  white-space: nowrap;
+  vertical-align: middle;
+  border-right: 1px solid #d9d9d9;
+  border-top: 1px solid #d9d9d9;
+  box-sizing: border-box;
+  font-size: 12px;
+}
+
+/* 第一行移除上边框 */
+.row:first-child .th,
+.row:first-child .td {
+  border-top: none;
+}
+
+/* 移除最后一列的右边框 */
+.th:last-child,
+.td:last-child {
+  border-right: none;
+}
+
+/* 当单元格包含编辑模式的内容时，允许溢出并自适应宽度 */
+.th:has(.cell-editing),
+.td:has(.cell-editing) {
+  width: auto;
+  max-width: none;
+  overflow: visible;
+  position: relative;
+  z-index: 10;
+}
+
+.th {
+  position: relative;
+  background-color: #fafafa;
+  font-weight: 500;
+  color: #333;
+}
+
+.td {
+  background-color: #fff;
+}
