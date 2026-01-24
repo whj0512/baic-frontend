@@ -660,84 +660,19 @@ const internalConstraintsStrategy: GraphStrategy = {
       shape: 'comment-node',
       width: 120,
       height: 60,
-      component: Comment
+      component: Comment,
     });
     register({
       shape: 'condition-node',
       width: 120,
       height: 80,
       component: Condition,
-      // 定义端口
-      ports: {
-        groups: {
-          top: {
-            position: { name: 'top' },
-            attrs: {
-              circle: {
-                r: 4,
-                magnet: true,
-                stroke: '#333',
-                strokeWidth: 1,
-                fill: '#fff',
-              },
-            },
-          },
-          yes: {
-            position: { name: 'right' },
-            attrs: {
-              circle: {
-                r: 4,
-                magnet: true,
-                stroke: '#52c41a',
-                strokeWidth: 2,
-                fill: '#fff',
-              },
-            },
-            label: {
-              position: { name: 'right', args: { offset: 8 } },
-            },
-          },
-          no: {
-            position: { name: 'left' },
-            attrs: {
-              circle: {
-                r: 4,
-                magnet: true,
-                stroke: '#ff4d4f',
-                strokeWidth: 2,
-                fill: '#fff',
-              },
-            },
-            label: {
-              position: { name: 'left', args: { offset: 8 } },
-            },
-          },
-          bottom: {
-            position: { name: 'bottom' },
-            attrs: {
-              circle: {
-                r: 4,
-                magnet: true,
-                stroke: '#333',
-                strokeWidth: 1,
-                fill: '#fff',
-              },
-            },
-          },
-        },
-        items: [
-          { id: 'port-top', group: 'top' },
-          { id: 'port-yes', group: 'yes' },
-          { id: 'port-no', group: 'no' },
-          { id: 'port-bottom', group: 'bottom' },
-        ],
-      },
     });
     register({
         shape: 'goto-node',
         width: 120,
         height: 60,
-        component: Goto
+        component: Goto,
     });
     register({
       shape: 'graph-node',
