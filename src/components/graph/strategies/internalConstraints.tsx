@@ -31,6 +31,10 @@ import DeleteCoverageButton from '../../form-panel/controls/internalConstraints/
 // 导入 Truth 节点的自定义控件
 import TruthTableControl from '../../form-panel/controls/internalConstraints/TruthTable'
 
+// 导入 State 节点的自定义控件
+import TestTimeProps from '../../form-panel/controls/internalConstraints/TestTimeProps'
+import Action from '../../form-panel/controls/internalConstraints/Action'
+
 // 表单配置
 const formConfig: FormConfig = {
   // 边表单
@@ -65,6 +69,9 @@ const formConfig: FormConfig = {
                   { label: '备注', name: 'comment', shape: 'InputText' },
                   { label: '后置思考时间', name: 'post_think_time', shape: 'InputNumber', extra: '秒' },
                   { label: '正向传播', name: 'forward_propagation', shape: 'Checkbox' },
+                  { label: '测试时间属性', name: 'time_props', shape: 'TestTimeProps', extra: '秒' },
+                  { label: '动作-常规', name: 'normal', shape: 'Action', groupId: 'normal_testcase' },
+                  { label: '动作-动态', name: 'dynamic', shape: 'Action', groupId: 'dynamic_testcase' },
                 ],
               },
             ],
@@ -81,6 +88,10 @@ const formConfig: FormConfig = {
             ],
           },
         ],
+      },
+      controlMap: {
+        'TestTimeProps': TestTimeProps,
+        'Action': Action,
       },
     },
 

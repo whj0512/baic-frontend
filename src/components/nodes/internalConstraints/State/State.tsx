@@ -27,8 +27,6 @@ interface StateNodeProps {
     children?: ReactNode;
 }
 
-const DURING_SYMBOL = 'during';
-
 // 将动作对象转换为表达式字符串
 const joinObject = (obj: ActionItem): string => {
     const { name, symbol, value } = obj;
@@ -62,10 +60,8 @@ const State: FC<StateNodeProps> = (props) => {
     const fontColor = propFontColor || nodeData.fontColor || '#333';
     const fontSize = propFontSize || nodeData.fontSize || 12;
     const nodeName = propNodeName || nodeData.nodeName || 'State';
-    const normal = nodeData.normal || [];
-    
-    const duringActions = normal?.filter((item: ActionItem) => item.symbol === DURING_SYMBOL) || [];
-    const normalActions = normal?.filter((item: ActionItem) => item.symbol !== DURING_SYMBOL) || [];
+    const normal = nodeData.normal || [];  // 动作-常规
+    const dynamic = nodeData.dynamic || []; // 动作-动态
 
     // 获取尺寸
     const nodeSize = node?.getSize?.() || {};
@@ -157,21 +153,21 @@ const State: FC<StateNodeProps> = (props) => {
 
                     {/* 内容区域 */}
                     <div className="state-node__content">
-                        {/* During 动作列表（高亮显示） */}
-                        {duringActions.length > 0 && (
+                        {/* Dynamic 动作列表（动态动作，高亮显示） */}
+                        {dynamic.length > 0 && (
                             <div className="state-node__detail">
-                                {duringActions.map((item: ActionItem, index: number) => (
-                                    <div key={`during-${index}`} className="state-node__row state-node__row--during">
+                                {dynamic.map((item: ActionItem, index: number) => (
+                                    <div key={`dynamic-${index}`} className="state-node__row state-node__row--during">
                                         {joinObject(item)}
                                     </div>
                                 ))}
                             </div>
                         )}
 
-                        {/* Normal 动作列表 */}
-                        {normalActions.length > 0 && (
+                        {/* Normal 动作列表（常规动作） */}
+                        {normal.length > 0 && (
                             <div className="state-node__detail">
-                                {normalActions.map((item: ActionItem, index: number) => (
+                                {normal.map((item: ActionItem, index: number) => (
                                     <div key={`normal-${index}`} className="state-node__row">
                                         {joinObject(item)}
                                     </div>

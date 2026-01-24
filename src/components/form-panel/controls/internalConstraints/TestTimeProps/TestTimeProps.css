@@ -1,0 +1,40 @@
+.test-time-props {
+  width: 100%;
+}
+
+.test-time-props-toolbar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.test-time-props-toolbar .add-icon {
+  font-size: 16px;
+  color: #1890ff;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.test-time-props-toolbar .add-icon:hover {
+  color: #40a9ff;
+}
+
+.test-time-props-content {
+  width: 100%;
+}
+
+.test-time-props-editor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.test-time-props-editor .remove-icon {
+  color: #999;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.test-time-props-editor .remove-icon:hover {
+  color: #ff4d4f;
+}
