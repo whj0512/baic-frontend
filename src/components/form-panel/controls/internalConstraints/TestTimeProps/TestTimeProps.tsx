@@ -53,6 +53,7 @@ const TestTimeProps: React.FC<TestTimePropsProps> = ({ value, onChange }) => {
   }
 
   const handleRemove = (e: React.MouseEvent) => {
+    e.preventDefault()
     e.stopPropagation()
     onChange?.(undefined)
   }
@@ -87,7 +88,7 @@ const TestTimeProps: React.FC<TestTimePropsProps> = ({ value, onChange }) => {
                   onPressEnter={onFinish}
                   style={{ width: '100%' }}
                 />
-                <CloseOutlined className="remove-icon" onClick={handleRemove} />
+                <CloseOutlined className="remove-icon" onMouseDown={handleRemove} />
               </div>
             )}
           </EditableSwitch>

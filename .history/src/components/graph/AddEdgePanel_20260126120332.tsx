@@ -202,10 +202,6 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules }) => {
       },
       router: { name: 'orth' },
       connector: { name: 'rounded', args: { radius: 8 } },
-      data: {
-        // 保存 sourceOutput 用于导出时判断 condition 节点的分支
-        sourceOutput: sourceOutput || undefined,
-      },
     }
 
     // 如果有边规则，应用锚点配置

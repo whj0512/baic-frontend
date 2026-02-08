@@ -44,15 +44,125 @@ const formConfig: FormConfig = {
         name: '数据',
         groups: [
           {
+            title: '基础信息',
             controls: [
               { label: '边名称', name: 'edgeName', shape: 'InputText' },
-              { label: '条件', name: 'condition', shape: 'InputText' },
               { label: '备注', name: 'comment', shape: 'InputText' },
+              { label: '循环次数', name: 'loop_times', shape: 'InputNumber' },
+              { label: '浮点类型取点是否包含阈值', name: 'isContainThreshold', shape: 'Checkbox' },
+            ],
+          },
+          {
+            title: '条件配置',
+            controls: [
+              { label: '条件', name: 'condition', shape: 'ConditionExpression' },
+              { label: '时间偏差', name: 'time_tolerance', shape: 'TimeTolerance' },
+            ],
+          },
+          {
+            title: '测试样点',
+            controls: [
+              { label: '样点集', name: 'test_layer.data', shape: 'TestLayer' },
+              { label: '是否排序', name: 'test_layer.is_order', shape: 'Checkbox' },
+              { label: '是否分组', name: 'test_layer.is_group', shape: 'Checkbox' },
+            ],
+          },
+          {
+            title: '测试覆盖策略',
+            controls: [
+              {
+                label: '',
+                name: 'test_coverage',
+                shape: 'DeleteCoverageButton',
+                propertyName: 'condition_points_coverage',
+              },
+              {
+                label: '条件覆盖策略',
+                name: 'test_coverage.condition_points_coverage.coverage_type',
+                shape: 'Select',
+                options: [
+                  { value: 'Functional Safety', label: '功能安全' },
+                  { value: 'Customize', label: '自定义' },
+                ],
+              },
+              {
+                label: '安全等级',
+                name: 'test_coverage.condition_points_coverage.asil_level',
+                shape: 'Select',
+                options: [
+                  { value: 'ASILA', label: 'ASILA' },
+                  { value: 'ASILB', label: 'ASILB' },
+                  { value: 'ASILC', label: 'ASILC' },
+                  { value: 'ASILD', label: 'ASILD' },
+                ],
+                hidden: true,
+                dependencies: [
+                  {
+                    name: 'test_coverage.condition_points_coverage.coverage_type',
+                    condition: 'Functional Safety',
+                    hidden: false,
+                  },
+                ],
+              },
+              {
+                label: '条件组合方法',
+                name: 'test_coverage.condition_points_coverage.condition_coverage_method',
+                shape: 'Select',
+                options: [
+                  { value: 'MCDC', label: 'MCDC' },
+                  { value: 'DC', label: 'DC' },
+                  { value: 'DT', label: 'DT' },
+                  { value: 'All_DT', label: 'All_DT' },
+                ],
+                hidden: true,
+                dependencies: [
+                  {
+                    name: 'test_coverage.condition_points_coverage.coverage_type',
+                    condition: 'Customize',
+                    hidden: false,
+                  },
+                ],
+              },
+              {
+                label: '点数量',
+                name: 'test_coverage.condition_points_coverage.point_coverage_method',
+                shape: 'Select',
+                options: [
+                  { value: '1-point', label: '1-point' },
+                  { value: '3-points', label: '3-points' },
+                  { value: '5-points', label: '5-points' },
+                ],
+                hidden: true,
+                dependencies: [
+                  {
+                    name: 'test_coverage.condition_points_coverage.coverage_type',
+                    condition: 'Customize',
+                    hidden: false,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        name: '样式',
+        groups: [
+          {
+            controls: [
+              { label: '线条颜色', name: 'stroke', shape: 'InputText' },
+              { label: '线条宽度', name: 'strokeWidth', shape: 'InputNumber' },
             ],
           },
         ],
       },
     ],
+    controlMap: {
+      'ConditionExpression': ConditionExpression,
+      'TimeTolerance': TimeTolerance,
+      'TestLayer': TestLayer,
+      'DeleteCoverageButton': DeleteCoverageButton,
+    },
   },
 
   // 节点表单（按 shape 映射）
@@ -707,6 +817,41 @@ const internalConstraintsStrategy: GraphStrategy = {
   },
   // 表单配置
   formConfig,
+  // 边规则配置
+  edgeRules: {
+    // 判断节点是否有多个输出
+    hasMultipleOutputs: (nodeId: string, nodeShape: string) => {
+      return nodeShape === 'condition-node'
+    },
+    // 获取输出选项
+    getOutputOptions: (nodeId: string, nodeShape: string) => {
+      if (nodeShape === 'condition-node') {
+        return [
+          { value: 'yes', label: 'Yes (右侧)' },
+          { value: 'no', label: 'No (左侧)' },
+        ]
+      }
+      return []
+    },
+    // 获取源节点锚点
+    getSourceAnchor: (nodeId: string, nodeShape: string, output?: string) => {
+      if (nodeShape === 'condition-node' && output) {
+        // Condition 节点：yes 在右侧，no 在左侧
+        if (output === 'yes') {
+          return { anchor: { name: 'right', args: { dy: 0 } } }
+        } else if (output === 'no') {
+          return { anchor: { name: 'left', args: { dy: 0 } } }
+        }
+      }
+      // 其他节点使用默认配置（从底部连出）
+      return { anchor: { name: 'bottom' } }
+    },
+    // 获取目标节点锚点
+    getTargetAnchor: (nodeId: string, nodeShape: string) => {
+      // 所有节点都从顶部连入
+      return { anchor: { name: 'top' } }
+    },
+  },
 }
 
 export default internalConstraintsStrategy

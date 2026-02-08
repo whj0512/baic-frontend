@@ -1,6 +1,9 @@
-import React, { useEffect, useRef, useMemo, useState } from 'react'
-import { Graph, Snapline, Stencil, Edge } from '@antv/x6'
+import React, { useEffect, useRef, useMemo, useState, forwardRef, useImperativeHandle, useCallback } from 'react'
+import { Graph, Snapline, Stencil, Edge, Cell } from '@antv/x6'
 import { register } from '@antv/x6-react-shape'
+import { Dropdown } from 'antd'
+import type { MenuProps } from 'antd'
+import { DeleteOutlined } from '@ant-design/icons'
 import NodeWrapper from '../nodes/common/NodeWrapper'
 import { getStrategy } from './strategies'
 import FormPanelContainer from '../form-panel'
@@ -22,14 +25,57 @@ interface FlowGraphProps {
   readOnly?: boolean
 }
 
-const FlowGraph = ({ sectionKey, data, onChange, readOnly = false }: FlowGraphProps) => {
+// 暴露给父组件的方法
+export interface FlowGraphRef {
+  getGraph: () => Graph | null
+}
+
+const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
+  ({ sectionKey, data, onChange, readOnly = false }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const stencilContainerRef = useRef<HTMLDivElement>(null)
   const graphRef = useRef<Graph | null>(null)
   const stencilRef = useRef<Stencil | null>(null)
   const [graphReady, setGraphReady] = useState(false)
 
+  // 右键菜单状态
+  const [contextMenu, setContextMenu] = useState<{
+    visible: boolean
+    x: number
+    y: number
+    cell: Cell | null
+  }>({ visible: false, x: 0, y: 0, cell: null })
+
   const strategy = useMemo(() => getStrategy(sectionKey), [sectionKey])
+
+  // 暴露 getGraph 方法给父组件
+  useImperativeHandle(ref, () => ({
+    getGraph: () => graphRef.current,
+  }), [graphReady])
+
+  // 关闭右键菜单
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(prev => ({ ...prev, visible: false, cell: null }))
+  }, [])
+
+  // 删除元素
+  const handleDeleteCell = useCallback(() => {
+    if (contextMenu.cell && graphRef.current) {
+      graphRef.current.removeCell(contextMenu.cell)
+    }
+    closeContextMenu()
+  }, [contextMenu.cell, closeContextMenu])
+
+  // 右键菜单配置
+  const contextMenuItems: MenuProps['items'] = [
+    {
+      key: 'delete',
+      label: '删除元素',
+      icon: <DeleteOutlined />,
+      danger: true,
+      onClick: handleDeleteCell,
+    },
+  ]
 
   useEffect(() => {
     // Strategy-specific registration
@@ -168,6 +214,30 @@ const FlowGraph = ({ sectionKey, data, onChange, readOnly = false }: FlowGraphPr
       graph.on('cell:change:data', updateData)
     }
 
+    // 右键菜单事件
+    if (!readOnly) {
+      graph.on('cell:contextmenu', ({ e, cell }) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setContextMenu({
+          visible: true,
+          x: e.clientX,
+          y: e.clientY,
+          cell,
+        })
+      })
+
+      // 点击画布空白处关闭菜单
+      graph.on('blank:click', () => {
+        setContextMenu(prev => ({ ...prev, visible: false, cell: null }))
+      })
+
+      // 点击节点/边时关闭菜单
+      graph.on('cell:click', () => {
+        setContextMenu(prev => ({ ...prev, visible: false, cell: null }))
+      })
+    }
+
     graph.use(new Snapline({ enabled: true }))
 
     return () => {
@@ -184,7 +254,7 @@ const FlowGraph = ({ sectionKey, data, onChange, readOnly = false }: FlowGraphPr
   }, [data])
 
   return (
-    <div className="flow-graph-container">
+    <div className="flow-graph-container" onClick={closeContextMenu}>
       {!readOnly && (
         <div
           className="graph-sidebar"
@@ -196,7 +266,7 @@ const FlowGraph = ({ sectionKey, data, onChange, readOnly = false }: FlowGraphPr
         <div ref={containerRef} className="x6-graph-container" />
         {!readOnly && graphReady && graphRef.current && (
           <div className="graph-toolbar">
-            <AddEdgePanel graph={graphRef.current} />
+            <AddEdgePanel graph={graphRef.current} edgeRules={strategy.edgeRules} />
           </div>
         )}
         {!readOnly && <div className="graph-help-text">Ctrl + 滚轮缩放 | 拖拽空白处平移</div>}
@@ -208,8 +278,26 @@ const FlowGraph = ({ sectionKey, data, onChange, readOnly = false }: FlowGraphPr
           formConfig={strategy.formConfig}
         />
       )}
+      {/* 右键菜单 */}
+      {contextMenu.visible && (
+        <Dropdown
+          menu={{ items: contextMenuItems }}
+          open={true}
+          onOpenChange={(open) => !open && closeContextMenu()}
+        >
+          <div
+            style={{
+              position: 'fixed',
+              left: contextMenu.x,
+              top: contextMenu.y,
+              width: 1,
+              height: 1,
+            }}
+          />
+        </Dropdown>
+      )}
     </div>
   )
-}
+})
 
 export default FlowGraph

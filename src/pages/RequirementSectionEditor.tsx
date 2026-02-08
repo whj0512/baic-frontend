@@ -1,9 +1,14 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Button } from 'antd'
-import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, SaveOutlined, DownloadOutlined } from '@ant-design/icons'
 import './RequirementSectionEditor.css'
-import FlowGraph from '../components/graph'
+import FlowGraph, { type FlowGraphRef } from '../components/graph'
+import DslEditor from '../components/dsl-editor'
+import { exportGraphToJSON, importGraphFromJSON } from '../models/strategies/internalConstraints'
+import { API_ENDPOINTS } from '../config/api'
+
+type ViewMode = 'visual' | 'dsl'
 
 function RequirementSectionEditor() {
   const navigate = useNavigate()
@@ -21,13 +26,116 @@ function RequirementSectionEditor() {
   // Check if canvasData exists in initialFormData and if it has data for this sectionKey
   const initialCanvasData = initialFormData?.canvasData?.[sectionKey!] || {}
   const [graphData, setGraphData] = useState(initialCanvasData)
-  
+
   // Ref to hold latest graph data to avoid re-renders on every node change if we just want to save at the end
   const graphDataRef = useRef(initialCanvasData)
+
+  // Ref to access FlowGraph instance
+  const flowGraphRef = useRef<FlowGraphRef>(null)
+
+  // 视图模式状态
+  const [viewMode, setViewMode] = useState<ViewMode>('visual')
+  const [dslContent, setDslContent] = useState('')
+  const [dslLoading, setDslLoading] = useState(false)
+  const [dslError, setDslError] = useState<string | undefined>()
 
   const handleGraphChange = (data: any) => {
     graphDataRef.current = data
     setGraphData(data)
+  }
+
+  // 切换到 DSL 视图并转换
+  const handleSwitchToDsl = useCallback(async () => {
+    const graph = flowGraphRef.current?.getGraph()
+    if (!graph) return
+
+    setViewMode('dsl')
+    setDslLoading(true)
+    setDslError(undefined)
+
+    try {
+      const jsonData = exportGraphToJSON(graph, sectionKey, sectionLabel)
+      const response = await fetch(API_ENDPOINTS.rbgToDsl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(jsonData),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.text()
+      setDslContent(result)
+    } catch (error) {
+      setDslError(error instanceof Error ? error.message : '转换失败，请稍后重试')
+    } finally {
+      setDslLoading(false)
+    }
+  }, [sectionKey, sectionLabel])
+
+  // 切换到可视化视图
+  const handleSwitchToVisual = useCallback(async () => {
+    // 如果 DSL 内容为空，直接切换
+    if (!dslContent.trim()) {
+      setViewMode('visual')
+      return
+    }
+
+    setDslLoading(true)
+    setDslError(undefined)
+
+    try {
+      const response = await fetch(API_ENDPOINTS.dslToRbg, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain',
+        },
+        body: dslContent,
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.text()
+      const x6Data = importGraphFromJSON(result)
+
+      // 更新图数据
+      setGraphData(x6Data)
+      graphDataRef.current = x6Data
+
+      // 如果图实例存在，重新加载数据
+      const graph = flowGraphRef.current?.getGraph()
+      if (graph) {
+        graph.fromJSON(x6Data)
+      }
+
+      setViewMode('visual')
+    } catch (error) {
+      setDslError(error instanceof Error ? error.message : '转换失败，请稍后重试')
+    } finally {
+      setDslLoading(false)
+    }
+  }, [dslContent])
+
+  // 下载图的 JSON 数据
+  const handleDownloadJSON = () => {
+    const graph = flowGraphRef.current?.getGraph()
+    if (!graph) return
+
+    const jsonData = exportGraphToJSON(graph, sectionKey, sectionLabel)
+    const blob = new Blob([JSON.stringify(jsonData, null, 2)], {
+      type: 'application/json',
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${sectionKey || 'graph'}.json`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   const handleSave = () => {
@@ -90,13 +198,48 @@ function RequirementSectionEditor() {
         </div>
 
         <div className="editor-group">
-          <label>可视化模型 (Flow/Logic)</label>
+          <div className="editor-group-header">
+            <div className="editor-view-tabs">
+              <label
+                className={`editor-view-tab ${viewMode === 'visual' ? 'active' : ''}`}
+                onClick={handleSwitchToVisual}
+              >
+                可视化模型 (Flow/Logic)
+              </label>
+              <label
+                className={`editor-view-tab ${viewMode === 'dsl' ? 'active' : ''}`}
+                onClick={handleSwitchToDsl}
+              >
+                DSL语言描述
+              </label>
+            </div>
+            {viewMode === 'visual' && (
+              <Button
+                size="small"
+                icon={<DownloadOutlined />}
+                onClick={handleDownloadJSON}
+              >
+                导出 JSON
+              </Button>
+            )}
+          </div>
           <div style={{ height: '500px' }}>
-            <FlowGraph 
-              sectionKey={sectionKey}
-              data={graphData} 
-              onChange={handleGraphChange} 
-            />
+            {viewMode === 'visual' ? (
+              <FlowGraph
+                ref={flowGraphRef}
+                sectionKey={sectionKey}
+                data={graphData}
+                onChange={handleGraphChange}
+              />
+            ) : (
+              <DslEditor
+                value={dslContent}
+                loading={dslLoading}
+                error={dslError}
+                readOnly={false}
+                onChange={setDslContent}
+              />
+            )}
           </div>
         </div>
       </div>

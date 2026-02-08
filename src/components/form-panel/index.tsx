@@ -85,6 +85,13 @@ export const FormPanelContainer: React.FC<Props> = ({ graph, formConfig }) => {
     }
   }
 
+  // 获取边的自定义控件
+  if (targetType === 'edge' && formConfig?.edge?.controlMap) {
+    Object.entries(formConfig.edge.controlMap).forEach(([name, component]) => {
+      controlMap.set(name, component)
+    })
+  }
+
   // 更新数据
   const handleUpdate = (fieldName: string, value: any) => {
     if (selectedCell) {

@@ -91,6 +91,12 @@
   border-top: 1px solid #f0f0f0;
 }
 
+/* 输出选择器 */
+.add-edge-output-selector {
+  display: flex;
+  gap: 12px;
+}
+
 /* 虚线流动动画 */
 @keyframes ant-line {
   to {

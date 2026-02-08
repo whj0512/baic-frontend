@@ -42,6 +42,47 @@
   color: #374151;
 }
 
+.editor-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.editor-view-tabs {
+  display: flex;
+  gap: 0;
+}
+
+.editor-view-tab {
+  padding: 6px 16px;
+  cursor: pointer;
+  border: 1px solid #d9d9d9;
+  background-color: #fafafa;
+  color: #666;
+  font-weight: 500;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.editor-view-tab:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.editor-view-tab:last-child {
+  border-radius: 0 4px 4px 0;
+  border-left: none;
+}
+
+.editor-view-tab:hover {
+  color: #1890ff;
+}
+
+.editor-view-tab.active {
+  background-color: #1890ff;
+  border-color: #1890ff;
+  color: #fff;
+}
+
 .editor-textarea {
   width: 100%;
   min-height: 200px;
