@@ -9,4 +9,6 @@ export const API_ENDPOINTS = {
   rbgToDsl: `${DSL_SERVICE_BASE_URL}/rbg-to-dsl`,
   // 将 DSL 转换为图 JSON
   dslToRbg: `${DSL_SERVICE_BASE_URL}/dsl-to-rbg`,
+  // 将自然语言转换为 DSL
+  nlToDsl: `${DSL_SERVICE_BASE_URL}/nl-to-dsl`,
 }

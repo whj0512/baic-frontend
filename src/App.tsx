@@ -4,6 +4,7 @@ import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import ProjectManagement from './pages/ProjectManagement'
+import ProjectWorkSpace from './pages/ProjectWorkSpace'
 import CreateProject from './pages/CreateProject'
 import ProjectDetail from './pages/ProjectDetail'
 import CreateRequirement from './pages/CreateRequirement'
@@ -16,11 +17,12 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        
+
         {/* Authenticated Routes wrapped in MainLayout */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/project" element={<ProjectManagement />} />
+          <Route path="/workspace/:projectKey" element={<ProjectWorkSpace />} />
           <Route path="/project/:type" element={<ProjectManagement />} />
           <Route path="/project/:type/:id" element={<ProjectDetail />} />
           <Route path="/project/:type/:id/create" element={<CreateRequirement />} />

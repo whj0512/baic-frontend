@@ -1,0 +1,688 @@
+/* ProjectWorkSpace 整体布局 */
+.workspace-container {
+  display: flex;
+  height: calc(100vh - 60px);
+  gap: 1px;
+  background-color: #e5e7eb;
+}
+
+/* 左侧：需求树 */
+.workspace-left {
+  width: 280px;
+  min-width: 200px;
+  max-width: 400px;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 中间：多维编辑器 */
+.workspace-center {
+  flex: 1;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 右侧：版本与协作 */
+.workspace-right {
+  width: 280px;
+  min-width: 200px;
+  max-width: 400px;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 面板头部 */
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.btn-icon {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background-color: #3b82f6;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon:hover {
+  background-color: #2563eb;
+}
+
+/* 需求树 */
+.tree-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 0;
+}
+
+/* 需求列表 */
+.requirement-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.requirement-item {
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  background-color: #ffffff;
+}
+
+.requirement-item:hover {
+  border-color: #3b82f6;
+  background-color: #f8fafc;
+}
+
+.requirement-item.selected {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.requirement-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.requirement-id {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #3b82f6;
+  background-color: #eff6ff;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+}
+
+.requirement-date {
+  font-size: 0.7rem;
+  color: #9ca3af;
+}
+
+.requirement-item-content {
+  font-size: 0.8rem;
+  color: #374151;
+  line-height: 1.4;
+}
+
+.tree-node-wrapper {
+  user-select: none;
+}
+
+.tree-node {
+  display: flex;
+  align-items: center;
+  padding: 0.4rem 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.tree-node:hover {
+  background-color: #f3f4f6;
+}
+
+.tree-node.selected {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+}
+
+.tree-expand-icon {
+  width: 16px;
+  font-size: 0.6rem;
+  color: #6b7280;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.tree-expand-icon:hover {
+  color: #3b82f6;
+}
+
+.tree-expand-placeholder {
+  width: 16px;
+  flex-shrink: 0;
+}
+
+.tree-node-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
+
+.tree-node-icon.type-system {
+  background-color: #3b82f6;
+}
+
+.tree-node-icon.type-module {
+  background-color: #10b981;
+}
+
+.tree-node-icon.type-software {
+  background-color: #8b5cf6;
+}
+
+.tree-node-icon.type-component {
+  background-color: #f59e0b;
+}
+
+.tree-node-name {
+  font-size: 0.85rem;
+  color: #374151;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree-node.selected .tree-node-name {
+  color: #1d4ed8;
+  font-weight: 500;
+}
+
+/* 维度 Tab 栏 */
+.dimension-tabs {
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+  padding: 0 1rem;
+}
+
+.dimension-tab {
+  padding: 0.75rem 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s;
+}
+
+.dimension-tab:hover {
+  color: #3b82f6;
+}
+
+.dimension-tab.active {
+  color: #3b82f6;
+}
+
+.dimension-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #3b82f6;
+}
+
+/* 画布区域 */
+.canvas-container {
+  flex: 1;
+  overflow: hidden;
+  background-color: #fafafa;
+  position: relative;
+}
+
+.canvas-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(90deg, #f0f0f0 1px, transparent 1px),
+    linear-gradient(#f0f0f0 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.placeholder-content {
+  text-align: center;
+  padding: 2rem;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.placeholder-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.placeholder-content h4 {
+  margin: 0 0 1rem 0;
+  color: #374151;
+  font-size: 1.1rem;
+}
+
+.placeholder-content p {
+  margin: 0.5rem 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.placeholder-hint {
+  margin-top: 1rem !important;
+  color: #9ca3af !important;
+  font-size: 0.85rem !important;
+  font-style: italic;
+}
+
+/* 属性栏 */
+.property-bar {
+  border-top: 1px solid #e5e7eb;
+  padding: 0.75rem 1rem;
+  display: flex;
+  gap: 1rem;
+  background-color: #f9fafb;
+}
+
+.property-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.property-section label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.property-textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  resize: none;
+  font-family: inherit;
+}
+
+.property-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.property-textarea.dsl {
+  font-family: 'Consolas', 'Monaco', monospace;
+  background-color: #f8fafc;
+}
+
+/* 版本面板 */
+.version-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.version-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.version-item {
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  background-color: #ffffff;
+  transition: box-shadow 0.15s;
+}
+
+.version-item:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.version-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.version-number {
+  font-weight: 600;
+  color: #3b82f6;
+  font-size: 0.85rem;
+}
+
+.version-date {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.version-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.version-author {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.version-desc {
+  font-size: 0.8rem;
+  color: #374151;
+}
+
+.version-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.btn-link:hover {
+  text-decoration: underline;
+}
+
+.version-empty {
+  padding: 1.5rem;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+/* AI 助手面板 */
+.ai-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.ai-content {
+  padding: 1rem;
+}
+
+.ai-suggestion {
+  background-color: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.ai-hint {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.85rem;
+  color: #0369a1;
+  font-weight: 500;
+}
+
+.ai-suggestion ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.ai-suggestion li {
+  font-size: 0.8rem;
+  color: #475569;
+  margin-bottom: 0.25rem;
+}
+
+.btn-ai {
+  width: 100%;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: opacity 0.2s;
+}
+
+.btn-ai:hover {
+  opacity: 0.9;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .workspace-left,
+  .workspace-right {
+    width: 240px;
+    min-width: 180px;
+  }
+}
+
+@media (max-width: 900px) {
+  .workspace-container {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .workspace-left,
+  .workspace-right {
+    width: 100%;
+    max-width: none;
+    height: 200px;
+  }
+
+  .workspace-center {
+    height: 400px;
+  }
+}
+
+/* 暗色模式 */
+@media (prefers-color-scheme: dark) {
+  .workspace-container {
+    background-color: #111827;
+  }
+
+  .workspace-left,
+  .workspace-center,
+  .workspace-right {
+    background-color: #1f2937;
+  }
+
+  .panel-header {
+    background-color: #111827;
+    border-bottom-color: #374151;
+  }
+
+  .panel-header h3 {
+    color: #f3f4f6;
+  }
+
+  .tree-node:hover {
+    background-color: #374151;
+  }
+
+  .tree-node.selected {
+    background-color: #1e3a8a;
+  }
+
+  .tree-node-name {
+    color: #e5e7eb;
+  }
+
+  .tree-node.selected .tree-node-name {
+    color: #93c5fd;
+  }
+
+  .tree-expand-icon {
+    color: #9ca3af;
+  }
+
+  .dimension-tabs {
+    background-color: #111827;
+    border-bottom-color: #374151;
+  }
+
+  .dimension-tab {
+    color: #9ca3af;
+  }
+
+  .dimension-tab:hover,
+  .dimension-tab.active {
+    color: #60a5fa;
+  }
+
+  .dimension-tab.active::after {
+    background-color: #60a5fa;
+  }
+
+  .canvas-container {
+    background-color: #111827;
+  }
+
+  .canvas-placeholder {
+    background:
+      linear-gradient(90deg, #374151 1px, transparent 1px),
+      linear-gradient(#374151 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .placeholder-content {
+    background-color: #1f2937;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .placeholder-content h4 {
+    color: #f3f4f6;
+  }
+
+  .placeholder-content p {
+    color: #d1d5db;
+  }
+
+  .property-bar {
+    background-color: #111827;
+    border-top-color: #374151;
+  }
+
+  .property-section label {
+    color: #9ca3af;
+  }
+
+  .property-textarea {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f3f4f6;
+  }
+
+  .property-textarea:focus {
+    border-color: #60a5fa;
+  }
+
+  .property-textarea.dsl {
+    background-color: #1f2937;
+  }
+
+  .version-panel {
+    border-bottom-color: #374151;
+  }
+
+  .version-item {
+    background-color: #374151;
+    border-color: #4b5563;
+  }
+
+  .version-number {
+    color: #60a5fa;
+  }
+
+  .version-author {
+    color: #9ca3af;
+  }
+
+  .version-desc {
+    color: #e5e7eb;
+  }
+
+  .ai-suggestion {
+    background-color: #1e3a5f;
+    border-color: #2563eb;
+  }
+
+  .ai-hint {
+    color: #93c5fd;
+  }
+
+  .ai-suggestion li {
+    color: #d1d5db;
+  }
+
+  /* 需求列表暗色模式 */
+  .requirement-item {
+    background-color: #374151;
+    border-color: #4b5563;
+  }
+
+  .requirement-item:hover {
+    border-color: #60a5fa;
+    background-color: #3b4a5f;
+  }
+
+  .requirement-item.selected {
+    border-color: #60a5fa;
+    background-color: #1e3a5f;
+  }
+
+  .requirement-id {
+    color: #60a5fa;
+    background-color: #1e3a5f;
+  }
+
+  .requirement-date {
+    color: #6b7280;
+  }
+
+  .requirement-item-content {
+    color: #d1d5db;
+  }
+
+  .version-empty {
+    color: #6b7280;
+  }
+}

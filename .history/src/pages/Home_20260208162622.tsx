@@ -41,7 +41,7 @@ function Home() {
 
   const handleProjectClick = (projectKey: string) => {
     if (!isSelectionMode) {
-      navigate(`/workspace/${projectKey}`)
+      navigate(`/project/${projectKey}`)
     }
   }
 

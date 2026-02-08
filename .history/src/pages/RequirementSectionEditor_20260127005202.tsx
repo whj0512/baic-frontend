@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { Button, Select } from 'antd'
-import { ArrowLeftOutlined, SaveOutlined, DownloadOutlined, ThunderboltOutlined } from '@ant-design/icons'
+import { Button } from 'antd'
+import { ArrowLeftOutlined, SaveOutlined, DownloadOutlined } from '@ant-design/icons'
 import './RequirementSectionEditor.css'
 import FlowGraph, { type FlowGraphRef } from '../components/graph'
 import DslEditor from '../components/dsl-editor'
@@ -9,14 +9,6 @@ import { exportGraphToJSON, importGraphFromJSON } from '../models/strategies/int
 import { API_ENDPOINTS } from '../config/api'
 
 type ViewMode = 'visual' | 'dsl'
-
-// 大模型选项
-const LLM_OPTIONS = [
-  { value: 'gpt-4', label: 'GPT-4' },
-  { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-  { value: 'claude-3', label: 'Claude 3' },
-  { value: 'qwen', label: '通义千问' },
-]
 
 function RequirementSectionEditor() {
   const navigate = useNavigate()
@@ -47,45 +39,10 @@ function RequirementSectionEditor() {
   const [dslLoading, setDslLoading] = useState(false)
   const [dslError, setDslError] = useState<string | undefined>()
 
-  // 大模型生成状态
-  const [selectedLLM, setSelectedLLM] = useState<string>('gpt-4')
-  const [generating, setGenerating] = useState(false)
-
   const handleGraphChange = (data: any) => {
     graphDataRef.current = data
     setGraphData(data)
   }
-
-  // 使用大模型生成 DSL
-  const handleGenerateDsl = useCallback(async () => {
-    if (!content.trim()) {
-      return
-    }
-
-    setGenerating(true)
-    setDslError(undefined)
-
-    try {
-      const response = await fetch(API_ENDPOINTS.nlToDsl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain',
-        },
-        body: content,
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const result = await response.text()
-      setDslContent(result)
-    } catch (error) {
-      setDslError(error instanceof Error ? error.message : '生成失败，请稍后重试')
-    } finally {
-      setGenerating(false)
-    }
-  }, [content])
 
   // 切换到 DSL 视图并转换
   const handleSwitchToDsl = useCallback(async () => {
@@ -238,24 +195,6 @@ function RequirementSectionEditor() {
             placeholder={`请输入${sectionLabel}详细内容...`}
             autoFocus
           />
-          <div className="editor-generate-row">
-            <Select
-              value={selectedLLM}
-              onChange={setSelectedLLM}
-              options={LLM_OPTIONS}
-              style={{ width: 160 }}
-              placeholder="选择大模型"
-            />
-            <Button
-              type="primary"
-              icon={<ThunderboltOutlined />}
-              onClick={handleGenerateDsl}
-              loading={generating}
-              disabled={!content.trim()}
-            >
-              生成
-            </Button>
-          </div>
         </div>
 
         <div className="editor-group">
@@ -273,6 +212,7 @@ function RequirementSectionEditor() {
               >
                 可视化模型 (Flow/Logic)
               </label>
+              
             </div>
             {viewMode === 'visual' && (
               <Button

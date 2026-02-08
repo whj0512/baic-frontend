@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { message } from 'antd'
+import type { Project } from '../models/Project'
 import './CreateProject.css'
 
 function CreateProject() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
+    key: '',
     name: '',
     description: '',
-    type: 'system',
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -21,11 +22,23 @@ function CreateProject() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    // 创建完整的 Project 对象
+    const newProject: Project = {
+      id: crypto.randomUUID(),
+      key: formData.key,
+      name: formData.name,
+      description: formData.description,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
     // TODO: Implement actual project creation logic here
-    console.log('Creating project:', formData)
-    message.success('需求项目创建成功')
-    // Navigate to the newly created project's detail page (mock ID 999)
-    navigate(`/project/${formData.type}/999`)
+    console.log('Creating project:', newProject)
+    message.success('项目创建成功')
+
+    // 导航回首页
+    navigate('/')
   }
 
   const handleCancel = () => {
@@ -35,12 +48,29 @@ function CreateProject() {
   return (
     <div className="create-project-wrapper">
       <div className="create-project-header">
-        <h2>新建需求项目</h2>
+        <h2>新建项目</h2>
       </div>
 
       <form className="create-project-form" onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="name">项目名称</label>
+          <label htmlFor="key">项目标识 <span className="required">*</span></label>
+          <input
+            type="text"
+            id="key"
+            name="key"
+            className="form-input"
+            placeholder="请输入项目标识（如：AVCS, FCS）"
+            value={formData.key}
+            onChange={handleChange}
+            required
+            pattern="[A-Za-z0-9_-]+"
+            title="项目标识只能包含字母、数字、下划线和连字符"
+          />
+          <small className="form-hint">项目的唯一标识符，用于快速识别项目</small>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="name">项目名称 <span className="required">*</span></label>
           <input
             type="text"
             id="name"
@@ -51,22 +81,6 @@ function CreateProject() {
             onChange={handleChange}
             required
           />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="type">项目类型</label>
-          <select
-            id="type"
-            name="type"
-            className="form-select"
-            value={formData.type}
-            onChange={handleChange}
-          >
-            <option value="system">系统需求</option>
-            <option value="subsystem">子系统需求</option>
-            <option value="software">软件需求</option>
-            <option value="component">部件需求</option>
-          </select>
         </div>
 
         <div className="form-group">
@@ -84,7 +98,7 @@ function CreateProject() {
 
         <div className="form-actions">
           <button type="button" className="cancel-btn" onClick={handleCancel}>
-            返回
+            取消
           </button>
           <button type="submit" className="submit-btn">
             创建

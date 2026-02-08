@@ -4,6 +4,8 @@ import { Modal, message } from 'antd'
 import './Home.css'
 import type { Project } from '../models/Project'
 
+
+
 function Home() {
   const navigate = useNavigate()
 
@@ -41,7 +43,7 @@ function Home() {
 
   const handleProjectClick = (projectKey: string) => {
     if (!isSelectionMode) {
-      navigate(`/workspace/${projectKey}`)
+      navigate(`/project/${projectKey}`)
     }
   }
 
@@ -146,7 +148,7 @@ function Home() {
                 : '取消选择'
               : '删除项目'}
           </button>
-          <button className="create-btn" onClick={() => navigate('/create-project')}>
+          <button className="create-btn" onClick={handleAdd}>
             新建项目
           </button>
         </div>
