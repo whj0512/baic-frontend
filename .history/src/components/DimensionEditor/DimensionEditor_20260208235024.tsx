@@ -1,14 +1,17 @@
 import { useState, useRef, useCallback } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Button, Select } from 'antd'
 import { ArrowLeftOutlined, SaveOutlined, DownloadOutlined, ThunderboltOutlined } from '@ant-design/icons'
-import './RequirementSectionEditor.css'
-import FlowGraph, { type FlowGraphRef } from '../components/graph'
-import DslEditor from '../components/dsl-editor'
-import { exportGraphToJSON, importGraphFromJSON } from '../models/strategies/internalConstraints'
-import { API_ENDPOINTS } from '../config/api'
+import type { Requirement } from '../../models/Requirement'
+import FlowGraph, { type FlowGraphRef } from '../graph'
+import DslEditor from '../dsl-editor'
+import { exportGraphToJSON, importGraphFromJSON } from '../../models/strategies/internalConstraints'
+import { API_ENDPOINTS } from '../../config/api'
+import './DimensionEditor.css'
 
 type ViewMode = 'visual' | 'dsl'
+
+// SectionKey 与 CreateRequirement.tsx 保持一致
+type SectionKey = 'environment' | 'interaction' | 'internalComposition' | 'moduleResponses' | 'internalConstraints'
 
 // 大模型选项
 const LLM_OPTIONS = [
@@ -18,32 +21,46 @@ const LLM_OPTIONS = [
   { value: 'qwen', label: '通义千问' },
 ]
 
-function RequirementSectionEditor() {
-  const navigate = useNavigate()
-  const { type, id, sectionKey } = useParams<{ type: string; id: string; sectionKey: string }>()
-  const location = useLocation()
+// Section 配置
+const SECTION_CONFIG: Record<SectionKey, { dimensionCode: string; label: string; graphField: keyof Requirement }> = {
+  environment: { dimensionCode: 'IBD', label: '所处环境', graphField: 'graph_IBD' },
+  interaction: { dimensionCode: 'ESD', label: '与环境交互', graphField: 'graph_ESD' },
+  internalComposition: { dimensionCode: 'BDD', label: '内部组成', graphField: 'graph_BDD' },
+  moduleResponses: { dimensionCode: 'ISD', label: '组成模块间的响应', graphField: 'graph_ISD' },
+  internalConstraints: { dimensionCode: 'SC', label: '内部约束', graphField: 'graph_SC' },
+}
 
-  // Get initial state passed from the previous page
-  const initialState = location.state || {}
-  const { formData: initialFormData, sectionLabel } = initialState
+interface DimensionEditorProps {
+  requirement: Requirement
+  sectionKey: SectionKey
+  onBack: () => void
+  onSave?: (sectionKey: SectionKey, graphData: object) => void
+}
 
-  // Local state for the specific section content
-  const [content, setContent] = useState(initialFormData ? initialFormData[sectionKey!] : '')
-  
+function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionEditorProps) {
+  const config = SECTION_CONFIG[sectionKey]
+
+  // 获取初始的图数据
+  const getInitialGraphData = () => {
+    const graphField = config.graphField
+    return requirement[graphField] || {}
+  }
+
+  // Local state for the content description
+  const [content, setContent] = useState(requirement.nl_text || '')
+
   // Local state for graph data
-  // Check if canvasData exists in initialFormData and if it has data for this sectionKey
-  const initialCanvasData = initialFormData?.canvasData?.[sectionKey!] || {}
-  const [graphData, setGraphData] = useState(initialCanvasData)
+  const [graphData, setGraphData] = useState(getInitialGraphData())
 
-  // Ref to hold latest graph data to avoid re-renders on every node change if we just want to save at the end
-  const graphDataRef = useRef(initialCanvasData)
+  // Ref to hold latest graph data
+  const graphDataRef = useRef(getInitialGraphData())
 
   // Ref to access FlowGraph instance
   const flowGraphRef = useRef<FlowGraphRef>(null)
 
   // 视图模式状态
-  const [viewMode, setViewMode] = useState<ViewMode>('dsl')
-  const [dslContent, setDslContent] = useState('')
+  const [viewMode, setViewMode] = useState<ViewMode>('visual')
+  const [dslContent, setDslContent] = useState(requirement.dsl_text || '')
   const [dslLoading, setDslLoading] = useState(false)
   const [dslError, setDslError] = useState<string | undefined>()
 
@@ -51,7 +68,7 @@ function RequirementSectionEditor() {
   const [selectedLLM, setSelectedLLM] = useState<string>('gpt-4')
   const [generating, setGenerating] = useState(false)
 
-  const handleGraphChange = (data: any) => {
+  const handleGraphChange = (data: object) => {
     graphDataRef.current = data
     setGraphData(data)
   }
@@ -97,7 +114,7 @@ function RequirementSectionEditor() {
     setDslError(undefined)
 
     try {
-      const jsonData = exportGraphToJSON(graph, sectionKey, sectionLabel)
+      const jsonData = exportGraphToJSON(graph, sectionKey, config.label)
       const response = await fetch(API_ENDPOINTS.rbgToDsl, {
         method: 'POST',
         headers: {
@@ -117,7 +134,7 @@ function RequirementSectionEditor() {
     } finally {
       setDslLoading(false)
     }
-  }, [sectionKey, sectionLabel])
+  }, [sectionKey, config.label])
 
   // 切换到可视化视图
   const handleSwitchToVisual = useCallback(async () => {
@@ -169,7 +186,7 @@ function RequirementSectionEditor() {
     const graph = flowGraphRef.current?.getGraph()
     if (!graph) return
 
-    const jsonData = exportGraphToJSON(graph, sectionKey, sectionLabel)
+    const jsonData = exportGraphToJSON(graph, sectionKey, config.label)
     const blob = new Blob([JSON.stringify(jsonData, null, 2)], {
       type: 'application/json',
     })
@@ -182,61 +199,35 @@ function RequirementSectionEditor() {
   }
 
   const handleSave = () => {
-    // Update canvasData map
-    const updatedCanvasData = {
-      ...(initialFormData.canvasData || {}),
-      [sectionKey!]: graphDataRef.current
+    if (onSave) {
+      onSave(sectionKey, graphDataRef.current)
     }
-
-    // Navigate back with the updated formData
-    const updatedFormData = {
-      ...initialFormData,
-      [sectionKey!]: content,
-      canvasData: updatedCanvasData
-    }
-
-    navigate(`/project/${type}/${id}/create`, { state: { formData: updatedFormData } })
-  }
-
-  const handleCancel = () => {
-    // Navigate back without saving changes to this section
-    navigate(`/project/${type}/${id}/create`, { state: { formData: initialFormData } })
-  }
-
-  if (!initialFormData || !sectionKey) {
-    return (
-      <div className="section-editor-error">
-        <h3>Error: Missing form data or section key.</h3>
-        <Button onClick={() => navigate(-1)}>Go Back</Button>
-      </div>
-    )
+    onBack()
   }
 
   return (
-    <div className="section-editor-wrapper">
-      <div className="section-editor-header">
-        <Button icon={<ArrowLeftOutlined />} onClick={handleCancel} type="text">
-          返回
+    <div className="dimension-editor">
+      <div className="dimension-editor-header">
+        <Button icon={<ArrowLeftOutlined />} onClick={onBack} type="text">
+          返回概览
         </Button>
-        <h2>编辑: {sectionLabel}</h2>
-        <Button 
-          type="primary" 
-          icon={<SaveOutlined />} 
-          onClick={handleSave}
-        >
-          保存并返回
+        <h2>
+          <span className={`dimension-code tag-${config.dimensionCode}`}>{config.dimensionCode}</span>
+          {config.label}
+        </h2>
+        <Button type="primary" icon={<SaveOutlined />} onClick={handleSave}>
+          保存
         </Button>
       </div>
 
-      <div className="section-editor-content">
+      <div className="dimension-editor-content">
         <div className="editor-group">
           <label>内容描述</label>
           <textarea
             className="editor-textarea"
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder={`请输入${sectionLabel}详细内容...`}
-            autoFocus
+            placeholder={`请输入${config.label}详细内容...`}
           />
           <div className="editor-generate-row">
             <Select
@@ -284,7 +275,7 @@ function RequirementSectionEditor() {
               </Button>
             )}
           </div>
-          <div style={{ height: '500px' }}>
+          <div className="editor-canvas-container">
             {viewMode === 'visual' ? (
               <FlowGraph
                 ref={flowGraphRef}
@@ -308,4 +299,5 @@ function RequirementSectionEditor() {
   )
 }
 
-export default RequirementSectionEditor
+export default DimensionEditor
+export type { SectionKey }

@@ -1,25 +1,45 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import './ProjectWorkSpace.css'
-import type { Requirement } from '../models/Requirement'
-import type { RequirementVersion } from '../models/RequirementVersion'
-import RequirementOverview, { type SectionKey } from '../components/RequirementOverview'
-import DimensionEditor from '../components/DimensionEditor'
 
-// 中间区域视图类型
-type CenterView = 'overview' | 'editor'
+// 需求类型 - 对应 requirement 表
+
+
+// 版本记录类型 - 对应 requirement_version 表
+interface RequirementVersion {
+  id: string
+  requirement_id: string
+  version_number: number
+  created_by: string
+  created_at: string
+  nl_text?: string
+  dsl_text?: string
+  graph_IBD?: object
+  graph_ESD?: object
+  graph_SC?: object
+  graph_BDD?: object
+  graph_ISD?: object
+}
+
+// 五个维度的 Tab 类型
+type DimensionTab = 'IBD' | 'ESD' | 'SC' | 'BDD' | 'ISD'
+
+const DIMENSION_TABS: { key: DimensionTab; label: string; description: string }[] = [
+  { key: 'IBD', label: 'IBD', description: '内部块图 - 系统所处的环境' },
+  { key: 'ESD', label: 'ESD', description: '外部顺序图 - 与环境的交互' },
+  { key: 'SC', label: 'SC', description: '状态图 - 内部约束' },
+  { key: 'BDD', label: 'BDD', description: '块定义图 - 内部组成' },
+  { key: 'ISD', label: 'ISD', description: '内部顺序图 - 组成模块的响应' },
+]
 
 function ProjectWorkSpace() {
   const { projectKey } = useParams<{ projectKey: string }>()
 
+  // 当前选中的维度 Tab
+  const [activeTab, setActiveTab] = useState<DimensionTab>('IBD')
+
   // 当前选中的需求
   const [selectedRequirement, setSelectedRequirement] = useState<string | null>(null)
-
-  // 中间区域视图状态
-  const [centerView, setCenterView] = useState<CenterView>('overview')
-
-  // 当前编辑的 section
-  const [editingSection, setEditingSection] = useState<SectionKey | null>(null)
 
   // Mock 需求列表数据 - 对应 requirement 表
   const requirements: Requirement[] = [
@@ -124,31 +144,6 @@ function ProjectWorkSpace() {
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text
   }
 
-  // 处理 section 点击 - 切换到编辑器视图
-  const handleSectionClick = (sectionKey: SectionKey) => {
-    setEditingSection(sectionKey)
-    setCenterView('editor')
-  }
-
-  // 返回概览视图
-  const handleBackToOverview = () => {
-    setEditingSection(null)
-    setCenterView('overview')
-  }
-
-  // 保存编辑器数据
-  const handleEditorSave = (sectionKey: SectionKey, graphData: object) => {
-    // TODO: 将 graphData 保存到对应的 requirement 字段
-    console.log('Save section:', sectionKey, graphData)
-  }
-
-  // 选择需求时重置视图
-  const handleRequirementSelect = (reqId: string) => {
-    setSelectedRequirement(reqId)
-    setCenterView('overview')
-    setEditingSection(null)
-  }
-
   return (
     <div className="workspace-container">
       {/* 左侧：需求列表 */}
@@ -162,7 +157,7 @@ function ProjectWorkSpace() {
             <div
               key={req.id}
               className={`requirement-item ${selectedRequirement === req.id ? 'selected' : ''}`}
-              onClick={() => handleRequirementSelect(req.id)}
+              onClick={() => setSelectedRequirement(req.id)}
             >
               <div className="requirement-item-header">
                 <span className="requirement-id">{req.id}</span>
@@ -176,25 +171,67 @@ function ProjectWorkSpace() {
         </div>
       </div>
 
-      {/* 中间：需求概览 / 维度编辑器 */}
+      {/* 中间：多维编辑器 */}
       <div className="workspace-center">
-        {centerView === 'overview' ? (
-          <RequirementOverview
-            requirement={currentRequirement || null}
-            versions={currentVersions}
-            projectKey={projectKey || ''}
-            onSectionClick={handleSectionClick}
-          />
-        ) : (
-          currentRequirement && editingSection && (
-            <DimensionEditor
-              requirement={currentRequirement}
-              sectionKey={editingSection}
-              onBack={handleBackToOverview}
-              onSave={handleEditorSave}
+        {/* 顶部 Tab 栏 */}
+        <div className="dimension-tabs">
+          {DIMENSION_TABS.map((tab) => (
+            <div
+              key={tab.key}
+              className={`dimension-tab ${activeTab === tab.key ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.key)}
+              title={tab.description}
+            >
+              {tab.label}
+            </div>
+          ))}
+        </div>
+
+        {/* 主画布区域 */}
+        <div className="canvas-container">
+          <div className="canvas-placeholder">
+            <div className="placeholder-content">
+              <span className="placeholder-icon">📊</span>
+              <h4>{DIMENSION_TABS.find((t) => t.key === activeTab)?.description}</h4>
+              <p>
+                项目: <strong>{projectKey}</strong>
+              </p>
+              <p>
+                当前维度: <strong>{activeTab}</strong>
+              </p>
+              {currentRequirement && (
+                <p>
+                  选中需求: <strong>{currentRequirement.id}</strong>
+                </p>
+              )}
+              <p className="placeholder-hint">基于 AntV X6 的建模画布将在此显示</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 底部属性栏 */}
+        <div className="property-bar">
+          <div className="property-section">
+            <label>自然语言描述 (NL)</label>
+            <textarea
+              className="property-textarea"
+              placeholder="选择需求后在此显示自然语言描述..."
+              rows={2}
+              value={currentRequirement?.nl_text || ''}
+              readOnly
             />
-          )
-        )}
+          </div>
+          <div className="property-section">
+            <label>DSL 文本</label>
+            <textarea
+              className="property-textarea dsl"
+              placeholder="选择需求后在此显示 DSL 表示..."
+              rows={2}
+              value={currentRequirement?.dsl_text || ''}
+              readOnly
+            />
+          </div>
+        </div>
       </div>
 
       {/* 右侧：版本与协作 */}
