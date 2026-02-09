@@ -21,13 +21,12 @@ const LLM_OPTIONS = [
   { value: 'qwen', label: '通义千问' },
 ]
 
-// Section 配置
-const SECTION_CONFIG: Record<SectionKey, { dimensionCode: string; label: string; graphField: keyof Requirement }> = {
-  environment: { dimensionCode: 'IBD', label: '所处环境', graphField: 'graph_IBD' },
-  interaction: { dimensionCode: 'ESD', label: '与环境交互', graphField: 'graph_ESD' },
-  internalComposition: { dimensionCode: 'BDD', label: '内部组成', graphField: 'graph_BDD' },
-  moduleResponses: { dimensionCode: 'ISD', label: '组成模块间的响应', graphField: 'graph_ISD' },
-  internalConstraints: { dimensionCode: 'SC', label: '内部约束', graphField: 'graph_SC' },
+const SECTION_CONFIG: Record<SectionKey, { dimensionCode: string; label: string; graphField: keyof Requirement; dslField: keyof Requirement }> = {
+  environment: { dimensionCode: 'IBD', label: '所处环境', graphField: 'graph_IBD', dslField: 'dsl_IBD' },
+  interaction: { dimensionCode: 'ESD', label: '与环境交互', graphField: 'graph_ESD', dslField: 'dsl_ESD' },
+  internalComposition: { dimensionCode: 'BDD', label: '内部组成', graphField: 'graph_BDD', dslField: 'dsl_BDD' },
+  moduleResponses: { dimensionCode: 'ISD', label: '组成模块间的响应', graphField: 'graph_ISD', dslField: 'dsl_ISD' },
+  internalConstraints: { dimensionCode: 'SC', label: '内部约束', graphField: 'graph_SC', dslField: 'dsl_SC' },
 }
 
 interface DimensionEditorProps {
@@ -41,9 +40,9 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
   const config = SECTION_CONFIG[sectionKey]
 
   // 获取初始的图数据
-  const getInitialGraphData = () => {
+  const getInitialGraphData = (): object => {
     const graphField = config.graphField
-    return requirement[graphField] || {}
+    return (requirement[graphField] as object) || {}
   }
 
   // Local state for the content description
@@ -60,7 +59,9 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
 
   // 视图模式状态
   const [viewMode, setViewMode] = useState<ViewMode>('visual')
-  const [dslContent, setDslContent] = useState(requirement.dsl_text || '')
+
+  // Use specific DSL field for the current section
+  const [dslContent, setDslContent] = useState(requirement[config.dslField as keyof Requirement] as string || '')
   const [dslLoading, setDslLoading] = useState(false)
   const [dslError, setDslError] = useState<string | undefined>()
 

@@ -47,6 +47,12 @@
   background-color: #f9fafb;
 }
 
+.panel-footer {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+}
+
 .panel-header h3 {
   margin: 0;
   font-size: 0.9rem;

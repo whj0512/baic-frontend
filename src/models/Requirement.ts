@@ -5,6 +5,11 @@ export interface Requirement {
   previous_version_id?: string
   nl_text?: string
   dsl_text?: string
+  dsl_IBD?: string
+  dsl_ESD?: string
+  dsl_SC?: string
+  dsl_BDD?: string
+  dsl_ISD?: string
   graph_IBD?: object
   graph_ESD?: object
   graph_SC?: object

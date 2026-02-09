@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
+import { Button } from 'antd'
+import { ShareAltOutlined } from '@ant-design/icons'
 import './ProjectWorkSpace.css'
 import type { Requirement } from '../models/Requirement'
 import type { RequirementVersion } from '../models/RequirementVersion'
@@ -11,6 +13,7 @@ type CenterView = 'overview' | 'editor'
 
 function ProjectWorkSpace() {
   const { projectKey } = useParams<{ projectKey: string }>()
+  const navigate = useNavigate()
 
   // 当前选中的需求
   const [selectedRequirement, setSelectedRequirement] = useState<string | null>(null)
@@ -173,6 +176,16 @@ function ProjectWorkSpace() {
               </div>
             </div>
           ))}
+        </div>
+        <div className="panel-footer">
+          <Button
+            type="default"
+            icon={<ShareAltOutlined />}
+            block
+            onClick={() => navigate(`/workspace/${projectKey}/relationship`)}
+          >
+            需求间关系
+          </Button>
         </div>
       </div>
 

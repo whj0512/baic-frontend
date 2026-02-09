@@ -9,6 +9,7 @@ import CreateProject from './pages/CreateProject'
 import ProjectDetail from './pages/ProjectDetail'
 import CreateRequirement from './pages/CreateRequirement'
 import RequirementSectionEditor from './pages/RequirementSectionEditor'
+import RelationshipAnalysis from './pages/RelationshipAnalysis'
 import './App.css'
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
           <Route path="/project/:type/:id" element={<ProjectDetail />} />
           <Route path="/project/:type/:id/create" element={<CreateRequirement />} />
           <Route path="/project/:type/:id/create/section/:sectionKey" element={<RequirementSectionEditor />} />
+          <Route path="/workspace/:projectKey/relationship" element={<RelationshipAnalysis />} />
           <Route path="/create-project" element={<CreateProject />} />
         </Route>
 

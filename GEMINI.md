@@ -72,3 +72,5 @@ src/
 *   **Styling**: CSS files are co-located with their components (e.g., `Home.tsx` + `Home.css`).
 *   **Routing**: React Router v7 is used with a `Routes` configuration in `App.tsx`.
 *   **Layouts**: `MainLayout` handles the persistent UI frame for the application.
+*   **Component/page creation**: Component/page creation must follow this file structure: Create a directory named after the component containing Component.tsx, Component.css, and an index.ts entry point for exports.
+
