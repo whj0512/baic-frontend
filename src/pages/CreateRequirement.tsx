@@ -43,11 +43,22 @@ const SECTIONS: { key: SectionKey, label: string, placeholder: string }[] = [
 ]
 
 
-function CreateRequirement() {
-  const { type, id } = useParams<{ type: string; id: string }>()
+interface CreateRequirementProps {
+  projectId?: string
+  projectType?: string
+  onCancel?: () => void
+  onSuccess?: () => void
+}
+
+function CreateRequirement({ projectId, projectType, onCancel, onSuccess }: CreateRequirementProps) {
+  const params = useParams<{ type: string; id: string }>()
   const navigate = useNavigate()
   const location = useLocation()
-  
+
+  // Use props if provided, otherwise fall back to URL params
+  const type = projectType || params.type
+  const id = projectId || params.id
+
   // Tab State
   const [activeTab, setActiveTab] = useState('manual')
 
@@ -67,9 +78,9 @@ function CreateRequirement() {
     moduleResponses: '',
     internalConstraints: '',
     // Store canvas JSON data for each section
-    canvasData: {} as Record<string, any>, 
+    canvasData: {} as Record<string, any>,
   })
-  
+
   // Initialize formData from location state if available (returning from section editor)
   useEffect(() => {
     if (location.state && location.state.formData) {
@@ -120,7 +131,7 @@ function CreateRequirement() {
       ...prev,
       relationships: [...prev.relationships, newRelation]
     }))
-    
+
     // Reset selection but keep type
     setCurrentReqId(null)
   }
@@ -137,11 +148,20 @@ function CreateRequirement() {
     // TODO: Implement actual requirement creation logic here
     console.log('Creating requirement:', { ...formData, projectType: type, projectId: id })
     message.success('需求项创建成功')
-    navigate(`/project/${type}/${id}`)
+
+    if (onSuccess) {
+      onSuccess()
+    } else {
+      navigate(`/project/${type}/${id}`)
+    }
   }
 
   const handleCancel = () => {
-    navigate(-1)
+    if (onCancel) {
+      onCancel()
+    } else {
+      navigate(-1)
+    }
   }
 
   const handleSectionClick = (sectionKey: SectionKey, sectionLabel: string) => {
@@ -160,9 +180,9 @@ function CreateRequirement() {
       message.warning('请先上传文件')
       return
     }
-    
+
     setIsAnalyzing(true)
-    
+
     // Simulate API call
     setTimeout(() => {
       setFormData(prev => ({
@@ -181,7 +201,7 @@ function CreateRequirement() {
   }
 
   const getTypeName = (t: string | undefined) => {
-    switch(t?.toLowerCase()) {
+    switch (t?.toLowerCase()) {
       case 'system': return '系统需求'
       case 'subsystem': return '子系统需求'
       case 'software': return '软件需求'
@@ -192,138 +212,138 @@ function CreateRequirement() {
 
   const renderManualForm = () => (
     <form className="create-req-form" onSubmit={handleSubmit}>
+      <div className="form-group">
+        <label htmlFor="title">需求名称</label>
+        <input
+          type="text"
+          id="title"
+          name="title"
+          className="form-input"
+          placeholder={`请输入${getTypeName(type)}名称`}
+          value={formData.title}
+          onChange={handleChange}
+          required
+        />
+      </div>
+
+      <div className="form-group">
+        <label>制品间关系</label>
+        <div className="relation-input-row">
+          <select
+            className="form-select relation-type-select"
+            value={currentRelationType}
+            onChange={(e) => setCurrentRelationType(e.target.value)}
+          >
+            {RELATION_TYPES.map(t => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+
+          <Select
+            style={{ flex: 1 }}
+            placeholder="选择关联需求"
+            options={MOCK_AVAILABLE_REQS}
+            value={currentReqId}
+            onChange={setCurrentReqId}
+            className="antd-select-custom"
+          />
+
+          <button
+            type="button"
+            className="add-relation-btn"
+            onClick={handleAddRelation}
+            disabled={!currentReqId}
+          >
+            添加
+          </button>
+        </div>
+
+        {/* List of added relations */}
+        {formData.relationships.length > 0 && (
+          <div className="relations-list">
+            {formData.relationships.map((rel, index) => (
+              <div key={`${rel.reqId}-${rel.relationType}-${index}`} className="relation-item">
+                <span className="relation-tag">{rel.relationType}</span>
+                <span className="relation-arrow">→</span>
+                <span className="relation-target">{rel.reqLabel}</span>
+                <button
+                  type="button"
+                  className="remove-relation-btn"
+                  onClick={() => handleRemoveRelation(index)}
+                  title="移除关系"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Dynamic Fields Example */}
+      {type === 'software' && (
         <div className="form-group">
-          <label htmlFor="title">需求名称</label>
+          <label htmlFor="platform">目标平台</label>
           <input
             type="text"
-            id="title"
-            name="title"
+            id="platform"
+            name="platform"
             className="form-input"
-            placeholder={`请输入${getTypeName(type)}名称`}
-            value={formData.title}
-            onChange={handleChange}
-            required
+            placeholder="e.g. Linux, QNX, Android"
           />
         </div>
+      )}
 
+      {type === 'component' && (
         <div className="form-group">
-          <label>制品间关系</label>
-          <div className="relation-input-row">
-            <select
-              className="form-select relation-type-select"
-              value={currentRelationType}
-              onChange={(e) => setCurrentRelationType(e.target.value)}
-            >
-              {RELATION_TYPES.map(t => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-            
-            <Select
-              style={{ flex: 1 }}
-              placeholder="选择关联需求"
-              options={MOCK_AVAILABLE_REQS}
-              value={currentReqId}
-              onChange={setCurrentReqId}
-              className="antd-select-custom"
-            />
-            
-            <button 
-              type="button" 
-              className="add-relation-btn"
-              onClick={handleAddRelation}
-              disabled={!currentReqId}
-            >
-              添加
-            </button>
-          </div>
-
-          {/* List of added relations */}
-          {formData.relationships.length > 0 && (
-            <div className="relations-list">
-              {formData.relationships.map((rel, index) => (
-                <div key={`${rel.reqId}-${rel.relationType}-${index}`} className="relation-item">
-                  <span className="relation-tag">{rel.relationType}</span>
-                  <span className="relation-arrow">→</span>
-                  <span className="relation-target">{rel.reqLabel}</span>
-                  <button 
-                    type="button" 
-                    className="remove-relation-btn"
-                    onClick={() => handleRemoveRelation(index)}
-                    title="移除关系"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Dynamic Fields Example */}
-        {type === 'software' && (
-          <div className="form-group">
-            <label htmlFor="platform">目标平台</label>
-            <input
-              type="text"
-              id="platform"
-              name="platform"
-              className="form-input"
-              placeholder="e.g. Linux, QNX, Android"
-            />
-          </div>
-        )}
-
-        {type === 'component' && (
-          <div className="form-group">
-            <label htmlFor="interface">接口定义</label>
-            <input
-              type="text"
-              id="interface"
-              name="interface"
-              className="form-input"
-              placeholder="e.g. CAN, Ethernet"
-            />
-          </div>
-        )}
-
-        <div className="form-group">
-          <label htmlFor="description">需求描述</label>
-          <textarea
-            id="description"
-            name="description"
-            className="form-textarea"
-            placeholder="请输入详细描述"
-            value={formData.description}
-            onChange={handleChange}
-            rows={6}
+          <label htmlFor="interface">接口定义</label>
+          <input
+            type="text"
+            id="interface"
+            name="interface"
+            className="form-input"
+            placeholder="e.g. CAN, Ethernet"
           />
         </div>
+      )}
 
-        {/* Accordion List Section */}
-        <div className="detail-list">
-          {SECTIONS.map((section) => (
-            <div key={section.key} className="detail-item">
-              <div 
-                className="detail-item-header"
-                onClick={() => handleSectionClick(section.key, section.label)}
-              >
-                <span className="detail-text">{section.label}</span>
-                <span className="detail-arrow">›</span>
-              </div>
+      <div className="form-group">
+        <label htmlFor="description">需求描述</label>
+        <textarea
+          id="description"
+          name="description"
+          className="form-textarea"
+          placeholder="请输入详细描述"
+          value={formData.description}
+          onChange={handleChange}
+          rows={6}
+        />
+      </div>
+
+      {/* Accordion List Section */}
+      <div className="detail-list">
+        {SECTIONS.map((section) => (
+          <div key={section.key} className="detail-item">
+            <div
+              className="detail-item-header"
+              onClick={() => handleSectionClick(section.key, section.label)}
+            >
+              <span className="detail-text">{section.label}</span>
+              <span className="detail-arrow">›</span>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
+      </div>
 
-        <div className="form-actions">
-          <button type="button" className="cancel-btn" onClick={handleCancel}>
-            返回
-          </button>
-          <button type="submit" className="submit-btn">
-            创建
-          </button>
-        </div>
-      </form>
+      <div className="form-actions">
+        <button type="button" className="cancel-btn" onClick={handleCancel}>
+          返回
+        </button>
+        <button type="submit" className="submit-btn">
+          创建
+        </button>
+      </div>
+    </form>
   )
 
   const renderAutoGenerate = () => (
@@ -367,10 +387,10 @@ function CreateRequirement() {
         </Upload.Dragger>
       </div>
 
-      <Button 
-        type="primary" 
-        size="large" 
-        onClick={handleAnalyze} 
+      <Button
+        type="primary"
+        size="large"
+        onClick={handleAnalyze}
         loading={isAnalyzing}
         disabled={fileList.length === 0}
         className="analyze-btn"

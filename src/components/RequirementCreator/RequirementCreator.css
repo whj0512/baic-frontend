@@ -1,0 +1,281 @@
+/* Inherit basic layout from overview */
+.requirement-creator {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: #ffffff;
+    overflow: hidden;
+}
+
+.creator-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    background-color: #f9fafb;
+}
+
+.creator-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.creator-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.creator-badge {
+    font-size: 0.75rem;
+    color: #6b7280;
+    background-color: #f3f4f6;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+}
+
+.creator-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 1.5rem;
+}
+
+.creator-section {
+    margin-bottom: 1.5rem;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.section-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+/* Form Styles */
+.form-input,
+.form-textarea,
+.form-select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    transition: border-color 0.2s;
+    background-color: #f9fafb;
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background-color: #fff;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 100px;
+    line-height: 1.6;
+}
+
+/* Relation and Tags */
+.relation-input-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.relation-type-select {
+    width: 120px;
+}
+
+.add-relation-btn {
+    padding: 0 1rem;
+    background-color: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.add-relation-btn:hover:not(:disabled) {
+    background-color: #dbeafe;
+}
+
+.add-relation-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.relations-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+}
+
+.relation-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.relation-tag {
+    font-weight: 600;
+    color: #4b5563;
+    background-color: #f3f4f6;
+    padding: 0 0.25rem;
+    border-radius: 2px;
+}
+
+.relation-arrow {
+    color: #9ca3af;
+}
+
+.remove-relation-btn {
+    border: none;
+    background: none;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 0 2px;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.remove-relation-btn:hover {
+    color: #ef4444;
+}
+
+/* Dimensions (Reused style structure) */
+.dimension-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.dimension-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.dimension-item:hover {
+    border-color: #3b82f6;
+    background-color: #f0f9ff;
+}
+
+.dimension-item-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.dimension-tag {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    min-width: 2.5rem;
+    text-align: center;
+}
+
+/* Dimension Colors (Copied from Overview) */
+.dimension-tag.tag-IBD {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+}
+
+.dimension-tag.tag-ESD {
+    background-color: #dcfce7;
+    color: #15803d;
+}
+
+.dimension-tag.tag-SC {
+    background-color: #fef3c7;
+    color: #b45309;
+}
+
+.dimension-tag.tag-BDD {
+    background-color: #f3e8ff;
+    color: #7c3aed;
+}
+
+.dimension-tag.tag-ISD {
+    background-color: #fce7f3;
+    color: #be185d;
+}
+
+.dimension-label {
+    font-size: 0.85rem;
+    color: #374151;
+    font-weight: 500;
+}
+
+.dimension-arrow {
+    font-size: 1.2rem;
+    color: #9ca3af;
+}
+
+/* Actions Footer */
+.creator-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #e5e7eb;
+    background-color: #f9fafb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.btn-cancel {
+    padding: 0.5rem 1rem;
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    color: #374151;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-submit {
+    padding: 0.5rem 1rem;
+    background-color: #3b82f6;
+    border: 1px solid #2563eb;
+    color: #ffffff;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-submit:hover {
+    background-color: #2563eb;
+}
+
+/* Tabs Override for internal layout */
+.creator-tabs .ant-tabs-nav {
+    margin-bottom: 0;
+    padding: 0 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}

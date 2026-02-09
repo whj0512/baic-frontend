@@ -7,9 +7,10 @@ import type { Requirement } from '../models/Requirement'
 import type { RequirementVersion } from '../models/RequirementVersion'
 import RequirementOverview, { type SectionKey } from '../components/RequirementOverview'
 import DimensionEditor from '../components/DimensionEditor'
+import RequirementCreator from '../components/RequirementCreator/RequirementCreator'
 
 // 中间区域视图类型
-type CenterView = 'overview' | 'editor'
+type CenterView = 'overview' | 'editor' | 'create' | 'create-editor'
 
 function ProjectWorkSpace() {
   const { projectKey } = useParams<{ projectKey: string }>()
@@ -152,15 +153,74 @@ function ProjectWorkSpace() {
     setEditingSection(null)
   }
 
+  // 处理新建需求
+  const handleCreateRequirement = () => {
+    setSelectedRequirement(null)
+    setCenterView('create')
+  }
+
+  // 处理新建完成或取消
+  const handleCreateFinish = () => {
+    setCenterView('overview')
+  }
+
+  // 新建需求表单状态
+  const [createFormData, setCreateFormData] = useState({
+    title: '',
+    description: '',
+    relationships: [] as any[],
+    // Store graph/DSL data for each section
+    sectionData: {} as Record<string, any>
+  })
+
+  // 处理新建时的 Section 点击
+  const handleCreateSectionClick = (sectionKey: SectionKey) => {
+    setEditingSection(sectionKey)
+    setCenterView('create-editor')
+  }
+
+  // 处理新建编辑器保存
+  const handleCreateEditorSave = (sectionKey: SectionKey, graphData: object) => {
+    setCreateFormData(prev => ({
+      ...prev,
+      sectionData: {
+        ...prev.sectionData,
+        [sectionKey]: graphData
+      }
+    }))
+  }
+
+  // 构建临时 Requirement 对象用于编辑器
+  const draftRequirement: Requirement = {
+    id: 'NEW',
+    project_id: projectKey || '',
+    current_version_id: '',
+    nl_text: createFormData.description,
+    dsl_text: '',
+    created_by: 'CurrentUser',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    // Merge saved section data
+    ...createFormData.sectionData
+  } as Requirement // Cast as we might be missing some required fields but sufficient for editor
+
   return (
     <div className="workspace-container">
-      {/* 左侧：需求列表 */}
+      {/* ... Left Panel ... */}
       <div className="workspace-left">
+        {/* ... (Unchanged) ... */}
         <div className="panel-header">
           <h3>需求列表</h3>
-          <button className="btn-icon" title="新建需求">+</button>
+          <button
+            className="btn-icon"
+            title="新建需求"
+            onClick={handleCreateRequirement}
+          >
+            +
+          </button>
         </div>
         <div className="requirement-list">
+          {/* ... (Unchanged list rendering) ... */}
           {requirements.map((req) => (
             <div
               key={req.id}
@@ -189,80 +249,105 @@ function ProjectWorkSpace() {
         </div>
       </div>
 
-      {/* 中间：需求概览 / 维度编辑器 */}
+      {/* Center Panel */}
       <div className="workspace-center">
-        {centerView === 'overview' ? (
+        {centerView === 'overview' && (
           <RequirementOverview
             requirement={currentRequirement || null}
             versions={currentVersions}
             projectKey={projectKey || ''}
             onSectionClick={handleSectionClick}
           />
-        ) : (
-          currentRequirement && editingSection && (
-            <DimensionEditor
-              requirement={currentRequirement}
-              sectionKey={editingSection}
-              onBack={handleBackToOverview}
-              onSave={handleEditorSave}
-            />
-          )
+        )}
+
+        {centerView === 'editor' && currentRequirement && editingSection && (
+          <DimensionEditor
+            requirement={currentRequirement}
+            sectionKey={editingSection}
+            onBack={handleBackToOverview}
+            onSave={handleEditorSave}
+          />
+        )}
+
+        {centerView === 'create' && (
+          <RequirementCreator
+            projectId={projectKey}
+            projectType="system"
+            formData={createFormData}
+            onChange={setCreateFormData}
+            onSectionClick={handleCreateSectionClick}
+            onCancel={handleCreateFinish}
+            onSuccess={handleCreateFinish}
+          />
+        )}
+
+        {centerView === 'create-editor' && editingSection && (
+          <DimensionEditor
+            requirement={draftRequirement}
+            sectionKey={editingSection}
+            onBack={() => setCenterView('create')}
+            onSave={handleCreateEditorSave}
+          />
         )}
       </div>
 
-      {/* 右侧：版本与协作 */}
-      <div className="workspace-right">
-        {/* 版本记录 */}
-        <div className="version-panel">
-          <div className="panel-header">
-            <h3>版本记录</h3>
-          </div>
-          <div className="version-list">
-            {currentVersions.length > 0 ? (
-              currentVersions.map((version) => (
-                <div key={version.id} className="version-item">
-                  <div className="version-header">
-                    <span className="version-number">v{version.version_number}</span>
-                    <span className="version-date">{formatDate(version.created_at)}</span>
-                  </div>
-                  <div className="version-info">
-                    <span className="version-author">创建者: {version.created_by}</span>
-                    <span className="version-desc">{truncateText(version.nl_text, 40)}</span>
-                  </div>
-                  <div className="version-actions">
-                    <button className="btn-link">对比</button>
-                    <button className="btn-link">回滚</button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="version-empty">
-                {selectedRequirement ? '暂无版本记录' : '请选择一个需求'}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* AI 助手面板 */}
-        <div className="ai-panel">
-          <div className="panel-header">
-            <h3>AI 助手</h3>
-          </div>
-          <div className="ai-content">
-            <div className="ai-suggestion">
-              <p className="ai-hint">AI 可以帮助您：</p>
-              <ul>
-                <li>根据 DSL 自动生成图表</li>
-                <li>根据自然语言推荐需求分类</li>
-                <li>检查需求一致性</li>
-              </ul>
+      {/* Right Panel */}
+      {/* ... (Unchanged logic, hidden when create or create-editor) ... */}
+      {!['create', 'create-editor'].includes(centerView) && (
+        <div className="workspace-right">
+          {/* ... (Unchanged) ... */}
+          {/* 版本记录 */}
+          <div className="version-panel">
+            <div className="panel-header">
+              <h3>版本记录</h3>
             </div>
-            <button className="btn-ai">
-              <span>✨</span> 智能分析
-            </button>
+            <div className="version-list">
+              {currentVersions.length > 0 ? (
+                currentVersions.map((version) => (
+                  <div key={version.id} className="version-item">
+                    <div className="version-header">
+                      <span className="version-number">v{version.version_number}</span>
+                      <span className="version-date">{formatDate(version.created_at)}</span>
+                    </div>
+                    <div className="version-info">
+                      <span className="version-author">创建者: {version.created_by}</span>
+                      <span className="version-desc">{truncateText(version.nl_text, 40)}</span>
+                    </div>
+                    <div className="version-actions">
+                      <button className="btn-link">对比</button>
+                      <button className="btn-link">回滚</button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="version-empty">
+                  {selectedRequirement ? '暂无版本记录' : '请选择一个需求'}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* AI 助手面板 */}
+          <div className="ai-panel">
+            <div className="panel-header">
+              <h3>AI 助手</h3>
+            </div>
+            <div className="ai-content">
+              <div className="ai-suggestion">
+                <p className="ai-hint">AI 可以帮助您：</p>
+                <ul>
+                  <li>根据 DSL 自动生成图表</li>
+                  <li>根据自然语言推荐需求分类</li>
+                  <li>检查需求一致性</li>
+                </ul>
+              </div>
+              <button className="btn-ai">
+                <span>✨</span> 智能分析
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
