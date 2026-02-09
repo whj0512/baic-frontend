@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { message, Select, Tabs, Upload, Button } from 'antd'
+import { message, Tabs, Upload, Button } from 'antd'
 import { UploadOutlined, RobotOutlined, FormOutlined } from '@ant-design/icons'
 import './RequirementCreator.css'
 
@@ -18,6 +18,7 @@ interface RequirementCreatorProps {
     formData?: {
         title: string
         description: string
+        level: string
         relationships: RelationItem[]
         sectionData: Record<string, any>
     }
@@ -48,6 +49,13 @@ const AI_MODELS = [
     { value: 'gemini-pro', label: 'Gemini Pro' },
 ]
 
+const LEVEL_OPTIONS = [
+    { value: 'System Level', label: '系统层 (System Level)' },
+    { value: 'Module Level', label: '模块层 (Module Level)' },
+    { value: 'Software Level', label: '软件层 (Software Level)' },
+    { value: 'Component Level', label: '部件层 (Component Level)' },
+]
+
 // Sections Config (from RequirementOverview/CreateRequirement)
 const SECTIONS: { key: SectionKey; dimensionCode: string; label: string; }[] = [
     { key: 'environment', dimensionCode: 'IBD', label: '所处环境' },
@@ -73,6 +81,7 @@ function RequirementCreator({
     const [localFormData, setLocalFormData] = useState({
         title: '',
         description: '',
+        level: 'System Level',
         relationships: [] as RelationItem[],
         sectionData: {} as Record<string, any>
     })
@@ -103,6 +112,14 @@ function RequirementCreator({
         const newData = {
             ...currentFormData,
             [name]: value
+        }
+        updateFormData(newData)
+    }
+
+    const handleLevelChange = (value: string) => {
+        const newData = {
+            ...currentFormData,
+            level: value
         }
         updateFormData(newData)
     }
@@ -192,15 +209,32 @@ function RequirementCreator({
                         <span className="section-title">基本信息</span>
                     </div>
                     <div className="form-group">
-                        <input
-                            type="text"
-                            name="title"
-                            className="form-input"
-                            placeholder={`请输入${getTypeName(projectType)}名称`}
-                            value={currentFormData.title}
-                            onChange={handleChange}
-                            autoFocus
-                        />
+                        <div className="form-row-split">
+                            <div className="form-col-main">
+                                <label className="form-label">需求名称</label>
+                                <input
+                                    type="text"
+                                    name="title"
+                                    className="form-input"
+                                    placeholder={`请输入${getTypeName(projectType)}名称`}
+                                    value={currentFormData.title}
+                                    onChange={handleChange}
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="form-col-side">
+                                <label className="form-label">需求层级</label>
+                                <select
+                                    className="form-select"
+                                    value={currentFormData.level}
+                                    onChange={(e) => handleLevelChange(e.target.value)}
+                                >
+                                    {LEVEL_OPTIONS.map(option => (
+                                        <option key={option.value} value={option.value}>{option.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -235,13 +269,17 @@ function RequirementCreator({
                                 <option key={t.value} value={t.value}>{t.label}</option>
                             ))}
                         </select>
-                        <Select
+                        <select
+                            className="form-select"
                             style={{ flex: 1 }}
-                            placeholder="选择关联需求"
-                            options={MOCK_AVAILABLE_REQS}
-                            value={currentReqId}
-                            onChange={setCurrentReqId}
-                        />
+                            value={currentReqId || ''}
+                            onChange={(e) => setCurrentReqId(e.target.value ? Number(e.target.value) : null)}
+                        >
+                            <option value="" disabled>选择关联需求</option>
+                            {MOCK_AVAILABLE_REQS.map(req => (
+                                <option key={req.value} value={req.value}>{req.label}</option>
+                            ))}
+                        </select>
                         <button
                             type="button"
                             className="add-relation-btn"
@@ -319,13 +357,16 @@ function RequirementCreator({
                 <p style={{ marginBottom: '2rem', color: '#6b7280' }}>上传文档，AI 帮您提取需求内容。</p>
 
                 <div style={{ maxWidth: 400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <Select
-                        size="large"
+                    <select
+                        className="form-select"
+                        style={{ width: '100%', height: '40px' }} // Added height to match Button size roughly
                         value={selectedModel}
-                        onChange={setSelectedModel}
-                        options={AI_MODELS}
-                        style={{ width: '100%' }}
-                    />
+                        onChange={(e) => setSelectedModel(e.target.value)}
+                    >
+                        {AI_MODELS.map(model => (
+                            <option key={model.value} value={model.value}>{model.label}</option>
+                        ))}
+                    </select>
                     <Upload.Dragger
                         name="file"
                         multiple={false}

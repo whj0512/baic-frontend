@@ -34,6 +34,7 @@ function ProjectWorkSpace() {
       previous_version_id: 'ver-001-2',
       nl_text: '系统应能在接收到导航指令后5秒内完成路径规划',
       dsl_text: 'WHEN receive(NavigationCommand) THEN complete(PathPlanning) WITHIN 5s',
+      level: 'System Level',
       created_by: 'user-001',
       created_at: '2024-01-15T08:30:00Z',
       updated_at: '2024-02-08T14:30:00Z',
@@ -45,6 +46,7 @@ function ProjectWorkSpace() {
       previous_version_id: 'ver-002-1',
       nl_text: '定位模块应支持GPS和北斗双模定位',
       dsl_text: 'LocationModule SHALL support(GPS, BeiDou)',
+      level: 'Module Level',
       created_by: 'user-002',
       created_at: '2024-01-20T10:00:00Z',
       updated_at: '2024-02-05T16:45:00Z',
@@ -55,6 +57,7 @@ function ProjectWorkSpace() {
       current_version_id: 'ver-003-1',
       nl_text: '通信模块应支持4G/5G网络切换',
       dsl_text: 'CommunicationModule SHALL support(NetworkSwitch, 4G, 5G)',
+      level: 'Module Level',
       created_by: 'user-001',
       created_at: '2024-02-01T09:15:00Z',
       updated_at: '2024-02-01T09:15:00Z',
@@ -65,6 +68,7 @@ function ProjectWorkSpace() {
       current_version_id: 'ver-004-1',
       nl_text: '系统应在检测到障碍物时自动停止',
       dsl_text: 'WHEN detect(Obstacle) THEN execute(EmergencyStop)',
+      level: 'System Level',
       created_by: 'user-003',
       created_at: '2024-02-03T11:20:00Z',
       updated_at: '2024-02-07T14:00:00Z',
@@ -168,6 +172,7 @@ function ProjectWorkSpace() {
   const [createFormData, setCreateFormData] = useState({
     title: '',
     description: '',
+    level: 'System Level',
     relationships: [] as any[],
     // Store graph/DSL data for each section
     sectionData: {} as Record<string, any>
@@ -197,6 +202,7 @@ function ProjectWorkSpace() {
     current_version_id: '',
     nl_text: createFormData.description,
     dsl_text: '',
+    level: createFormData.level,
     created_by: 'CurrentUser',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -328,7 +334,7 @@ function ProjectWorkSpace() {
           </div>
 
           {/* AI 助手面板 */}
-          <div className="ai-panel">
+          {/* <div className="ai-panel">
             <div className="panel-header">
               <h3>AI 助手</h3>
             </div>
@@ -345,7 +351,7 @@ function ProjectWorkSpace() {
                 <span>✨</span> 智能分析
               </button>
             </div>
-          </div>
+          </div> */}
         </div>
       )}
     </div>

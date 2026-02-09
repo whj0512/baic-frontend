@@ -15,6 +15,7 @@ export interface Requirement {
   graph_SC?: object
   graph_BDD?: object
   graph_ISD?: object
+  level: string
   created_by: string
   created_at: string
   updated_at: string
