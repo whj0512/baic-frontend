@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { Button, Select } from 'antd'
+import { Button, message, Select } from 'antd'
 import { ArrowLeftOutlined, SaveOutlined, DownloadOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import type { Requirement } from '../../models/Requirement'
 import FlowGraph, { type FlowGraphRef } from '../graph'
@@ -33,7 +33,7 @@ interface DimensionEditorProps {
   requirement: Requirement
   sectionKey: SectionKey
   onBack: () => void
-  onSave?: (sectionKey: SectionKey, graphData: object) => void
+  onSave?: (sectionKey: SectionKey, graphData: object, dslText: string) => void
 }
 
 function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionEditorProps) {
@@ -42,6 +42,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
   // 获取初始的图数据
   const getInitialGraphData = (): object => {
     const graphField = config.graphField
+    console.log('getInitialGraphData', requirement[graphField])
     return (requirement[graphField] as object) || {}
   }
 
@@ -116,6 +117,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
 
     try {
       const jsonData = exportGraphToJSON(graph, sectionKey, config.label)
+      // console.log(jsonData)
       const response = await fetch(API_ENDPOINTS.rbgToDsl, {
         method: 'POST',
         headers: {
@@ -201,7 +203,9 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
 
   const handleSave = () => {
     if (onSave) {
-      onSave(sectionKey, graphDataRef.current)
+      console.log('Saving graph data:', graphDataRef.current)
+      onSave(sectionKey, graphDataRef.current, dslContent)
+      message.success('保存成功')
     }
     onBack()
   }

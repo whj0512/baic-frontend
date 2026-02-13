@@ -1,19 +1,48 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { API_ENDPOINTS } from '../config/api'
+import { message } from 'antd'
 import './Login.css'
 
 function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: 实现登录逻辑
-    console.log('Login attempt:', { username, password })
+    setLoading(true)
 
-    // 登录成功后跳转到首页
-    navigate('/')
+    try {
+      const response = await fetch(API_ENDPOINTS.login, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.detail || '登录失败')
+      }
+
+      // 存储 token 和 user_id
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('user_id', data.user_id)
+      localStorage.setItem('username', username)
+
+      message.success('登录成功')
+      // 登录成功后跳转到首页
+      navigate('/')
+    } catch (error: any) {
+      console.error('Login error:', error)
+      message.error(error.message || '登录发生错误，请重试')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleRegister = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -64,8 +93,8 @@ function Login() {
               <a href="#" className="forgot-password">忘记密码?</a>
             </div>
 
-            <button type="submit" className="login-button">
-              登录
+            <button type="submit" className="login-button" disabled={loading}>
+              {loading ? '登录中...' : '登录'}
             </button>
           </form>
 

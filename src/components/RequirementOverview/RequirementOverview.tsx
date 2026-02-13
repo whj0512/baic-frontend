@@ -88,10 +88,6 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
               <span className="info-value">{requirement.id}</span>
             </div>
             <div className="info-item">
-              <label>需求层级</label>
-              <span className="info-value">{requirement.level || 'System Level'}</span>
-            </div>
-            <div className="info-item">
               <label>创建者</label>
               <span className="info-value">{requirement.created_by}</span>
             </div>

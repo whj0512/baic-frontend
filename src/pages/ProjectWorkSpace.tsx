@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Button } from 'antd'
+import { Button, message, Spin } from 'antd'
 import { ShareAltOutlined } from '@ant-design/icons'
 import './ProjectWorkSpace.css'
 import type { Requirement } from '../models/Requirement'
@@ -8,6 +8,7 @@ import type { RequirementVersion } from '../models/RequirementVersion'
 import RequirementOverview, { type SectionKey } from '../components/RequirementOverview'
 import DimensionEditor from '../components/DimensionEditor'
 import RequirementCreator from '../components/RequirementCreator/RequirementCreator'
+import { API_ENDPOINTS } from '../config/api'
 
 // 中间区域视图类型
 type CenterView = 'overview' | 'editor' | 'create' | 'create-editor'
@@ -15,6 +16,13 @@ type CenterView = 'overview' | 'editor' | 'create' | 'create-editor'
 function ProjectWorkSpace() {
   const { projectKey } = useParams<{ projectKey: string }>()
   const navigate = useNavigate()
+
+  // 状态
+  const [project, setProject] = useState<any>(null)
+  const [requirements, setRequirements] = useState<Requirement[]>([])
+  const [requirementVersions, setRequirementVersions] = useState<RequirementVersion[]>([])
+  const [loading, setLoading] = useState(false)
+  const [loadingVersions, setLoadingVersions] = useState(false)
 
   // 当前选中的需求
   const [selectedRequirement, setSelectedRequirement] = useState<string | null>(null)
@@ -25,91 +33,94 @@ function ProjectWorkSpace() {
   // 当前编辑的 section
   const [editingSection, setEditingSection] = useState<SectionKey | null>(null)
 
-  // Mock 需求列表数据 - 对应 requirement 表
-  const requirements: Requirement[] = [
-    {
-      id: 'req-001',
-      project_id: projectKey || '',
-      current_version_id: 'ver-001-3',
-      previous_version_id: 'ver-001-2',
-      nl_text: '系统应能在接收到导航指令后5秒内完成路径规划',
-      dsl_text: 'WHEN receive(NavigationCommand) THEN complete(PathPlanning) WITHIN 5s',
-      level: 'System Level',
-      created_by: 'user-001',
-      created_at: '2024-01-15T08:30:00Z',
-      updated_at: '2024-02-08T14:30:00Z',
-    },
-    {
-      id: 'req-002',
-      project_id: projectKey || '',
-      current_version_id: 'ver-002-2',
-      previous_version_id: 'ver-002-1',
-      nl_text: '定位模块应支持GPS和北斗双模定位',
-      dsl_text: 'LocationModule SHALL support(GPS, BeiDou)',
-      level: 'Module Level',
-      created_by: 'user-002',
-      created_at: '2024-01-20T10:00:00Z',
-      updated_at: '2024-02-05T16:45:00Z',
-    },
-    {
-      id: 'req-003',
-      project_id: projectKey || '',
-      current_version_id: 'ver-003-1',
-      nl_text: '通信模块应支持4G/5G网络切换',
-      dsl_text: 'CommunicationModule SHALL support(NetworkSwitch, 4G, 5G)',
-      level: 'Module Level',
-      created_by: 'user-001',
-      created_at: '2024-02-01T09:15:00Z',
-      updated_at: '2024-02-01T09:15:00Z',
-    },
-    {
-      id: 'req-004',
-      project_id: projectKey || '',
-      current_version_id: 'ver-004-1',
-      nl_text: '系统应在检测到障碍物时自动停止',
-      dsl_text: 'WHEN detect(Obstacle) THEN execute(EmergencyStop)',
-      level: 'System Level',
-      created_by: 'user-003',
-      created_at: '2024-02-03T11:20:00Z',
-      updated_at: '2024-02-07T14:00:00Z',
-    },
-  ]
+  // 初始化：获取项目信息和需求列表
+  // 修正后的 Effect
+  useEffect(() => {
+    const initWorkspace = async () => {
+      if (!projectKey) return
+      setLoading(true)
+      try {
+        // 1. 获取项目列表以解析 projectKey -> projectId
+        const projRes = await fetch(API_ENDPOINTS.projects)
+        if (!projRes.ok) throw new Error('获取项目列表失败')
+        const projData = await projRes.json()
 
-  // Mock 版本记录数据 - 对应 requirement_version 表
-  const requirementVersions: RequirementVersion[] = [
-    {
-      id: 'ver-001-3',
-      requirement_id: 'req-001',
-      version_number: 3,
-      created_by: 'user-001',
-      created_at: '2024-02-08T14:30:00Z',
-      nl_text: '系统应能在接收到导航指令后5秒内完成路径规划',
-      dsl_text: 'WHEN receive(NavigationCommand) THEN complete(PathPlanning) WITHIN 5s',
-    },
-    {
-      id: 'ver-001-2',
-      requirement_id: 'req-001',
-      version_number: 2,
-      created_by: 'user-002',
-      created_at: '2024-02-05T10:15:00Z',
-      nl_text: '系统应能在接收到导航指令后10秒内完成路径规划',
-      dsl_text: 'WHEN receive(NavigationCommand) THEN complete(PathPlanning) WITHIN 10s',
-    },
-    {
-      id: 'ver-001-1',
-      requirement_id: 'req-001',
-      version_number: 1,
-      created_by: 'user-001',
-      created_at: '2024-01-15T08:30:00Z',
-      nl_text: '系统应能完成路径规划',
-      dsl_text: 'System SHALL complete(PathPlanning)',
-    },
-  ]
+        const currentProject = projData?.find((p: any) => p.key === projectKey)
+
+        if (!currentProject) {
+          message.error('未找到该项目')
+          navigate('/')
+          return
+        }
+
+        setProject(currentProject)
+
+        // 2. 获取该项目的需求列表
+        // 构造 URL: API_ENDPOINTS.projects + /:id/requirements
+        const reqsUrl = `${API_ENDPOINTS.projects}/${currentProject.id}/requirements`
+        const reqRes = await fetch(reqsUrl)
+        if (!reqRes.ok) throw new Error('获取需求列表失败')
+        const reqData = await reqRes.json()
+
+        setRequirements(reqData.requirements || [])
+
+      } catch (error) {
+        console.error('Init error:', error)
+        message.error('加载项目资源失败')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    initWorkspace()
+  }, [projectKey, navigate])
+
+  // 获取选中需求的详细信息（包括版本历史）
+  useEffect(() => {
+    const fetchRequirementDetails = async () => {
+      if (!selectedRequirement || selectedRequirement === 'NEW') {
+        setRequirementVersions([])
+        return
+      }
+
+      setLoadingVersions(true)
+      try {
+        const url = `${API_ENDPOINTS.requirements}/${selectedRequirement}`
+        const res = await fetch(url)
+        if (!res.ok) throw new Error('获取需求详情失败')
+        const data = await res.json()
+
+        // 假设 API 返回包含 versions 字段，或者目前只返回主记录
+        // 根据 API 文档，GET /requirements/{id} 返回 { requirement: ... }
+        // 如果后端暂未返回版本列表，我们可能只能显示当前版本
+        // 暂时假设 response.requirement 包含 versions 数组或者我们需要另行获取
+        // 由于文档未明确 specify versions list endpoint, 且用途说 "读取...版本历史"
+        // 我们检查 data.versions 是否存在
+
+        if (data.versions) {
+          setRequirementVersions(data.versions)
+        } else if (data.requirement) {
+          // 如果只有 requirement，构造一个包含当前版本的伪列表，或者不做处理
+          // 这里为了演示，我们至少把 current version 放进去
+          // 但是 requirement 对象本身没有 version details 吗？
+          // 看 models: Requirement 有 current_version_id
+          // 我们暂且置空或模拟，等待后端完善
+          setRequirementVersions([])
+        }
+
+      } catch (error) {
+        console.error('Fetch details error:', error)
+        // message.error('获取需求详情失败') // 避免频繁报错干扰
+      } finally {
+        setLoadingVersions(false)
+      }
+    }
+
+    fetchRequirementDetails()
+  }, [selectedRequirement])
 
   // 获取当前选中需求的版本记录
-  const currentVersions = selectedRequirement
-    ? requirementVersions.filter((v) => v.requirement_id === selectedRequirement)
-    : []
+  const currentVersions = requirementVersions
 
   // 获取当前选中的需求对象
   const currentRequirement = requirements.find((r) => r.id === selectedRequirement)
@@ -145,9 +156,9 @@ function ProjectWorkSpace() {
   }
 
   // 保存编辑器数据
-  const handleEditorSave = (sectionKey: SectionKey, graphData: object) => {
-    // TODO: 将 graphData 保存到对应的 requirement 字段
-    console.log('Save section:', sectionKey, graphData)
+  const handleEditorSave = (sectionKey: SectionKey, graphData: object, dslText: string) => {
+    // TODO: 将 graphData 和 dslText 保存到对应的 requirement 字段
+    console.log('Save section:', sectionKey, graphData, dslText)
   }
 
   // 选择需求时重置视图
@@ -170,12 +181,12 @@ function ProjectWorkSpace() {
 
   // 新建需求表单状态
   const [createFormData, setCreateFormData] = useState({
-    title: '',
-    description: '',
-    level: 'System Level',
+    nl_text: '',
     relationships: [] as any[],
-    // Store graph/DSL data for each section
-    sectionData: {} as Record<string, any>
+    // Store graph data for each section
+    sectionData: {} as Record<string, any>,
+    // Store DSL text for each section
+    sectionDslData: {} as Record<string, string>
   })
 
   // 处理新建时的 Section 点击
@@ -185,12 +196,16 @@ function ProjectWorkSpace() {
   }
 
   // 处理新建编辑器保存
-  const handleCreateEditorSave = (sectionKey: SectionKey, graphData: object) => {
+  const handleCreateEditorSave = (sectionKey: SectionKey, graphData: object, dslText: string) => {
     setCreateFormData(prev => ({
       ...prev,
       sectionData: {
         ...prev.sectionData,
         [sectionKey]: graphData
+      },
+      sectionDslData: {
+        ...prev.sectionDslData,
+        [sectionKey]: dslText
       }
     }))
   }
@@ -200,14 +215,29 @@ function ProjectWorkSpace() {
     id: 'NEW',
     project_id: projectKey || '',
     current_version_id: '',
-    nl_text: createFormData.description,
-    dsl_text: '',
-    level: createFormData.level,
+    nl_text: createFormData.nl_text,
+    dsl_text: [
+      createFormData.sectionDslData.environment,
+      createFormData.sectionDslData.interaction,
+      createFormData.sectionDslData.internalComposition,
+      createFormData.sectionDslData.moduleResponses,
+      createFormData.sectionDslData.internalConstraints
+    ].filter(Boolean).join('\n\n'), // Concatenate all DSL texts
     created_by: 'CurrentUser',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-    // Merge saved section data
-    ...createFormData.sectionData
+    // Map section data to requirement graph fields
+    graph_IBD: createFormData.sectionData.environment,
+    graph_ESD: createFormData.sectionData.interaction,
+    graph_BDD: createFormData.sectionData.internalComposition,
+    graph_ISD: createFormData.sectionData.moduleResponses,
+    graph_SC: createFormData.sectionData.internalConstraints,
+    // Map section DSL data to requirement DSL fields
+    dsl_IBD: createFormData.sectionDslData.environment,
+    dsl_ESD: createFormData.sectionDslData.interaction,
+    dsl_BDD: createFormData.sectionDslData.internalComposition,
+    dsl_ISD: createFormData.sectionDslData.moduleResponses,
+    dsl_SC: createFormData.sectionDslData.internalConstraints,
   } as Requirement // Cast as we might be missing some required fields but sufficient for editor
 
   return (
@@ -226,22 +256,26 @@ function ProjectWorkSpace() {
           </button>
         </div>
         <div className="requirement-list">
-          {/* ... (Unchanged list rendering) ... */}
-          {requirements.map((req) => (
-            <div
-              key={req.id}
-              className={`requirement-item ${selectedRequirement === req.id ? 'selected' : ''}`}
-              onClick={() => handleRequirementSelect(req.id)}
-            >
-              <div className="requirement-item-header">
-                <span className="requirement-id">{req.id}</span>
-                <span className="requirement-date">{formatDate(req.updated_at)}</span>
+          <Spin spinning={loading}>
+            {requirements.length === 0 && !loading && (
+              <div className="list-empty">暂无需求</div>
+            )}
+            {requirements.map((req) => (
+              <div
+                key={req.id}
+                className={`requirement-item ${selectedRequirement === req.id ? 'selected' : ''}`}
+                onClick={() => handleRequirementSelect(req.id)}
+              >
+                <div className="requirement-item-header">
+                  <span className="requirement-id">{req.id}</span>
+                  <span className="requirement-date">{formatDate(req.updated_at)}</span>
+                </div>
+                <div className="requirement-item-content">
+                  {truncateText(req.nl_text, 50)}
+                </div>
               </div>
-              <div className="requirement-item-content">
-                {truncateText(req.nl_text, 50)}
-              </div>
-            </div>
-          ))}
+            ))}
+          </Spin>
         </div>
         <div className="panel-footer">
           <Button
@@ -258,12 +292,14 @@ function ProjectWorkSpace() {
       {/* Center Panel */}
       <div className="workspace-center">
         {centerView === 'overview' && (
-          <RequirementOverview
-            requirement={currentRequirement || null}
-            versions={currentVersions}
-            projectKey={projectKey || ''}
-            onSectionClick={handleSectionClick}
-          />
+          <Spin spinning={loadingVersions}>
+            <RequirementOverview
+              requirement={currentRequirement || null}
+              versions={currentVersions}
+              projectKey={projectKey || ''}
+              onSectionClick={(section) => handleSectionClick(section)}
+            />
+          </Spin>
         )}
 
         {centerView === 'editor' && currentRequirement && editingSection && (
@@ -277,8 +313,7 @@ function ProjectWorkSpace() {
 
         {centerView === 'create' && (
           <RequirementCreator
-            projectId={projectKey}
-            projectType="system"
+            projectKey={projectKey}
             formData={createFormData}
             onChange={setCreateFormData}
             onSectionClick={handleCreateSectionClick}
@@ -332,26 +367,6 @@ function ProjectWorkSpace() {
               )}
             </div>
           </div>
-
-          {/* AI 助手面板 */}
-          {/* <div className="ai-panel">
-            <div className="panel-header">
-              <h3>AI 助手</h3>
-            </div>
-            <div className="ai-content">
-              <div className="ai-suggestion">
-                <p className="ai-hint">AI 可以帮助您：</p>
-                <ul>
-                  <li>根据 DSL 自动生成图表</li>
-                  <li>根据自然语言推荐需求分类</li>
-                  <li>检查需求一致性</li>
-                </ul>
-              </div>
-              <button className="btn-ai">
-                <span>✨</span> 智能分析
-              </button>
-            </div>
-          </div> */}
         </div>
       )}
     </div>

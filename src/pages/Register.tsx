@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { API_ENDPOINTS } from '../config/api'
+import { message } from 'antd'
 import './Register.css'
 
 function Register() {
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    username: '',
+    password: '',
     email: '',
-    phone: '',
-    password: ''
+    full_name: ''
   })
+  const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -20,13 +22,34 @@ function Register() {
     }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: 实现注册逻辑
-    console.log('Register attempt:', formData)
+    setLoading(true)
 
-    // 注册成功后跳转到登录页面
-    navigate('/login')
+    try {
+      const response = await fetch(API_ENDPOINTS.register, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.detail || '注册失败')
+      }
+
+      message.success('注册成功，请登录')
+      // 注册成功后跳转到登录页面
+      navigate('/login')
+    } catch (error: any) {
+      console.error('Register error:', error)
+      message.error(error.message || '注册发生错误，请重试')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -43,34 +66,31 @@ function Register() {
           <p className="register-subtitle">加入需求管理系统</p>
 
           <form className="register-form" onSubmit={handleSubmit}>
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="firstName">First Name</label>
-                <input
-                  type="text"
-                  id="firstName"
-                  name="firstName"
-                  className="form-input"
-                  placeholder="请输入名字"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
+            <div className="form-group">
+              <label htmlFor="username">Username</label>
+              <input
+                type="text"
+                id="username"
+                name="username"
+                className="form-input"
+                placeholder="请输入用户名"
+                value={formData.username}
+                onChange={handleChange}
+                required
+              />
+            </div>
 
-              <div className="form-group">
-                <label htmlFor="lastName">Last Name</label>
-                <input
-                  type="text"
-                  id="lastName"
-                  name="lastName"
-                  className="form-input"
-                  placeholder="请输入姓氏"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
+            <div className="form-group">
+              <label htmlFor="full_name">Full Name</label>
+              <input
+                type="text"
+                id="full_name"
+                name="full_name"
+                className="form-input"
+                placeholder="请输入全名 (可选)"
+                value={formData.full_name}
+                onChange={handleChange}
+              />
             </div>
 
             <div className="form-group">
@@ -80,24 +100,9 @@ function Register() {
                 id="email"
                 name="email"
                 className="form-input"
-                placeholder="请输入邮箱地址"
+                placeholder="请输入邮箱地址 (可选)"
                 value={formData.email}
                 onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="phone">Phone no.</label>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                className="form-input"
-                placeholder="请输入手机号码"
-                value={formData.phone}
-                onChange={handleChange}
-                required
               />
             </div>
 
@@ -115,8 +120,8 @@ function Register() {
               />
             </div>
 
-            <button type="submit" className="register-button">
-              注册
+            <button type="submit" className="register-button" disabled={loading}>
+              {loading ? '注册中...' : '注册'}
             </button>
           </form>
 

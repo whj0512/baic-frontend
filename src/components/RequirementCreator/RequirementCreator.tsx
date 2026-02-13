@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { message, Tabs, Upload, Button } from 'antd'
 import { UploadOutlined, RobotOutlined, FormOutlined } from '@ant-design/icons'
+import { API_ENDPOINTS } from '../../config/api'
 import './RequirementCreator.css'
 
 // Types
@@ -13,14 +14,12 @@ interface RelationItem {
 }
 
 interface RequirementCreatorProps {
-    projectId?: string
-    projectType?: string
+    projectKey?: string
     formData?: {
-        title: string
-        description: string
-        level: string
+        nl_text: string
         relationships: RelationItem[]
         sectionData: Record<string, any>
+        sectionDslData: Record<string, string>
     }
     onChange?: (data: any) => void
     onSectionClick?: (sectionKey: SectionKey) => void
@@ -49,13 +48,6 @@ const AI_MODELS = [
     { value: 'gemini-pro', label: 'Gemini Pro' },
 ]
 
-const LEVEL_OPTIONS = [
-    { value: 'System Level', label: '系统层 (System Level)' },
-    { value: 'Module Level', label: '模块层 (Module Level)' },
-    { value: 'Software Level', label: '软件层 (Software Level)' },
-    { value: 'Component Level', label: '部件层 (Component Level)' },
-]
-
 // Sections Config (from RequirementOverview/CreateRequirement)
 const SECTIONS: { key: SectionKey; dimensionCode: string; label: string; }[] = [
     { key: 'environment', dimensionCode: 'IBD', label: '所处环境' },
@@ -66,8 +58,7 @@ const SECTIONS: { key: SectionKey; dimensionCode: string; label: string; }[] = [
 ]
 
 function RequirementCreator({
-    projectId,
-    projectType = 'system',
+    projectKey,
     formData,
     onChange,
     onSectionClick,
@@ -79,11 +70,10 @@ function RequirementCreator({
 
     // Local state fallback if not provided via props (for standalone usage safety)
     const [localFormData, setLocalFormData] = useState({
-        title: '',
-        description: '',
-        level: 'System Level',
+        nl_text: '',
         relationships: [] as RelationItem[],
-        sectionData: {} as Record<string, any>
+        sectionData: {} as Record<string, any>,
+        sectionDslData: {} as Record<string, string>
     })
 
     // Start with local, but prefer props
@@ -112,14 +102,6 @@ function RequirementCreator({
         const newData = {
             ...currentFormData,
             [name]: value
-        }
-        updateFormData(newData)
-    }
-
-    const handleLevelChange = (value: string) => {
-        const newData = {
-            ...currentFormData,
-            level: value
         }
         updateFormData(newData)
     }
@@ -160,15 +142,57 @@ function RequirementCreator({
         updateFormData(newData)
     }
 
-    const handleSubmit = () => {
-        // Creating...
-        if (!currentFormData.title) {
-            message.error('请输入需求名称')
+    const handleSubmit = async () => {
+        // Validation
+        if (!currentFormData.nl_text) {
+            message.error('请输入需求描述')
             return
         }
-        console.log('Creating requirement:', { ...currentFormData, projectId, projectType })
-        message.success('需求项创建成功')
-        if (onSuccess) onSuccess()
+
+        try {
+            const token = localStorage.getItem('token')
+            const response = await fetch(API_ENDPOINTS.requirements, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': token ? `Bearer ${token}` : ''
+                },
+                body: JSON.stringify({
+                    project_key: projectKey,
+                    nl_text: currentFormData.nl_text,
+                    // TODO: Map other fields like relationships or graph data if available
+                    // For now, based on RequirementSaveRequest, we send what we have.
+                    // relationships are not in the standard RequirementSaveRequest yet, or maybe part of DSL?
+                    // The API doc says: graph_IBD, graph_ESD, etc.
+                    // createFormData.sectionData maps to these.
+                    graph_IBD: currentFormData.sectionData.environment,
+                    graph_ESD: currentFormData.sectionData.interaction,
+                    graph_BDD: currentFormData.sectionData.internalComposition,
+                    graph_ISD: currentFormData.sectionData.moduleResponses,
+                    graph_SC: currentFormData.sectionData.internalConstraints,
+                    dsl_text: [
+                        currentFormData.sectionDslData.environment,
+                        currentFormData.sectionDslData.interaction,
+                        currentFormData.sectionDslData.internalComposition,
+                        currentFormData.sectionDslData.moduleResponses,
+                        currentFormData.sectionDslData.internalConstraints
+                    ].filter(Boolean).join('\n\n'), // Concatenate all DSL texts
+                })
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json()
+                throw new Error(errorData.detail || '创建失败')
+            }
+
+            const data = await response.json()
+            console.log('Created requirement:', data)
+            message.success('需求项创建成功')
+            if (onSuccess) onSuccess()
+        } catch (error: any) {
+            console.error('Creation error:', error)
+            message.error(error.message || '创建需求失败')
+        }
     }
 
     const handleAnalyze = () => {
@@ -180,8 +204,7 @@ function RequirementCreator({
         setTimeout(() => {
             const newData = {
                 ...currentFormData,
-                title: '自动生成的制动系统需求',
-                description: '本需求描述了车辆在紧急制动情况下的系统响应行为，基于上传的文档自动提取。',
+                nl_text: '本需求描述了车辆在紧急制动情况下的系统响应行为，基于上传的文档自动提取。',
             }
             updateFormData(newData)
             setIsAnalyzing(false)
@@ -190,65 +213,20 @@ function RequirementCreator({
         }, 2000)
     }
 
-    const getTypeName = (t: string | undefined) => {
-        switch (t?.toLowerCase()) {
-            case 'system': return '系统需求'
-            case 'subsystem': return '子系统需求'
-            case 'software': return '软件需求'
-            case 'component': return '部件需求'
-            default: return '需求'
-        }
-    }
-
     const renderManualForm = () => (
         <>
             <div className="creator-content">
-                {/* Basic Info */}
-                <div className="creator-section">
-                    <div className="section-header">
-                        <span className="section-title">基本信息</span>
-                    </div>
-                    <div className="form-group">
-                        <div className="form-row-split">
-                            <div className="form-col-main">
-                                <label className="form-label">需求名称</label>
-                                <input
-                                    type="text"
-                                    name="title"
-                                    className="form-input"
-                                    placeholder={`请输入${getTypeName(projectType)}名称`}
-                                    value={currentFormData.title}
-                                    onChange={handleChange}
-                                    autoFocus
-                                />
-                            </div>
-                            <div className="form-col-side">
-                                <label className="form-label">需求层级</label>
-                                <select
-                                    className="form-select"
-                                    value={currentFormData.level}
-                                    onChange={(e) => handleLevelChange(e.target.value)}
-                                >
-                                    {LEVEL_OPTIONS.map(option => (
-                                        <option key={option.value} value={option.value}>{option.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Description */}
+                {/* Natural Language Description */}
                 <div className="creator-section">
                     <div className="section-header">
                         <span className="section-title">自然语言描述 (NL)</span>
                     </div>
                     <div className="form-group">
                         <textarea
-                            name="description"
+                            name="nl_text"
                             className="form-textarea"
                             placeholder="请输入详细描述"
-                            value={currentFormData.description}
+                            value={currentFormData.nl_text}
                             onChange={handleChange}
                         />
                     </div>
@@ -399,8 +377,8 @@ function RequirementCreator({
         <div className="requirement-creator">
             <div className="creator-header">
                 <div className="creator-title-row">
-                    <h2>新建{getTypeName(projectType)}</h2>
-                    <span className="creator-badge">Project: {projectId}</span>
+                    <h2>新建需求</h2>
+                    <span className="creator-badge">Project: {projectKey}</span>
                 </div>
             </div>
 
