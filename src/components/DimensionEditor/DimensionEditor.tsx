@@ -201,13 +201,72 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
     URL.revokeObjectURL(url)
   }
 
-  const handleSave = () => {
-    if (onSave) {
-      console.log('Saving graph data:', graphDataRef.current)
-      onSave(sectionKey, graphDataRef.current, dslContent)
-      message.success('保存成功')
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async () => {
+    // If it's a new requirement (draft), just call onSave and return
+    if (requirement.id === 'NEW') {
+      if (onSave) {
+        onSave(sectionKey, graphDataRef.current, dslContent)
+        message.success('暂存成功')
+      }
+      onBack()
+      return
     }
-    onBack()
+
+    // If it's an existing requirement, call API
+    setSaving(true)
+    try {
+      const token = localStorage.getItem('token')
+
+      // 构造完整的 dsl_text：将各维度的 DSL 拼接
+      // 当前编辑维度使用最新的 dslContent，其他维度使用 requirement 上已有的值
+      const ALL_SECTIONS: SectionKey[] = ['environment', 'interaction', 'internalComposition', 'moduleResponses', 'internalConstraints']
+      const dslParts = ALL_SECTIONS.map(key => {
+        const cfg = SECTION_CONFIG[key]
+        if (key === sectionKey) {
+          // 当前正在编辑的维度，使用最新内容
+          return dslContent
+        }
+        // 其他维度，从 requirement 对象中读取
+        return (requirement[cfg.dslField] as string) || ''
+      }).filter(Boolean)
+
+      const payload = {
+        [config.graphField]: graphDataRef.current,
+        [config.dslField]: dslContent,
+        dsl_text: dslParts.join('\n\n'),
+        nl_text: content
+      }
+
+      const response = await fetch(`${API_ENDPOINTS.requirements}/${requirement.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify(payload)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || '保存失败')
+      }
+
+      // const data = await response.json()
+
+      if (onSave) {
+        onSave(sectionKey, graphDataRef.current, dslContent)
+      }
+      message.success('保存成功')
+      onBack()
+
+    } catch (error: any) {
+      console.error('Save error:', error)
+      message.error(error.message || '保存失败')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -220,7 +279,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
           <span className={`dimension-code tag-${config.dimensionCode}`}>{config.dimensionCode}</span>
           {config.label}
         </h2>
-        <Button type="primary" icon={<SaveOutlined />} onClick={handleSave}>
+        <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving}>
           保存
         </Button>
       </div>

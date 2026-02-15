@@ -62,7 +62,7 @@ function ProjectWorkSpace() {
         if (!reqRes.ok) throw new Error('获取需求列表失败')
         const reqData = await reqRes.json()
 
-        setRequirements(reqData.requirements || [])
+        setRequirements(reqData || [])
 
       } catch (error) {
         console.error('Init error:', error)
@@ -155,10 +155,46 @@ function ProjectWorkSpace() {
     setCenterView('overview')
   }
 
-  // 保存编辑器数据
+  // SectionKey 到 Requirement 字段的映射
+  const SECTION_FIELD_MAP: Record<SectionKey, { graphField: keyof Requirement; dslField: keyof Requirement }> = {
+    environment: { graphField: 'graph_IBD', dslField: 'dsl_IBD' },
+    interaction: { graphField: 'graph_ESD', dslField: 'dsl_ESD' },
+    internalComposition: { graphField: 'graph_BDD', dslField: 'dsl_BDD' },
+    moduleResponses: { graphField: 'graph_ISD', dslField: 'dsl_ISD' },
+    internalConstraints: { graphField: 'graph_SC', dslField: 'dsl_SC' },
+  }
+
+  // 保存编辑器数据 —— 将 graph/dsl 数据同步到 requirements 状态
   const handleEditorSave = (sectionKey: SectionKey, graphData: object, dslText: string) => {
-    // TODO: 将 graphData 和 dslText 保存到对应的 requirement 字段
-    console.log('Save section:', sectionKey, graphData, dslText)
+    if (!selectedRequirement) return
+
+    const fieldMap = SECTION_FIELD_MAP[sectionKey]
+
+    // 构造完整的 dsl_text：将各维度的 DSL 拼接
+    const ALL_SECTIONS: SectionKey[] = ['environment', 'interaction', 'internalComposition', 'moduleResponses', 'internalConstraints']
+
+    // 更新 requirements 列表中对应需求的字段
+    setRequirements(prev =>
+      prev.map(req => {
+        if (req.id !== selectedRequirement) return req
+
+        // 构造 dslParts：当前编辑维度使用最新的 dslText，其他维度使用已有值
+        const dslParts = ALL_SECTIONS.map(key => {
+          const cfg = SECTION_FIELD_MAP[key]
+          if (key === sectionKey) {
+            return dslText
+          }
+          return (req[cfg.dslField] as string) || ''
+        }).filter(Boolean)
+
+        return {
+          ...req,
+          [fieldMap.graphField]: graphData,
+          [fieldMap.dslField]: dslText,
+          dsl_text: dslParts.join('\n\n'),
+        }
+      })
+    )
   }
 
   // 选择需求时重置视图
