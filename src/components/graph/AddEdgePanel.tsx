@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react'
 import { Button, Radio } from 'antd'
 import { PlusOutlined, CloseOutlined } from '@ant-design/icons'
-import type { Graph, Node, Edge } from '@antv/x6'
+import type { Graph, Node } from '@antv/x6'
 import type { EdgeRules } from './strategies/types'
 import './AddEdgePanel.css'
 
@@ -197,12 +197,12 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules }) => {
     const edges = graph.getConnectedEdges(node)
     const usedOutputPortIds = new Set(
       edges
-        .filter((e: Edge) => {
-          const src = e.getSource() as Edge.TerminalCellData
+        .filter((e) => {
+          const src = e.getSource() as { cell?: string; port?: string }
           return src?.cell === nodeId
         })
-        .map((e: Edge) => {
-          const src = e.getSource() as Edge.TerminalCellData
+        .map((e) => {
+          const src = e.getSource() as { cell?: string; port?: string }
           return src?.port
         })
         .filter(Boolean)
@@ -210,7 +210,7 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules }) => {
 
     // 查找第一个未连接的输出 port
     const freePort = outPorts.find((p: any) => !usedOutputPortIds.has(p.id))
-    if (freePort) return freePort.id
+    if (freePort) return freePort.id ?? null
 
     // 创建新的输出 port
     const newPortId = `out-${outPorts.length}`
@@ -236,12 +236,12 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules }) => {
     const edges = graph.getConnectedEdges(node)
     const usedInputPortIds = new Set(
       edges
-        .filter((e: Edge) => {
-          const tgt = e.getTarget() as Edge.TerminalCellData
+        .filter((e) => {
+          const tgt = e.getTarget() as { cell?: string; port?: string }
           return tgt?.cell === nodeId
         })
-        .map((e: Edge) => {
-          const tgt = e.getTarget() as Edge.TerminalCellData
+        .map((e) => {
+          const tgt = e.getTarget() as { cell?: string; port?: string }
           return tgt?.port
         })
         .filter(Boolean)
@@ -249,7 +249,7 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules }) => {
 
     // 查找第一个未连接的输入 port
     const freePort = inPorts.find((p: any) => !usedInputPortIds.has(p.id))
-    if (freePort) return freePort.id
+    if (freePort) return freePort.id ?? null
 
     // 创建新的输入 port
     const newPortId = `in-${inPorts.length}`
