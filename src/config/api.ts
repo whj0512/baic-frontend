@@ -3,6 +3,15 @@
 // DSL 服务地址
 export const DSL_SERVICE_BASE_URL = 'http://localhost:8000'
 
+// WebSocket 服务地址
+export const WS_BASE_URL = 'ws://localhost:8000'
+
+// WebSocket 端点
+export const WS_ENDPOINTS = {
+  projectSync: (projectId: string) =>
+    `${WS_BASE_URL}/ws/projects/${projectId}`,
+}
+
 // API 端点
 export const API_ENDPOINTS = {
   // 将图 JSON 转换为 DSL
