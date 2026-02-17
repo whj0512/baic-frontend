@@ -64,10 +64,26 @@ export interface FormConfig {
   nodes: Record<string, NodeFormConfig>
 }
 
+// 边规则配置（基于 Port）
+export interface EdgeRules {
+  // 获取节点的 port group 配置
+  getPortGroups?: (nodeShape: string) => Record<string, any>
+  // 获取节点的初始 ports
+  getInitialPorts?: (nodeShape: string) => any[]
+  // 节点是否支持动态添加多个 port
+  supportsMultiplePorts?: (nodeShape: string) => boolean
+  // 判断起始节点是否有多个命名输出（如 condition 的 yes/no）
+  hasMultipleOutputs?: (nodeId: string, nodeShape: string) => boolean
+  // 获取命名输出选项
+  getOutputOptions?: (nodeId: string, nodeShape: string) => Array<{ value: string; label: string }>
+}
+
 // 扩展后的策略类型
 export interface GraphStrategy {
   sidebarItems: SidebarItem[]
   registerNodes?: () => void
   // 表单配置
   formConfig?: FormConfig
+  // 边规则配置
+  edgeRules?: EdgeRules
 }

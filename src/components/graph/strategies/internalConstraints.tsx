@@ -779,10 +779,10 @@ const internalConstraintsStrategy: GraphStrategy = {
       component: Condition,
     });
     register({
-        shape: 'goto-node',
-        width: 120,
-        height: 60,
-        component: Goto,
+      shape: 'goto-node',
+      width: 120,
+      height: 60,
+      component: Goto,
     });
     register({
       shape: 'graph-node',
@@ -817,39 +817,90 @@ const internalConstraintsStrategy: GraphStrategy = {
   },
   // 表单配置
   formConfig,
-  // 边规则配置
+  // 边规则配置（基于 Port）
   edgeRules: {
-    // 判断节点是否有多个输出
-    hasMultipleOutputs: (nodeId: string, nodeShape: string) => {
-      return nodeShape === 'condition-node'
+    // 获取节点的 port group 配置
+    getPortGroups: (nodeShape: string) => {
+      const basePortStyle = {
+        r: 4,
+        magnet: true,
+        stroke: '#1890ff',
+        fill: '#fff',
+        strokeWidth: 1,
+      }
+
+      if (nodeShape === 'condition-node') {
+        return {
+          in: {
+            position: 'top',
+            attrs: { circle: { ...basePortStyle } },
+          },
+          'out-yes': {
+            position: 'right',
+            attrs: { circle: { ...basePortStyle, stroke: '#52c41a' } },
+          },
+          'out-no': {
+            position: 'left',
+            attrs: { circle: { ...basePortStyle, stroke: '#ff4d4f' } },
+          },
+        }
+      }
+
+      return {
+        in: {
+          position: 'top',
+          attrs: { circle: { ...basePortStyle } },
+        },
+        out: {
+          position: 'bottom',
+          attrs: { circle: { ...basePortStyle } },
+        },
+      }
     },
-    // 获取输出选项
-    getOutputOptions: (nodeId: string, nodeShape: string) => {
+
+    // 获取节点的初始 ports
+    getInitialPorts: (nodeShape: string) => {
       if (nodeShape === 'condition-node') {
         return [
-          { value: 'yes', label: 'Yes (右侧)' },
-          { value: 'no', label: 'No (左侧)' },
+          { id: 'in-0', group: 'in' },
+          { id: 'out-yes', group: 'out-yes' },
+          { id: 'out-no', group: 'out-no' },
+        ]
+      }
+      if (nodeShape === 'start-node') {
+        return [
+          { id: 'out-0', group: 'out' },
+        ]
+      }
+      if (nodeShape === 'then-node') {
+        return [
+          { id: 'in-0', group: 'in' },
+          { id: 'out-0', group: 'out' },
+        ]
+      }
+      // 其他节点：无初始 port，创建连线时动态添加
+      return []
+    },
+
+    // 节点是否支持动态添加多个 port
+    supportsMultiplePorts: (nodeShape: string) => {
+      return !['condition-node', 'start-node', 'then-node'].includes(nodeShape)
+    },
+
+    // 判断节点是否有多个命名输出
+    hasMultipleOutputs: (_nodeId: string, nodeShape: string) => {
+      return nodeShape === 'condition-node'
+    },
+
+    // 获取命名输出选项
+    getOutputOptions: (_nodeId: string, nodeShape: string) => {
+      if (nodeShape === 'condition-node') {
+        return [
+          { value: 'out-yes', label: 'Yes (右侧)' },
+          { value: 'out-no', label: 'No (左侧)' },
         ]
       }
       return []
-    },
-    // 获取源节点锚点
-    getSourceAnchor: (nodeId: string, nodeShape: string, output?: string) => {
-      if (nodeShape === 'condition-node' && output) {
-        // Condition 节点：yes 在右侧，no 在左侧
-        if (output === 'yes') {
-          return { anchor: { name: 'right', args: { dy: 0 } } }
-        } else if (output === 'no') {
-          return { anchor: { name: 'left', args: { dy: 0 } } }
-        }
-      }
-      // 其他节点使用默认配置（从底部连出）
-      return { anchor: { name: 'bottom' } }
-    },
-    // 获取目标节点锚点
-    getTargetAnchor: (nodeId: string, nodeShape: string) => {
-      // 所有节点都从顶部连入
-      return { anchor: { name: 'top' } }
     },
   },
 }

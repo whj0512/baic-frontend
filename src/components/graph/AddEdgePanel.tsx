@@ -1,18 +1,9 @@
 import React, { useState, useMemo, useRef } from 'react'
 import { Button, Radio } from 'antd'
 import { PlusOutlined, CloseOutlined } from '@ant-design/icons'
-import type { Graph } from '@antv/x6'
+import type { Graph, Node, Edge } from '@antv/x6'
+import type { EdgeRules } from './strategies/types'
 import './AddEdgePanel.css'
-
-interface EdgeRules {
-  // 获取节点的锚点配置
-  getSourceAnchor?: (nodeId: string, nodeShape: string, output?: string) => any
-  getTargetAnchor?: (nodeId: string, nodeShape: string) => any
-  // 判断起始节点是否有多个输出选项
-  hasMultipleOutputs?: (nodeId: string, nodeShape: string) => boolean
-  // 获取输出选项
-  getOutputOptions?: (nodeId: string, nodeShape: string) => Array<{ value: string; label: string }>
-}
 
 interface AddEdgePanelProps {
   graph: Graph
@@ -149,6 +140,125 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules }) => {
     })
   }
 
+  // ======== Port 管理辅助函数 ========
+
+  // 确保节点有 port groups 配置
+  const ensurePortGroups = (node: Node) => {
+    if (!edgeRules?.getPortGroups) return
+    const nodeShape = node.shape
+    const portGroups = edgeRules.getPortGroups(nodeShape)
+
+    // 检查节点是否已有 port groups
+    const existingPorts = node.getPorts()
+    if (existingPorts.length > 0) return // 已有 ports，说明 groups 已配置
+
+    // 通过 prop 设置 port groups
+    node.prop('ports/groups', portGroups)
+  }
+
+  // 确保固定 port 节点有初始 ports
+  const ensureInitialPorts = (node: Node) => {
+    if (!edgeRules?.getInitialPorts) return
+    const nodeShape = node.shape
+    const initialPorts = edgeRules.getInitialPorts(nodeShape)
+
+    if (initialPorts.length === 0) return
+
+    const existingPorts = node.getPorts()
+    // 如果已有 ports，跳过
+    if (existingPorts.length > 0) return
+
+    initialPorts.forEach((port: any) => {
+      node.addPort(port)
+    })
+  }
+
+  // 查找或创建输出 port
+  const findOrCreateOutputPort = (node: Node, nodeId: string): string | null => {
+    const nodeShape = node.shape
+
+    // Condition 节点：使用选中的输出 port
+    if (nodeShape === 'condition-node') {
+      return sourceOutput || null
+    }
+
+    const supportsMultiple = edgeRules?.supportsMultiplePorts?.(nodeShape) ?? false
+    const ports = node.getPorts() || []
+
+    // 获取输出 ports（group 为 'out'）
+    const outPorts = ports.filter((p: any) => p.group === 'out')
+
+    if (!supportsMultiple) {
+      // 固定 port 节点：使用已有的单个输出 port
+      return outPorts[0]?.id || null
+    }
+
+    // 动态 port 节点：查找未连接的空闲输出 port 或创建新的
+    const edges = graph.getConnectedEdges(node)
+    const usedOutputPortIds = new Set(
+      edges
+        .filter((e: Edge) => {
+          const src = e.getSource() as Edge.TerminalCellData
+          return src?.cell === nodeId
+        })
+        .map((e: Edge) => {
+          const src = e.getSource() as Edge.TerminalCellData
+          return src?.port
+        })
+        .filter(Boolean)
+    )
+
+    // 查找第一个未连接的输出 port
+    const freePort = outPorts.find((p: any) => !usedOutputPortIds.has(p.id))
+    if (freePort) return freePort.id
+
+    // 创建新的输出 port
+    const newPortId = `out-${outPorts.length}`
+    node.addPort({ id: newPortId, group: 'out' })
+    return newPortId
+  }
+
+  // 查找或创建输入 port
+  const findOrCreateInputPort = (node: Node, nodeId: string): string | null => {
+    const nodeShape = node.shape
+    const supportsMultiple = edgeRules?.supportsMultiplePorts?.(nodeShape) ?? false
+    const ports = node.getPorts() || []
+
+    // 获取输入 ports（group 为 'in'）
+    const inPorts = ports.filter((p: any) => p.group === 'in')
+
+    if (!supportsMultiple) {
+      // 固定 port 节点：使用已有的单个输入 port
+      return inPorts[0]?.id || null
+    }
+
+    // 动态 port 节点：查找未连接的空闲输入 port 或创建新的
+    const edges = graph.getConnectedEdges(node)
+    const usedInputPortIds = new Set(
+      edges
+        .filter((e: Edge) => {
+          const tgt = e.getTarget() as Edge.TerminalCellData
+          return tgt?.cell === nodeId
+        })
+        .map((e: Edge) => {
+          const tgt = e.getTarget() as Edge.TerminalCellData
+          return tgt?.port
+        })
+        .filter(Boolean)
+    )
+
+    // 查找第一个未连接的输入 port
+    const freePort = inPorts.find((p: any) => !usedInputPortIds.has(p.id))
+    if (freePort) return freePort.id
+
+    // 创建新的输入 port
+    const newPortId = `in-${inPorts.length}`
+    node.addPort({ id: newPortId, group: 'in' })
+    return newPortId
+  }
+
+  // ======== 事件处理 ========
+
   // 处理选择起始节点
   const handleSelectSource = (option: NodeOption) => {
     unhighlightNode(option.id)
@@ -185,14 +295,28 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules }) => {
 
     cleanupTempEdge()
 
-    const sourceNode = graph.getCellById(sourceId)
-    const targetNode = graph.getCellById(targetId)
+    const sourceNode = graph.getCellById(sourceId) as Node
+    const targetNode = graph.getCellById(targetId) as Node
     if (!sourceNode || !targetNode) return
 
-    // 构建边的配置
+    // 确保两个节点都有 port groups 和初始 ports
+    ensurePortGroups(sourceNode)
+    ensureInitialPorts(sourceNode)
+    ensurePortGroups(targetNode)
+    ensureInitialPorts(targetNode)
+
+    // 查找或创建源节点输出 port
+    const sourcePortId = findOrCreateOutputPort(sourceNode, sourceId)
+    if (!sourcePortId) return
+
+    // 查找或创建目标节点输入 port
+    const targetPortId = findOrCreateInputPort(targetNode, targetId)
+    if (!targetPortId) return
+
+    // 构建边的配置（通过 port 连接）
     const edgeConfig: any = {
-      source: sourceId,
-      target: targetId,
+      source: { cell: sourceId, port: sourcePortId },
+      target: { cell: targetId, port: targetPortId },
       attrs: {
         line: {
           stroke: '#1890ff',
@@ -206,22 +330,6 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules }) => {
         // 保存 sourceOutput 用于导出时判断 condition 节点的分支
         sourceOutput: sourceOutput || undefined,
       },
-    }
-
-    // 如果有边规则，应用锚点配置
-    if (edgeRules) {
-      if (edgeRules.getSourceAnchor) {
-        const sourceAnchor = edgeRules.getSourceAnchor(sourceId, sourceNode.shape, sourceOutput)
-        if (sourceAnchor) {
-          edgeConfig.source = { cell: sourceId, ...sourceAnchor }
-        }
-      }
-      if (edgeRules.getTargetAnchor) {
-        const targetAnchor = edgeRules.getTargetAnchor(targetId, targetNode.shape)
-        if (targetAnchor) {
-          edgeConfig.target = { cell: targetId, ...targetAnchor }
-        }
-      }
     }
 
     graph.addEdge(edgeConfig)
