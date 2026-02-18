@@ -349,6 +349,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
               />
             ) : (
               <DslEditor
+                sectionKey={sectionKey}
                 value={dslContent}
                 loading={dslLoading}
                 error={dslError}

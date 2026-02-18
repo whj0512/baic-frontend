@@ -1,4 +1,3 @@
-import React from 'react'
 import { register } from '@antv/x6-react-shape'
 import type { GraphStrategy, FormConfig } from './types'
 import Call from '../../nodes/internalConstraints/Call';
