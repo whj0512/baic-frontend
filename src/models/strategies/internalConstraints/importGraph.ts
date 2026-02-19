@@ -12,12 +12,23 @@ interface RenderConfig {
   visible?: boolean
 }
 
+// API 返回的 port 数据
+interface ApiPortItem {
+  id: string
+  group: string // 后端使用 'top' | 'bottom' | 'left' | 'right'
+}
+
+interface ApiPorts {
+  items: ApiPortItem[]
+}
+
 // API 返回的节点数据
 interface ApiNode {
   id: string
   type_name: string
   desc?: string
   render_config: RenderConfig
+  ports?: ApiPorts
   // State 节点属性
   pre_think_time?: number
   post_think_time?: number
@@ -113,6 +124,53 @@ const defaultNodeStyle: Record<string, { stroke: string; fill: string }> = {
   'goto-node': { stroke: '#333', fill: '#fff' },
 }
 
+// 后端 port group 名称 → X6 port group 名称 的映射
+const portGroupMapping: Record<string, string> = {
+  'top': 'in',
+  'bottom': 'out',
+  'left': 'out-no',
+  'right': 'out-yes',
+}
+
+// Port 基础样式
+const basePortStyle = {
+  r: 4,
+  magnet: true,
+  stroke: '#1890ff',
+  fill: '#fff',
+  strokeWidth: 1,
+}
+
+// 根据 shape 获取 port groups 配置（与 edgeRules.getPortGroups 保持一致）
+const getPortGroupsForShape = (shape: string): Record<string, any> => {
+  if (shape === 'condition-node') {
+    return {
+      in: {
+        position: 'top',
+        attrs: { circle: { ...basePortStyle } },
+      },
+      'out-yes': {
+        position: 'right',
+        attrs: { circle: { ...basePortStyle, stroke: '#52c41a' } },
+      },
+      'out-no': {
+        position: 'left',
+        attrs: { circle: { ...basePortStyle, stroke: '#ff4d4f' } },
+      },
+    }
+  }
+  return {
+    in: {
+      position: 'top',
+      attrs: { circle: { ...basePortStyle } },
+    },
+    out: {
+      position: 'bottom',
+      attrs: { circle: { ...basePortStyle } },
+    },
+  }
+}
+
 /**
  * 将 API 节点转换为 X6 节点数据
  */
@@ -173,6 +231,23 @@ const convertNode = (apiNode: ApiNode): any => {
       break
   }
 
+  // 解析 ports
+  const portGroups = getPortGroupsForShape(shape)
+  const portItems: any[] = []
+
+  if (apiNode.ports?.items) {
+    apiNode.ports.items.forEach(item => {
+      const x6Group = portGroupMapping[item.group] || item.group
+      // 仅添加 port groups 中存在的 group
+      if (portGroups[x6Group]) {
+        portItems.push({
+          id: item.id,
+          group: x6Group,
+        })
+      }
+    })
+  }
+
   return {
     id: apiNode.id,
     shape,
@@ -181,6 +256,10 @@ const convertNode = (apiNode: ApiNode): any => {
     width: defaultSize.width,
     height: defaultSize.height,
     data: nodeData,
+    ports: {
+      groups: portGroups,
+      items: portItems,
+    },
   }
 }
 
@@ -199,11 +278,20 @@ const convertEdge = (apiTransition: ApiTransition): any => {
     test_coverage: apiTransition.test_coverage,
   }
 
+  // 构建 source / target（带 port 连接）
+  const source: any = apiTransition.sourcePort
+    ? { cell: apiTransition.source_node, port: apiTransition.sourcePort }
+    : apiTransition.source_node
+
+  const target: any = apiTransition.targetPort
+    ? { cell: apiTransition.target_node, port: apiTransition.targetPort }
+    : apiTransition.target_node
+
   return {
     id: apiTransition.id,
     shape: 'edge',
-    source: apiTransition.source_node,
-    target: apiTransition.target_node,
+    source,
+    target,
     attrs: {
       line: {
         stroke: '#1890ff',
