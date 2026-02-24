@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Button, message, Spin } from 'antd'
+import { Button, message, Spin, Badge } from 'antd'
 import { ShareAltOutlined } from '@ant-design/icons'
 import './ProjectWorkSpace.css'
 import type { Requirement } from '../models/Requirement'
@@ -9,6 +9,7 @@ import RequirementOverview, { type SectionKey } from '../components/RequirementO
 import DimensionEditor from '../components/DimensionEditor'
 import RequirementCreator from '../components/RequirementCreator/RequirementCreator'
 import { API_ENDPOINTS } from '../config/api'
+import { useProjectSync } from '../hooks/useProjectSync'
 
 // 中间区域视图类型
 type CenterView = 'overview' | 'editor' | 'create' | 'create-editor'
@@ -19,7 +20,6 @@ function ProjectWorkSpace() {
 
   // 状态
   const [project, setProject] = useState<any>(null)
-  const [requirements, setRequirements] = useState<Requirement[]>([])
   const [requirementVersions, setRequirementVersions] = useState<RequirementVersion[]>([])
   const [loading, setLoading] = useState(false)
   const [loadingVersions, setLoadingVersions] = useState(false)
@@ -33,14 +33,12 @@ function ProjectWorkSpace() {
   // 当前编辑的 section
   const [editingSection, setEditingSection] = useState<SectionKey | null>(null)
 
-  // 初始化：获取项目信息和需求列表
-  // 修正后的 Effect
+  // 初始化：获取项目元信息（仅 project，需求列表由 WebSocket 提供）
   useEffect(() => {
-    const initWorkspace = async () => {
+    const initProject = async () => {
       if (!projectKey) return
       setLoading(true)
       try {
-        // 1. 获取项目列表以解析 projectKey -> projectId
         const projRes = await fetch(API_ENDPOINTS.projects)
         if (!projRes.ok) throw new Error('获取项目列表失败')
         const projData = await projRes.json()
@@ -54,16 +52,6 @@ function ProjectWorkSpace() {
         }
 
         setProject(currentProject)
-
-        // 2. 获取该项目的需求列表
-        // 构造 URL: API_ENDPOINTS.projects + /:id/requirements
-        const reqsUrl = `${API_ENDPOINTS.projects}/${currentProject.id}/requirements`
-        const reqRes = await fetch(reqsUrl)
-        if (!reqRes.ok) throw new Error('获取需求列表失败')
-        const reqData = await reqRes.json()
-
-        setRequirements(reqData || [])
-
       } catch (error) {
         console.error('Init error:', error)
         message.error('加载项目资源失败')
@@ -72,8 +60,11 @@ function ProjectWorkSpace() {
       }
     }
 
-    initWorkspace()
+    initProject()
   }, [projectKey, navigate])
+
+  // WebSocket 实时同步需求列表
+  const { requirements, isConnected } = useProjectSync(project?.id)
 
   // 获取选中需求的详细信息（包括版本历史）
   useEffect(() => {
@@ -155,46 +146,11 @@ function ProjectWorkSpace() {
     setCenterView('overview')
   }
 
-  // SectionKey 到 Requirement 字段的映射
-  const SECTION_FIELD_MAP: Record<SectionKey, { graphField: keyof Requirement; dslField: keyof Requirement }> = {
-    environment: { graphField: 'graph_IBD', dslField: 'dsl_IBD' },
-    interaction: { graphField: 'graph_ESD', dslField: 'dsl_ESD' },
-    internalComposition: { graphField: 'graph_BDD', dslField: 'dsl_BDD' },
-    moduleResponses: { graphField: 'graph_ISD', dslField: 'dsl_ISD' },
-    internalConstraints: { graphField: 'graph_SC', dslField: 'dsl_SC' },
-  }
-
-  // 保存编辑器数据 —— 将 graph/dsl 数据同步到 requirements 状态
-  const handleEditorSave = (sectionKey: SectionKey, graphData: object, dslText: string) => {
-    if (!selectedRequirement) return
-
-    const fieldMap = SECTION_FIELD_MAP[sectionKey]
-
-    // 构造完整的 dsl_text：将各维度的 DSL 拼接
-    const ALL_SECTIONS: SectionKey[] = ['environment', 'interaction', 'internalComposition', 'moduleResponses', 'internalConstraints']
-
-    // 更新 requirements 列表中对应需求的字段
-    setRequirements(prev =>
-      prev.map(req => {
-        if (req.id !== selectedRequirement) return req
-
-        // 构造 dslParts：当前编辑维度使用最新的 dslText，其他维度使用已有值
-        const dslParts = ALL_SECTIONS.map(key => {
-          const cfg = SECTION_FIELD_MAP[key]
-          if (key === sectionKey) {
-            return dslText
-          }
-          return (req[cfg.dslField] as string) || ''
-        }).filter(Boolean)
-
-        return {
-          ...req,
-          [fieldMap.graphField]: graphData,
-          [fieldMap.dslField]: dslText,
-          dsl_text: dslParts.join('\n\n'),
-        }
-      })
-    )
+  // 保存编辑器数据 —— DimensionEditor 内部已通过 PUT API 保存到后端
+  // WebSocket 会推送 requirement_updated 事件自动更新 requirements 状态
+  const handleEditorSave = (_sectionKey: SectionKey, _graphData: object, _dslText: string) => {
+    // 数据已由 DimensionEditor 通过 PUT API 提交
+    // useProjectSync 会通过 WebSocket 接收 requirement_updated 事件并更新状态
   }
 
   // 选择需求时重置视图
@@ -252,13 +208,6 @@ function ProjectWorkSpace() {
     project_id: projectKey || '',
     current_version_id: '',
     nl_text: createFormData.nl_text,
-    dsl_text: [
-      createFormData.sectionDslData.environment,
-      createFormData.sectionDslData.interaction,
-      createFormData.sectionDslData.internalComposition,
-      createFormData.sectionDslData.moduleResponses,
-      createFormData.sectionDslData.internalConstraints
-    ].filter(Boolean).join('\n\n'), // Concatenate all DSL texts
     created_by: 'CurrentUser',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -282,7 +231,10 @@ function ProjectWorkSpace() {
       <div className="workspace-left">
         {/* ... (Unchanged) ... */}
         <div className="panel-header">
-          <h3>需求列表</h3>
+          <h3>
+            需求列表
+            <Badge status={isConnected ? 'success' : 'error'} style={{ marginLeft: 8 }} title={isConnected ? '实时同步已连接' : '实时同步已断开'} />
+          </h3>
           <button
             className="btn-icon"
             title="新建需求"

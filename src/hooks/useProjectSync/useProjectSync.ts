@@ -12,7 +12,7 @@ interface WebSocketMessage {
 }
 
 const MAX_RETRIES = 5
-const HEARTBEAT_INTERVAL = 30000 // 30s
+const HEARTBEAT_INTERVAL = 15000 // 15s
 
 /**
  * WebSocket 同步 Hook —— 订阅项目级需求变更

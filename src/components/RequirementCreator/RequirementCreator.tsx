@@ -170,13 +170,11 @@ function RequirementCreator({
                     graph_BDD: currentFormData.sectionData.internalComposition,
                     graph_ISD: currentFormData.sectionData.moduleResponses,
                     graph_SC: currentFormData.sectionData.internalConstraints,
-                    dsl_text: [
-                        currentFormData.sectionDslData.environment,
-                        currentFormData.sectionDslData.interaction,
-                        currentFormData.sectionDslData.internalComposition,
-                        currentFormData.sectionDslData.moduleResponses,
-                        currentFormData.sectionDslData.internalConstraints
-                    ].filter(Boolean).join('\n\n'), // Concatenate all DSL texts
+                    dsl_IBD: currentFormData.sectionDslData.environment,
+                    dsl_ESD: currentFormData.sectionDslData.interaction,
+                    dsl_BDD: currentFormData.sectionDslData.internalComposition,
+                    dsl_ISD: currentFormData.sectionDslData.moduleResponses,
+                    dsl_SC: currentFormData.sectionDslData.internalConstraints,
                 })
             })
 

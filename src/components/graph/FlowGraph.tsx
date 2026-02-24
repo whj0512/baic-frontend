@@ -3,7 +3,7 @@ import { Graph, Snapline, Stencil, Edge, Cell } from '@antv/x6'
 import { register } from '@antv/x6-react-shape'
 import { Dropdown } from 'antd'
 import type { MenuProps } from 'antd'
-import { DeleteOutlined } from '@ant-design/icons'
+import { DeleteOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
 import NodeWrapper from '../nodes/common/NodeWrapper'
 import { getStrategy } from './strategies'
 import FormPanelContainer from '../form-panel'
@@ -37,6 +37,8 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
     const graphRef = useRef<Graph | null>(null)
     const stencilRef = useRef<Stencil | null>(null)
     const [graphReady, setGraphReady] = useState(false)
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+    const [formPanelCollapsed, setFormPanelCollapsed] = useState(true)
 
     // 右键菜单状态
     const [contextMenu, setContextMenu] = useState<{
@@ -295,11 +297,20 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
     return (
       <div className="flow-graph-container" onClick={closeContextMenu}>
         {!readOnly && (
-          <div
-            className="graph-sidebar"
-            ref={stencilContainerRef}
-            style={{ padding: 0 }}
-          />
+          <div className={`graph-sidebar-wrapper${sidebarCollapsed ? ' collapsed' : ''}`}>
+            <div
+              className="graph-sidebar"
+              ref={stencilContainerRef}
+              style={{ padding: 0 }}
+            />
+            <button
+              className="panel-toggle-btn sidebar-toggle-btn"
+              onClick={() => setSidebarCollapsed(prev => !prev)}
+              title={sidebarCollapsed ? '展开组件库' : '收起组件库'}
+            >
+              {sidebarCollapsed ? <RightOutlined /> : <LeftOutlined />}
+            </button>
+          </div>
         )}
         <div className="graph-content-wrapper">
           <div ref={containerRef} className="x6-graph-container" />
@@ -312,10 +323,19 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
         </div>
         {/* 右侧表单面板 */}
         {!readOnly && graphReady && graphRef.current && (
-          <FormPanelContainer
-            graph={graphRef.current}
-            formConfig={strategy.formConfig}
-          />
+          <div className={`form-panel-wrapper${formPanelCollapsed ? ' collapsed' : ''}`}>
+            <button
+              className="panel-toggle-btn form-panel-toggle-btn"
+              onClick={() => setFormPanelCollapsed(prev => !prev)}
+              title={formPanelCollapsed ? '展开属性面板' : '收起属性面板'}
+            >
+              {formPanelCollapsed ? <LeftOutlined /> : <RightOutlined />}
+            </button>
+            <FormPanelContainer
+              graph={graphRef.current}
+              formConfig={strategy.formConfig}
+            />
+          </div>
         )}
         {/* 右键菜单 */}
         {contextMenu.visible && (

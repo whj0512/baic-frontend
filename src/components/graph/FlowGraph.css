@@ -11,6 +11,14 @@
   flex-direction: row;
 }
 
+/* 左侧面板 wrapper */
+.graph-sidebar-wrapper {
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  position: relative;
+}
+
 .graph-sidebar {
   width: 160px;
   background-color: #ffffff;
@@ -22,6 +30,14 @@
   flex-shrink: 0;
   overflow: hidden;
   position: relative;
+  transition: width 0.3s ease, opacity 0.3s ease;
+}
+
+.graph-sidebar-wrapper.collapsed .graph-sidebar {
+  width: 0;
+  border-right: none;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Stencil 容器样式约束 */
@@ -113,10 +129,59 @@
   z-index: 10;
 }
 
-/* 右侧表单面板已在 form-panel/FormPanel.css 中定义 */
-/* 确保三栏布局正确 */
-.flow-graph-container > .form-panel {
+/* 右侧表单面板 wrapper */
+.form-panel-wrapper {
+  display: flex;
+  flex-direction: row;
   flex-shrink: 0;
+  position: relative;
+}
+
+.form-panel-wrapper .form-panel {
+  transition: width 0.3s ease, opacity 0.3s ease;
+}
+
+.form-panel-wrapper.collapsed .form-panel {
+  width: 0;
+  overflow: hidden;
+  border-left: none;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 面板收起/展开按钮 */
+.panel-toggle-btn {
+  width: 20px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  font-size: 12px;
+  color: #6b7280;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  z-index: 5;
+  padding: 0;
+  align-self: center;
+}
+
+.panel-toggle-btn:hover {
+  background: #f3f4f6;
+  color: #1890ff;
+  border-color: #1890ff;
+}
+
+.sidebar-toggle-btn {
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+}
+
+.form-panel-toggle-btn {
+  border-right: none;
+  border-radius: 4px 0 0 4px;
 }
 
 /* Dark mode */
@@ -129,6 +194,18 @@
   .graph-sidebar {
     background-color: #1f2937;
     border-right-color: #374151;
+  }
+
+  .panel-toggle-btn {
+    background: #374151;
+    border-color: #4b5563;
+    color: #d1d5db;
+  }
+
+  .panel-toggle-btn:hover {
+    background: #4b5563;
+    color: #60a5fa;
+    border-color: #60a5fa;
   }
 
   .sidebar-title {

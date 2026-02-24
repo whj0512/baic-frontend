@@ -4,7 +4,6 @@ export interface Requirement {
   current_version_id: string
   previous_version_id?: string
   nl_text?: string
-  dsl_text?: string
   dsl_IBD?: string
   dsl_ESD?: string
   dsl_SC?: string

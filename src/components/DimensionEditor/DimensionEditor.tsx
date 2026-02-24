@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { Button, message, Select } from 'antd'
 import { ArrowLeftOutlined, SaveOutlined, DownloadOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import type { Requirement } from '../../models/Requirement'
@@ -59,7 +59,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
   const flowGraphRef = useRef<FlowGraphRef>(null)
 
   // 视图模式状态
-  const [viewMode, setViewMode] = useState<ViewMode>('visual')
+  const [viewMode, setViewMode] = useState<ViewMode>('dsl')
 
   // Use specific DSL field for the current section
   const [dslContent, setDslContent] = useState(requirement[config.dslField as keyof Requirement] as string || '')
@@ -74,6 +74,31 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
     graphDataRef.current = data
     setGraphData(data)
   }
+
+  // 监听远程 graph 数据变化（WebSocket 推送导致 requirement prop 更新）
+  useEffect(() => {
+    const remoteGraph = (requirement[config.graphField] as object) || {}
+    const remoteStr = JSON.stringify(remoteGraph)
+    const localStr = JSON.stringify(graphDataRef.current)
+
+    if (remoteStr !== localStr && remoteStr !== '{}') {
+      message.info('其他用户更新了图数据，已自动同步')
+      setGraphData(remoteGraph)
+      graphDataRef.current = remoteGraph
+      const graph = flowGraphRef.current?.getGraph()
+      if (graph) graph.fromJSON(remoteGraph)
+    }
+  }, [requirement, config.graphField])
+
+  // 监听远程 DSL 数据变化
+  useEffect(() => {
+    const remoteDsl = (requirement[config.dslField as keyof Requirement] as string) || ''
+    if (remoteDsl && remoteDsl !== dslContent) {
+      message.info('其他用户更新了 DSL 数据，已自动同步')
+      setDslContent(remoteDsl)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requirement, config.dslField])
 
   // 使用大模型生成 DSL
   const handleGenerateDsl = useCallback(async () => {
@@ -219,23 +244,9 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
     try {
       const token = localStorage.getItem('token')
 
-      // 构造完整的 dsl_text：将各维度的 DSL 拼接
-      // 当前编辑维度使用最新的 dslContent，其他维度使用 requirement 上已有的值
-      const ALL_SECTIONS: SectionKey[] = ['environment', 'interaction', 'internalComposition', 'moduleResponses', 'internalConstraints']
-      const dslParts = ALL_SECTIONS.map(key => {
-        const cfg = SECTION_CONFIG[key]
-        if (key === sectionKey) {
-          // 当前正在编辑的维度，使用最新内容
-          return dslContent
-        }
-        // 其他维度，从 requirement 对象中读取
-        return (requirement[cfg.dslField] as string) || ''
-      }).filter(Boolean)
-
       const payload = {
         [config.graphField]: graphDataRef.current,
         [config.dslField]: dslContent,
-        dsl_text: dslParts.join('\n\n'),
         nl_text: content
       }
 
