@@ -28,4 +28,6 @@ export const API_ENDPOINTS = {
   projects: `${DSL_SERVICE_BASE_URL}/projects`,
   // 需求管理
   requirements: `${DSL_SERVICE_BASE_URL}/requirements`,
+  // 单条需求操作（GET / PUT / DELETE）
+  requirementById: (id: string) => `${DSL_SERVICE_BASE_URL}/requirements/${id}`,
 }

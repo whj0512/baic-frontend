@@ -113,7 +113,7 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
         </div>
 
         {/* DSL 文本 (按维度) */}
-        <div className="overview-section">
+        {/* <div className="overview-section">
           <div className="section-header">
             <span className="section-title">DSL 表示</span>
           </div>
@@ -134,7 +134,7 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
               <span className="text-placeholder">暂无 DSL 定义</span>
             </div>
           )}
-        </div>
+        </div> */}
 
         {/* 五维模型列表 */}
         <div className="overview-section">

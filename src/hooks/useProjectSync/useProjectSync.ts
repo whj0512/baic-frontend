@@ -152,5 +152,5 @@ export function useProjectSync(projectId: string | undefined) {
         return cleanup
     }, [projectId, cleanup])
 
-    return { requirements, isConnected }
+    return { requirements, isConnected, removeRequirement: (id: string) => setRequirements(prev => prev.filter(r => r.id !== id)) }
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Button, message, Spin, Badge } from 'antd'
-import { ShareAltOutlined } from '@ant-design/icons'
+import { Button, message, Spin, Badge, Modal } from 'antd'
+import { ShareAltOutlined, ArrowLeftOutlined, DeleteOutlined } from '@ant-design/icons'
 import './ProjectWorkSpace.css'
 import type { Requirement } from '../models/Requirement'
 import type { RequirementVersion } from '../models/RequirementVersion'
@@ -32,6 +32,10 @@ function ProjectWorkSpace() {
 
   // 当前编辑的 section
   const [editingSection, setEditingSection] = useState<SectionKey | null>(null)
+
+  // 删除模式
+  const [deleteMode, setDeleteMode] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   // 初始化：获取项目元信息（仅 project，需求列表由 WebSocket 提供）
   useEffect(() => {
@@ -64,7 +68,7 @@ function ProjectWorkSpace() {
   }, [projectKey, navigate])
 
   // WebSocket 实时同步需求列表
-  const { requirements, isConnected } = useProjectSync(project?.id)
+  const { requirements, isConnected, removeRequirement } = useProjectSync(project?.id)
 
   // 获取选中需求的详细信息（包括版本历史）
   useEffect(() => {
@@ -160,7 +164,46 @@ function ProjectWorkSpace() {
     setEditingSection(null)
   }
 
-  // 处理新建需求
+  // 删除需求
+  const handleDeleteRequirement = (req: Requirement) => {
+    Modal.confirm({
+      title: '确认删除需求',
+      content: `确定要删除该需求吗？当前可能有用户正在编辑这条需求。`,
+      okText: '删除',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        setDeleting(true)
+        try {
+          const token = localStorage.getItem('token')
+          const response = await fetch(API_ENDPOINTS.requirementById(req.id), {
+            method: 'DELETE',
+            headers: {
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+          })
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.detail || '删除失败')
+          }
+          message.success('需求已删除')
+          removeRequirement(req.id)
+          if (selectedRequirement === req.id) {
+            setSelectedRequirement(null)
+            setCenterView('overview')
+          }
+          setDeleteMode(false)
+        } catch (error: any) {
+          console.error('Delete error:', error)
+          message.error(error.message || '删除失败，请稍后重试')
+        } finally {
+          setDeleting(false)
+        }
+      },
+    })
+  }
+
+
   const handleCreateRequirement = () => {
     setSelectedRequirement(null)
     setCenterView('create')
@@ -231,17 +274,37 @@ function ProjectWorkSpace() {
       <div className="workspace-left">
         {/* ... (Unchanged) ... */}
         <div className="panel-header">
-          <h3>
-            需求列表
-            <Badge status={isConnected ? 'success' : 'error'} style={{ marginLeft: 8 }} title={isConnected ? '实时同步已连接' : '实时同步已断开'} />
-          </h3>
-          <button
-            className="btn-icon"
-            title="新建需求"
-            onClick={handleCreateRequirement}
-          >
-            +
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Button
+              type="text"
+              icon={<ArrowLeftOutlined />}
+              onClick={() => navigate("/")}
+              style={{ padding: '4px' }}
+              title="返回上页"
+            />
+            <h3>
+              需求列表
+              <Badge status={isConnected ? 'success' : 'error'} style={{ marginLeft: 8 }} title={isConnected ? '实时同步已连接' : '实时同步已断开'} />
+            </h3>
+          </div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button
+              className={`btn-icon${deleteMode ? ' btn-icon-active' : ''}`}
+              title={deleteMode ? '退出删除模式' : '删除需求'}
+              onClick={() => setDeleteMode(prev => !prev)}
+              disabled={deleting}
+            >
+              <DeleteOutlined />
+            </button>
+            <button
+              className="btn-icon"
+              title="新建需求"
+              onClick={handleCreateRequirement}
+              disabled={deleteMode}
+            >
+              +
+            </button>
+          </div>
         </div>
         <div className="requirement-list">
           <Spin spinning={loading}>
@@ -251,12 +314,14 @@ function ProjectWorkSpace() {
             {requirements.map((req) => (
               <div
                 key={req.id}
-                className={`requirement-item ${selectedRequirement === req.id ? 'selected' : ''}`}
-                onClick={() => handleRequirementSelect(req.id)}
+                className={`requirement-item ${selectedRequirement === req.id && !deleteMode ? 'selected' : ''} ${deleteMode ? 'delete-mode-item' : ''}`}
+                onClick={() => deleteMode ? handleDeleteRequirement(req) : handleRequirementSelect(req.id)}
               >
                 <div className="requirement-item-header">
-                  <span className="requirement-id">{req.id}</span>
                   <span className="requirement-date">{formatDate(req.updated_at)}</span>
+                  {deleteMode && (
+                    <DeleteOutlined style={{ color: '#ff4d4f', fontSize: 13 }} />
+                  )}
                 </div>
                 <div className="requirement-item-content">
                   {truncateText(req.nl_text, 50)}
@@ -280,7 +345,7 @@ function ProjectWorkSpace() {
       {/* Center Panel */}
       <div className="workspace-center">
         {centerView === 'overview' && (
-          <Spin spinning={loadingVersions}>
+          <Spin spinning={loadingVersions} wrapperClassName="overview-spin-wrapper">
             <RequirementOverview
               requirement={currentRequirement || null}
               versions={currentVersions}
