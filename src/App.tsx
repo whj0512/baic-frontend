@@ -3,12 +3,8 @@ import MainLayout from './layouts/MainLayout'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
-import ProjectManagement from './pages/ProjectManagement'
 import ProjectWorkSpace from './pages/ProjectWorkSpace'
 import CreateProject from './pages/CreateProject'
-import ProjectDetail from './pages/ProjectDetail'
-import CreateRequirement from './pages/CreateRequirement'
-import RequirementSectionEditor from './pages/RequirementSectionEditor'
 import RelationshipAnalysis from './pages/RelationshipAnalysis'
 import './App.css'
 
@@ -22,12 +18,7 @@ function App() {
         {/* Authenticated Routes wrapped in MainLayout */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
-          <Route path="/project" element={<ProjectManagement />} />
           <Route path="/workspace/:projectKey" element={<ProjectWorkSpace />} />
-          <Route path="/project/:type" element={<ProjectManagement />} />
-          <Route path="/project/:type/:id" element={<ProjectDetail />} />
-          <Route path="/project/:type/:id/create" element={<CreateRequirement />} />
-          <Route path="/project/:type/:id/create/section/:sectionKey" element={<RequirementSectionEditor />} />
           <Route path="/workspace/:projectKey/relationship" element={<RelationshipAnalysis />} />
           <Route path="/create-project" element={<CreateProject />} />
         </Route>
