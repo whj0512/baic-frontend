@@ -347,6 +347,9 @@ const internalConstraintsStrategy: DslEditorStrategy = {
     themeId,
     theme,
     completionItemProviders: [nodeCompletionProvider, propertyCompletionProvider],
+    lsp: {
+        wsUrl: 'ws://127.0.0.1:3000',
+    },
 };
 
 export default internalConstraintsStrategy;

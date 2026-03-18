@@ -1,8 +1,10 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useEffect, useRef, useCallback } from 'react'
 import { Spin } from 'antd'
 import './DslEditor.css'
 import { Editor, type Monaco } from '@monaco-editor/react'
+import type * as monacoNs from 'monaco-editor'
 import { getStrategy } from './strategies'
+import { connectLsp } from './lspClient'
 
 interface DslEditorProps {
   sectionKey: string
@@ -21,15 +23,20 @@ const DslEditor: React.FC<DslEditorProps> = ({
   onChange,
   readOnly = true,
 }) => {
-  const handleChange = (value, event) => {
-    // here is the current value
-    onChange?.(value)
+  const handleChange = (value: string | undefined) => {
+    onChange?.(value ?? '')
   }
 
   const strategy = useMemo(() => getStrategy(sectionKey), [sectionKey])
-  const { languageId, monarchTokensProviders, themeId, theme, completionItemProviders } = strategy
+  const { languageId, monarchTokensProviders, themeId, theme, completionItemProviders, lsp } = strategy
 
-  const handleBeforeMount = (monaco: Monaco) => {
+  // Refs to hold editor & monaco instances for LSP lifecycle
+  const editorRef = useRef<monacoNs.editor.IStandaloneCodeEditor | null>(null)
+  const monacoRef = useRef<typeof monacoNs | null>(null)
+  const lspRef = useRef<{ dispose: () => void } | null>(null)
+  const [isEditorMounted, setIsEditorMounted] = React.useState(false)
+
+  const handleBeforeMount = useCallback((monaco: Monaco) => {
     monaco.languages.register({ id: languageId });
     if (monarchTokensProviders) {
       monaco.languages.setMonarchTokensProvider(languageId, monarchTokensProviders);
@@ -42,7 +49,35 @@ const DslEditor: React.FC<DslEditorProps> = ({
         monaco.languages.registerCompletionItemProvider(languageId, provider);
       });
     }
-  }
+  }, [languageId, monarchTokensProviders, themeId, theme, completionItemProviders])
+
+  const handleMount = useCallback((
+    editor: monacoNs.editor.IStandaloneCodeEditor,
+    monaco: typeof monacoNs,
+  ) => {
+    editorRef.current = editor
+    monacoRef.current = monaco
+    setIsEditorMounted(true)
+  }, [])
+
+  // LSP connection lifecycle — connect when editor is mounted and lsp config exists
+  useEffect(() => {
+    if (!lsp || !isEditorMounted || !editorRef.current || !monacoRef.current) return
+
+    const conn = connectLsp(
+      lsp.wsUrl,
+      editorRef.current,
+      monacoRef.current,
+      languageId,
+      lsp.documentUri,
+    )
+    lspRef.current = conn
+
+    return () => {
+      conn.dispose()
+      lspRef.current = null
+    }
+  }, [lsp, languageId, isEditorMounted])
 
   if (loading) {
     return (
@@ -67,6 +102,7 @@ const DslEditor: React.FC<DslEditorProps> = ({
         value={value}
         onChange={handleChange}
         beforeMount={handleBeforeMount}
+        onMount={handleMount}
         theme={themeId || 'vs-dark'}
         language={languageId}
         options={{
