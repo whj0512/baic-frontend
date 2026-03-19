@@ -86,4 +86,8 @@ export interface GraphStrategy {
   formConfig?: FormConfig
   // 边规则配置
   edgeRules?: EdgeRules
+  // 拖拽面板布局配置
+  stencilLayoutOptions?: any
+  stencilGraphWidth?: number
+  stencilGraphHeight?: number
 }

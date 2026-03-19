@@ -165,8 +165,8 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
         const stencil = new Stencil({
           title: '组件库',
           target: graph,
-          stencilGraphWidth: 160,
-          stencilGraphHeight: 0,
+          stencilGraphWidth: strategy.stencilGraphWidth || 160,
+          stencilGraphHeight: strategy.stencilGraphHeight || 0,
           collapsable: true,
           groups: [
             {
@@ -174,7 +174,7 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
               title: '基础组件',
             },
           ],
-          layoutOptions: {
+          layoutOptions: strategy.stencilLayoutOptions || {
             columns: 1,
             columnWidth: 140,
             rowHeight: 120,

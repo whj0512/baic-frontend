@@ -8,6 +8,17 @@ import ControllerUnit from '../../nodes/environment/ControllerUnit'
 import Machine from '../../nodes/environment/Machine'
 
 const environmentStrategy: GraphStrategy = {
+  stencilLayoutOptions: {
+    columns: 1,
+    columnWidth: 100,
+    rowHeight: 160,
+    center: true,
+    resizeToFit: true,
+    marginX: 10,
+    marginY: 10,
+  },
+  stencilGraphWidth: 120,
+  stencilGraphHeight: 1000,
   sidebarItems: [
     {
       type: 'device',
