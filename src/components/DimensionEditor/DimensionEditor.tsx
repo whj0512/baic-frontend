@@ -42,7 +42,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
   // 获取初始的图数据
   const getInitialGraphData = (): object => {
     const graphField = config.graphField
-    console.log('getInitialGraphData', requirement[graphField])
+    // console.log('getInitialGraphData', requirement[graphField])
     return (requirement[graphField] as object) || {}
   }
 

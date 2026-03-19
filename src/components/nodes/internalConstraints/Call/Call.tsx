@@ -1,5 +1,5 @@
 import React from 'react'
-import NodeWrapper from '../../common/NodeWrapper'
+import NodeWrapper from '../NodeWrapper'
 
 const Call = (props: any) => (
   <NodeWrapper {...props} defaultContent="fx" nodeType="call" />

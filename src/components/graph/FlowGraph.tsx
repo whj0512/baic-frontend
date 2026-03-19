@@ -4,7 +4,7 @@ import { register } from '@antv/x6-react-shape'
 import { Dropdown } from 'antd'
 import type { MenuProps } from 'antd'
 import { DeleteOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
-import NodeWrapper from '../nodes/common/NodeWrapper'
+import NodeWrapper from '../nodes/internalConstraints/NodeWrapper'
 import { getStrategy } from './strategies'
 import FormPanelContainer from '../form-panel'
 import AddEdgePanel from './AddEdgePanel'
@@ -177,7 +177,7 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
           layoutOptions: {
             columns: 1,
             columnWidth: 140,
-            rowHeight: 80,
+            rowHeight: 120,
           },
         })
 

@@ -1,5 +1,5 @@
 import React from 'react'
-import NodeWrapper from '../../common/NodeWrapper'
+import NodeWrapper from '../NodeWrapper'
 
 const Graph = (props: any) => (
   <NodeWrapper {...props} defaultContent="G" nodeType="graph" />
