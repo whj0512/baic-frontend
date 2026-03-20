@@ -90,4 +90,5 @@ export interface GraphStrategy {
   stencilLayoutOptions?: any
   stencilGraphWidth?: number
   stencilGraphHeight?: number
+  stencilGraphPadding?: number
 }

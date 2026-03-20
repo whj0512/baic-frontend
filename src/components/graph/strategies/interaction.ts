@@ -1,50 +1,40 @@
+import { register } from '@antv/x6-react-shape'
 import type { GraphStrategy } from './types'
+import LifelineNode from '../../nodes/interaction/NodeWrapper'
 
 const interactionStrategy: GraphStrategy = {
+  stencilLayoutOptions: {
+    columns: 1,
+    columnWidth: 'auto',
+    rowHeight: 'auto',
+    center: true,
+    resizeToFit: true,
+    marginX: 5,
+    marginY: 5,
+  },
+  stencilGraphWidth: 160,
+  stencilGraphHeight: 1000,
+  stencilGraphPadding: 5,
   sidebarItems: [
-    { 
-      type: 'user', 
-      label: '用户/角色', 
-      shape: 'ellipse', 
-      color: '#fff0f6',
+    {
+      type: 'seq-lifeline',
+      label: '生命线',
+      shape: 'seq-lifeline-node',
+      color: '#ffffffff',
       defaultAttrs: {
-        attrs: {
-          body: { fill: '#fff0f6', stroke: '#5c5c5c', strokeWidth: 1, rx: 0, ry: 0 },
-          label: { fill: '#333' }
-        },
-        width: 100,
-        height: 40
+        width: 120,
+        height: 300,
+        stroke: '#030404ff',
+        fill: '#fff',
       }
     },
-    { 
-      type: 'system', 
-      label: '外部系统', 
-      shape: 'rect', 
-      color: '#e6f7ff',
-      defaultAttrs: {
-        attrs: {
-          body: { fill: '#e6f7ff', stroke: '#5c5c5c', strokeWidth: 1, rx: 4, ry: 4 },
-          label: { fill: '#333' }
-        },
-        width: 100,
-        height: 40
-      }
-    },
-    { 
-      type: 'process', 
-      label: '交互过程', 
-      shape: 'rect', 
-      color: '#fffbe6',
-      defaultAttrs: {
-        attrs: {
-          body: { fill: '#fffbe6', stroke: '#5c5c5c', strokeWidth: 1, rx: 4, ry: 4 },
-          label: { fill: '#333' }
-        },
-        width: 100,
-        height: 40
-      }
-    },
-  ]
+  ],
+  registerNodes: () => {
+    register({
+      shape: 'seq-lifeline-node',
+      component: LifelineNode,
+    })
+  },
 }
 
 export default interactionStrategy

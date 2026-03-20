@@ -167,6 +167,7 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
           target: graph,
           stencilGraphWidth: strategy.stencilGraphWidth || 160,
           stencilGraphHeight: strategy.stencilGraphHeight || 0,
+          stencilGraphPadding: strategy.stencilGraphPadding || 10,
           collapsable: true,
           groups: [
             {
@@ -282,6 +283,14 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
       graph.use(new Snapline({ enabled: true }))
 
       return () => {
+        // 清理 stencil 实例及其 DOM
+        if (stencilRef.current) {
+          stencilRef.current.dispose()
+          stencilRef.current = null
+        }
+        if (stencilContainerRef.current) {
+          stencilContainerRef.current.innerHTML = ''
+        }
         graph.dispose()
         setGraphReady(false)
       }
@@ -301,7 +310,7 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
             <div
               className="graph-sidebar"
               ref={stencilContainerRef}
-              style={{ padding: 0 }}
+              style={{ padding: sidebarCollapsed ? 0 : strategy.stencilGraphPadding, width: sidebarCollapsed ? 0 : (strategy.stencilGraphWidth || 160) }}
             />
             <button
               className="panel-toggle-btn sidebar-toggle-btn"
