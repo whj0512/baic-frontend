@@ -299,24 +299,8 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules }) => {
     const targetNode = graph.getCellById(targetId) as Node
     if (!sourceNode || !targetNode) return
 
-    // 确保两个节点都有 port groups 和初始 ports
-    ensurePortGroups(sourceNode)
-    ensureInitialPorts(sourceNode)
-    ensurePortGroups(targetNode)
-    ensureInitialPorts(targetNode)
-
-    // 查找或创建源节点输出 port
-    const sourcePortId = findOrCreateOutputPort(sourceNode, sourceId)
-    if (!sourcePortId) return
-
-    // 查找或创建目标节点输入 port
-    const targetPortId = findOrCreateInputPort(targetNode, targetId)
-    if (!targetPortId) return
-
-    // 构建边的配置（通过 port 连接）
+    // 构建边的配置
     const edgeConfig: any = {
-      source: { cell: sourceId, port: sourcePortId },
-      target: { cell: targetId, port: targetPortId },
       attrs: {
         line: {
           stroke: '#1890ff',
@@ -327,9 +311,43 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules }) => {
       router: { name: 'orth' },
       connector: { name: 'rounded', args: { radius: 8 } },
       data: {
-        // 保存 sourceOutput 用于导出时判断 condition 节点的分支
         sourceOutput: sourceOutput || undefined,
       },
+    }
+
+    if (edgeRules) {
+      // === 有 edgeRules 时，通过 port 连接 ===
+      ensurePortGroups(sourceNode)
+      ensureInitialPorts(sourceNode)
+      ensurePortGroups(targetNode)
+      ensureInitialPorts(targetNode)
+
+      const sourcePortId = findOrCreateOutputPort(sourceNode, sourceId)
+      if (!sourcePortId) return
+      const targetPortId = findOrCreateInputPort(targetNode, targetId)
+      if (!targetPortId) return
+
+      edgeConfig.source = { cell: sourceId, port: sourcePortId }
+      edgeConfig.target = { cell: targetId, port: targetPortId }
+    } else {
+      // === 无 edgeRules 时（如时序图），直接连接节点 ===
+      // 计算相同节点对之间已有的边数量，用于 Y 轴偏移避免重叠
+      const existingEdges = graph.getEdges().filter((e) => {
+        const eSrc = e.getSource() as { cell?: string }
+        const eTgt = e.getTarget() as { cell?: string }
+        return (eSrc?.cell === sourceId || eTgt?.cell === targetId) ||
+          (eSrc?.cell === targetId || eTgt?.cell === sourceId)
+      })
+      const offsetY = existingEdges.length * 40
+
+      edgeConfig.source = {
+        cell: sourceId,
+        anchor: { name: 'center', args: { dy: offsetY } },
+      }
+      edgeConfig.target = {
+        cell: targetId,
+        anchor: { name: 'center', args: { dy: offsetY } },
+      }
     }
 
     graph.addEdge(edgeConfig)

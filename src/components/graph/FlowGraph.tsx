@@ -96,7 +96,12 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
         // 交互配置
         interacting: !readOnly ? {
           nodeMovable: true,
-          edgeMovable: true,
+          // 对 anchor-based 的边（时序图）禁用默认拖拽，改用自定义垂直拖拽
+          edgeMovable: (cellView: any) => {
+            const edge = cellView.cell
+            const src = edge.getSource()
+            return !src?.anchor
+          },
           edgeLabelMovable: true,
         } : false,
         background: { color: '#f8f9fa' },
@@ -277,6 +282,61 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
         // 点击节点/边时关闭菜单
         graph.on('cell:click', () => {
           setContextMenu(prev => ({ ...prev, visible: false, cell: null }))
+        })
+
+        // ====== 时序图边垂直拖拽 ======
+        // anchor-based 的边可沿生命线上下拖拽移动
+        graph.on('edge:mouseenter', ({ edge }: any) => {
+          const src = edge.getSource()
+          if (src?.anchor && containerRef.current) {
+            containerRef.current.style.cursor = 'ns-resize'
+          }
+        })
+        graph.on('edge:mouseleave', () => {
+          if (containerRef.current) {
+            containerRef.current.style.cursor = ''
+          }
+        })
+
+        graph.on('edge:mousedown', ({ e, edge }: any) => {
+          const src = edge.getSource()
+          if (!src?.anchor) return // 仅处理时序图边
+
+          const startClientY = e.clientY
+          const startDy = src.anchor?.args?.dy || 0
+
+          // 拖拽期间禁用画布平移 & 设置光标
+          graph.disablePanning()
+          if (containerRef.current) {
+            containerRef.current.style.cursor = 'ns-resize'
+          }
+
+          const onMouseMove = (evt: MouseEvent) => {
+            const zoom = graph.zoom()
+            const deltaY = (evt.clientY - startClientY) / zoom
+            const newDy = startDy + deltaY
+
+            edge.setSource({
+              ...edge.getSource(),
+              anchor: { name: 'center', args: { dy: newDy } },
+            })
+            edge.setTarget({
+              ...edge.getTarget(),
+              anchor: { name: 'center', args: { dy: newDy } },
+            })
+          }
+
+          const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove)
+            document.removeEventListener('mouseup', onMouseUp)
+            graph.enablePanning()
+            if (containerRef.current) {
+              containerRef.current.style.cursor = ''
+            }
+          }
+
+          document.addEventListener('mousemove', onMouseMove)
+          document.addEventListener('mouseup', onMouseUp)
         })
       }
 
