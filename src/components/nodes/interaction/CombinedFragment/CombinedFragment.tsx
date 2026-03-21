@@ -13,9 +13,10 @@ interface CombinedFragmentProps {
 const CombinedFragment: FC<CombinedFragmentProps> = (props) => {
     const { width: propWidth, height: propHeight, stroke: propStroke, fill: propFill, node, children } = props;
     const nodeData = node?.getData?.() || {};
+    const nodeSize = node?.getSize?.() || {};
 
-    const width = propWidth || nodeData.width || 200;
-    const height = propHeight || nodeData.height || 120;
+    const width = propWidth || nodeSize.width || nodeData.width || 200;
+    const height = propHeight || nodeSize.height || nodeData.height || 120;
     const stroke = propStroke || nodeData.stroke || '#666';
     const fill = propFill || nodeData.fill || 'rgba(245, 245, 245, 0.5)';
     const nodeName = nodeData.nodeName || 'alt';

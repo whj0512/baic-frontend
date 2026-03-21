@@ -13,7 +13,7 @@ const environmentStrategy: GraphStrategy = {
     columnWidth: 120,
     rowHeight: 160,
     center: true,
-    resizeToFit: true,
+    resizeToFit: false,
     marginX: 5,
     marginY: 5,
   },

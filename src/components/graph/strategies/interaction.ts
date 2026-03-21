@@ -8,14 +8,14 @@ import CombinedFragmentNode from '../../nodes/interaction/CombinedFragment'
 const interactionStrategy: GraphStrategy = {
   stencilLayoutOptions: {
     columns: 1,
-    columnWidth: 'auto',
-    rowHeight: 'auto',
+    columnWidth: 200,
+    rowHeight: 300,
     center: true,
-    resizeToFit: true,
-    marginX: 5,
-    marginY: 5,
+    resizeToFit: false,
+    marginX: 0,
+    marginY: 0,
   },
-  stencilGraphWidth: 160,
+  stencilGraphWidth: 220,
   stencilGraphHeight: 1000,
   stencilGraphPadding: 5,
   sidebarItems: [
@@ -51,16 +51,16 @@ const interactionStrategy: GraphStrategy = {
     //     height: 80,
     //   }
     // },
-    // {
-    //   type: 'seq-fragment',
-    //   label: '组合片段',
-    //   shape: 'seq-fragment-node',
-    //   color: '#ffffffff',
-    //   defaultAttrs: {
-    //     width: 200,
-    //     height: 120,
-    //   }
-    // },
+    {
+      type: 'seq-fragment',
+      label: '组合片段',
+      shape: 'seq-fragment-node',
+      color: '#ffffffff',
+      defaultAttrs: {
+        width: 200,
+        height: 120,
+      }
+    },
   ],
   registerNodes: () => {
     register({

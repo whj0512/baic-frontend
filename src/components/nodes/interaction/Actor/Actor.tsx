@@ -13,9 +13,10 @@ interface ActorProps {
 const Actor: FC<ActorProps> = (props) => {
     const { width: propWidth, height: propHeight, stroke: propStroke, node, children } = props;
     const nodeData = node?.getData?.() || {};
+    const nodeSize = node?.getSize?.() || {};
 
-    const width = propWidth || nodeData.width || 80;
-    const height = propHeight || nodeData.height || 300;
+    const width = propWidth || nodeSize.width || nodeData.width || 80;
+    const height = propHeight || nodeSize.height || nodeData.height || 300;
     const stroke = propStroke || nodeData.stroke || '#4a90d9';
     const nodeName = nodeData.nodeName || '';
 

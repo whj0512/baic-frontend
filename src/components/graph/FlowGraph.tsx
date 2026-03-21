@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useMemo, useState, forwardRef, useImperativeHandle, useCallback } from 'react'
-import { Graph, Snapline, Stencil, Edge, Cell } from '@antv/x6'
+import { useEffect, useRef, useMemo, useState, forwardRef, useImperativeHandle, useCallback } from 'react'
+import { Graph, Snapline, Stencil, Edge, Cell, Transform } from '@antv/x6'
 import { register } from '@antv/x6-react-shape'
 import { Dropdown } from 'antd'
 import type { MenuProps } from 'antd'
@@ -382,6 +382,13 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
       }
 
       graph.use(new Snapline({ enabled: true }))
+      graph.use(new Transform({
+        resizing: {
+          enabled: true,
+          orthogonal: false,
+          restrict: true,
+        }
+      }))
 
       return () => {
         // 清理 stencil 实例及其 DOM

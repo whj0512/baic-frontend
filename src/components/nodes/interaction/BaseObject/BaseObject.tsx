@@ -17,9 +17,10 @@ interface BaseObjectProps {
 const BaseObject: FC<BaseObjectProps> = (props) => {
     const { width: propWidth, height: propHeight, stroke: propStroke, fill: propFill, node, children } = props;
     const nodeData = node?.getData?.() || {};
+    const nodeSize = node?.getSize?.() || {};
 
-    const width = propWidth || nodeData.width || 120;
-    const height = propHeight || nodeData.height || 300;
+    const width = propWidth || nodeSize.width || nodeData.width || 120;
+    const height = propHeight || nodeSize.height || nodeData.height || 300;
     const stroke = propStroke || nodeData.stroke || '#4a90d9';
     const fill = propFill || nodeData.fill || '#fff';
     const nodeName = nodeData.nodeName || '';

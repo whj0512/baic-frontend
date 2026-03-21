@@ -16,9 +16,10 @@ interface NodeWrapperProps {
 const NodeWrapper: FC<NodeWrapperProps> = (props) => {
     const { width: propWidth, height: propHeight, stroke: propStroke, fill: propFill, node, children } = props;
     const nodeData = node?.getData?.() || {};
+    const nodeSize = node?.getSize?.() || {};
 
-    const width = propWidth || nodeData.width || 80;
-    const height = propHeight || nodeData.height || 120;
+    const width = propWidth || nodeSize.width || nodeData.width || 80;
+    const height = propHeight || nodeSize.height || nodeData.height || 120;
     const stroke = propStroke || nodeData.stroke || '#333';
     const fill = propFill || nodeData.fill || '#fff';
     const nodeName = nodeData.nodeName || '';
