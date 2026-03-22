@@ -335,18 +335,27 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules }) => {
       const existingEdges = graph.getEdges().filter((e) => {
         const eSrc = e.getSource() as { cell?: string }
         const eTgt = e.getTarget() as { cell?: string }
-        return (eSrc?.cell === sourceId || eTgt?.cell === targetId) ||
-          (eSrc?.cell === targetId || eTgt?.cell === sourceId)
+        // 兼容通过坐标连接的边，通过 data 中的 sourceId 和 targetId 判断
+        const data = e.getData() || {}
+        const srcId = eSrc?.cell || data.sourceId
+        const tgtId = eTgt?.cell || data.targetId
+        return (srcId === sourceId && tgtId === targetId) ||
+          (srcId === targetId && tgtId === sourceId)
       })
       const offsetY = existingEdges.length * 40
 
+      edgeConfig.data = { ...edgeConfig.data, sourceId, targetId }
+
+      const sourceCenter = sourceNode.getBBox().center
+      const targetCenter = targetNode.getBBox().center
+
       edgeConfig.source = {
-        cell: sourceId,
-        anchor: { name: 'center', args: { dy: offsetY } },
+        x: sourceCenter.x,
+        y: sourceCenter.y + offsetY,
       }
       edgeConfig.target = {
-        cell: targetId,
-        anchor: { name: 'center', args: { dy: offsetY } },
+        x: targetCenter.x,
+        y: targetCenter.y + offsetY,
       }
     }
 

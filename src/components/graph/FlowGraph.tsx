@@ -96,11 +96,11 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
         // 交互配置
         interacting: !readOnly ? {
           nodeMovable: true,
-          // 对 anchor-based 的边（时序图）禁用默认拖拽，改用自定义垂直拖拽
+          // 对基于坐标的边禁用默认拖拽，改用自定义双击垂直拖拽
           edgeMovable: (cellView: any) => {
             const edge = cellView.cell
             const src = edge.getSource()
-            return !src?.anchor
+            return !!src?.cell // 只有关联了cell的边允许默认拖拽行为，纯坐标边(如时序图)禁用
           },
           edgeLabelMovable: true,
         } : false,
@@ -284,31 +284,41 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
           setContextMenu(prev => ({ ...prev, visible: false, cell: null }))
         })
 
-        // ====== 时序图边垂直拖拽（双击进入，点击空白退出） ======
-        // 用于跟踪当前拖拽状态
-        let draggingEdge: Edge | null = null
-        let dragStartClientY = 0
-        let dragStartDy = 0
-        let onMouseMove: ((evt: MouseEvent | PointerEvent) => void) | null = null
-
-        // anchor-based 的边悬停时显示拖拽光标提示
+        // 1. 恢复：针对坐标级线条（时序图横线），悬停时显示可拖拽指示器
         graph.on('edge:mouseenter', ({ edge }: any) => {
           const src = edge.getSource()
-          if (src?.anchor && containerRef.current) {
+          if (!src?.cell && containerRef.current) {
+            // 如果 source 没有关联 cell，说明它是通过绝对坐标连接的（如我们的时序图边）
             containerRef.current.style.cursor = 'ns-resize'
+            // 为没有顶点的数据提供 boundary 工具（使得悬停时有视觉反馈）
+            edge.addTools({ name: 'boundary', args: { padding: 5, attrs: { fill: 'transparent', stroke: '#1890ff', strokeWidth: 1, strokeDasharray: '3, 3' } } })
+          } else {
+            edge.addTools({ name: 'vertices', args: { attrs: { fill: '#8f8f8f' } } })
           }
         })
-        graph.on('edge:mouseleave', () => {
-          // 拖拽模式中保持 ns-resize 光标
+
+        graph.on('edge:mouseleave', ({ edge }: any) => {
+          if (edge.hasTool('vertices')) edge.removeTool('vertices')
+          if (edge.hasTool('boundary')) edge.removeTool('boundary')
+          // 拖拽模式中保持 ns-resize 光标，且离开时重置
           if (containerRef.current && !draggingEdge) {
             containerRef.current.style.cursor = ''
           }
         })
 
+        // ====== 时序图边垂直拖拽（双击进入，点击空白退出） ======
+        // 用于跟踪当前拖拽状态
+        let draggingEdge: Edge | null = null
+        let dragStartClientY = 0
+        let dragStartSourceY = 0
+        let dragStartTargetY = 0
+        let onMouseMove: ((evt: MouseEvent | PointerEvent) => void) | null = null
+
         // 双击边进入拖拽模式
         graph.on('edge:dblclick', ({ e, edge }: any) => {
           const src = edge.getSource()
-          if (!src?.anchor) return // 仅处理时序图边（anchor-based）
+          // 仅处理基于坐标的时序图边
+          if (src?.cell) return
 
           // 如果已有拖拽中的边，先退出上一次
           if (draggingEdge) {
@@ -317,7 +327,8 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
 
           draggingEdge = edge
           dragStartClientY = e.clientY
-          dragStartDy = src.anchor?.args?.dy || 0
+          dragStartSourceY = edge.getSource().y || 0
+          dragStartTargetY = edge.getTarget().y || 0
 
           // 拖拽期间禁用画布平移 & 设置光标
           graph.disablePanning()
@@ -333,15 +344,18 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
             if (!draggingEdge) return
             const zoom = graph.zoom()
             const deltaY = (evt.clientY - dragStartClientY) / zoom
-            const newDy = dragStartDy + deltaY
+
+            // 直接更新 source 和 target 的绝对 y 坐标
+            const newSourceY = dragStartSourceY + deltaY
+            const newTargetY = dragStartTargetY + deltaY
 
             draggingEdge.setSource({
               ...draggingEdge.getSource(),
-              anchor: { name: 'center', args: { dy: newDy } },
+              y: newSourceY,
             })
             draggingEdge.setTarget({
               ...draggingEdge.getTarget(),
-              anchor: { name: 'center', args: { dy: newDy } },
+              y: newTargetY,
             })
           }
 
