@@ -1,0 +1,25 @@
+.interaction-params-editor {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.interaction-params-editor-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.interaction-params-editor-input:focus {
+  border-color: #1890ff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+
+.interaction-params-editor-input::placeholder {
+  color: #bfbfbf;
+}

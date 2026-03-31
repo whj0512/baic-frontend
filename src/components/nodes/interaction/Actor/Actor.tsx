@@ -1,4 +1,4 @@
-import { type FC, type ReactNode } from 'react';
+import { type FC, type ReactNode, useEffect } from 'react';
 import BaseLifeline from '../common/BaseLifeline';
 import './Actor.css';
 
@@ -18,7 +18,15 @@ const Actor: FC<ActorProps> = (props) => {
     const width = propWidth || nodeSize.width || nodeData.width || 80;
     const height = propHeight || nodeSize.height || nodeData.height || 300;
     const stroke = propStroke || nodeData.stroke || '#4a90d9';
-    const nodeName = nodeData.nodeName || '';
+
+    const actorName = nodeData.actorName || '';
+    
+    useEffect(() => {
+        const currentData = node?.getData?.() || {};
+        if (currentData.actorName === undefined) {
+            node?.setData?.({ actorName: '', ...currentData });
+        }
+    }, [node]);
 
     // 头部区域高度（图标 + 名称）
     const headerHeight = 80;
@@ -55,7 +63,7 @@ const Actor: FC<ActorProps> = (props) => {
                 className="seq-actor__label"
                 style={{ color: stroke }}
             >
-                {children || nodeName}
+                {children || actorName}
             </div>
         </>
     );

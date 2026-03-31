@@ -1,4 +1,4 @@
-import { type FC, type ReactNode } from 'react';
+import { type FC, type ReactNode, useEffect } from 'react';
 import BaseLifeline from '../common/BaseLifeline';
 import './BaseObject.css';
 
@@ -23,7 +23,16 @@ const BaseObject: FC<BaseObjectProps> = (props) => {
     const height = propHeight || nodeSize.height || nodeData.height || 300;
     const stroke = propStroke || nodeData.stroke || '#4a90d9';
     const fill = propFill || nodeData.fill || '#fff';
-    const nodeName = nodeData.nodeName || '';
+
+    const objectName = nodeData.objectName || '';
+    const className = nodeData.className || '';
+
+    useEffect(() => {
+        const currentData = node?.getData?.() || {};
+        if (currentData.objectName === undefined || currentData.className === undefined) {
+            node?.setData?.({ objectName: '', className: '', ...currentData });
+        }
+    }, [node]);
 
     // 头部矩形高度（参与者名称框）
     const headerHeight = 50;
@@ -41,7 +50,7 @@ const BaseObject: FC<BaseObjectProps> = (props) => {
                 className="seq-lifeline__label"
                 style={{ color: stroke }}
             >
-                {children || nodeName}
+                {children || `${objectName}:${className}`}
             </span>
         </div>
     );

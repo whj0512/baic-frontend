@@ -344,7 +344,8 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules }) => {
       })
       const offsetY = existingEdges.length * 40
 
-      edgeConfig.data = { ...edgeConfig.data, sourceId, targetId }
+      const initData = { ...edgeConfig.data, sourceId, targetId }
+      edgeConfig.data = initData
 
       const sourceCenter = sourceNode.getBBox().center
       const targetCenter = targetNode.getBBox().center
@@ -356,6 +357,31 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules }) => {
       edgeConfig.target = {
         x: targetCenter.x,
         y: targetCenter.y + offsetY,
+      }
+
+      const formatLabel = (data: any) => {
+        const parts = []
+        if (data.stereotype && data.stereotype !== 'base') {
+          parts.push(`<<${data.stereotype}>>`)
+        }
+        const msg = data.message || ''
+        const prm = data.params ? data.params.map((item: any) => `${item.name}: ${item.type}`).join(', ') : ''
+        const ret = data.returnType ? `: ${data.returnType}` : ''
+
+        const mainPart = `${msg}(${prm})${ret}`
+        if (mainPart !== '()') {
+          parts.push(mainPart)
+        }
+        return parts.join('\n')
+      }
+
+      const labelText = formatLabel(initData)
+      if (labelText) {
+        edgeConfig.labels = [{
+          attrs: {
+            text: { text: labelText }
+          }
+        }]
       }
     }
 

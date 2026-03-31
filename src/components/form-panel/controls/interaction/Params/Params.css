@@ -1,0 +1,62 @@
+.interaction-params-control {
+  width: 100%;
+}
+
+.interaction-params-toolbar {
+  margin-bottom: 8px;
+}
+
+.interaction-params-add-btn {
+  padding: 6px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+  color: #1890ff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.interaction-params-add-btn:hover {
+  border-color: #1890ff;
+  background: #f0f8ff;
+}
+
+.interaction-params-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.interaction-params-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.interaction-params-item > .editable-switch {
+  flex: 1;
+}
+
+.interaction-params-delete-btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+  color: #ff4d4f;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.interaction-params-delete-btn:hover {
+  border-color: #ff4d4f;
+  background: #fff1f0;
+}

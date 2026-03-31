@@ -1,4 +1,4 @@
-import { type FC, type ReactNode } from 'react';
+import { type FC, type ReactNode, useEffect } from 'react';
 import './CombinedFragment.css'
 
 interface CombinedFragmentProps {
@@ -19,7 +19,20 @@ const CombinedFragment: FC<CombinedFragmentProps> = (props) => {
     const height = propHeight || nodeSize.height || nodeData.height || 120;
     const stroke = propStroke || nodeData.stroke || '#666';
     const fill = propFill || nodeData.fill || 'rgba(245, 245, 245, 0.5)';
-    const nodeName = nodeData.nodeName || 'alt';
+
+    const fragmentType = nodeData.fragmentType || '';
+    const fragmentName = nodeData.fragmentName || '';
+
+    useEffect(() => {
+        const currentData = node?.getData?.() || {};
+        if (currentData.fragmentType === undefined || currentData.fragmentName === undefined) {
+            node?.setData?.({ fragmentType: '', fragmentName: '', ...currentData });
+        }
+    }, [node]);
+
+    useEffect(() => {
+        node?.setZIndex?.(-1);
+    }, [node]);
 
     return (
         <div
@@ -36,7 +49,7 @@ const CombinedFragment: FC<CombinedFragmentProps> = (props) => {
                 className="seq-fragment__tag"
                 style={{ borderColor: stroke, color: stroke }}
             >
-                {children || nodeName}
+                {children || `${fragmentType} ${fragmentName}`}
             </div>
 
             {/* 内容区（用于放置内部交互） */}

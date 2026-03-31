@@ -45,6 +45,7 @@ export interface FormTab {
 // 表单 Schema
 export interface FormSchema {
   tabs: FormTab[]
+  controlMap?: Record<string, React.FC<any>>
 }
 
 // 节点表单配置

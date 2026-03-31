@@ -113,8 +113,8 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
         },
         // 连线配置
         connecting: {
-          // 不允许边悬空（必须连接到目标节点）
-          allowBlank: false,
+          // 允许边悬空（因为时序图等坐标级别的线必须在未指定特定节点的情况下放置且可拖拉）
+          allowBlank: true,
           // 允许多条边连接到同一个节点
           allowMulti: true,
           // 不允许从节点直接拖出边（使用添加连线按钮）
@@ -222,6 +222,35 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
         graph.on('cell:change:data', updateData)
       }
 
+      // 监听时序图边的数据变化，自动更新 label
+      graph.on('edge:change:data', ({ edge }) => {
+        const data = edge.getData() || {}
+        console.log('data', data)
+        // 判断是否是时序图消息边
+        if (data.sourceId !== undefined && data.targetId !== undefined) {
+          const parts = []
+          if (data.stereotype && data.stereotype !== 'base') {
+            parts.push(`<<${data.stereotype}>>`)
+          }
+          const msg = data.message || ''
+          const prm = data.params ? data.params.map((item: any) => `${item.name}: ${item.type}`).join(', ') : ''
+          const ret = data.returnType ? `: ${data.returnType}` : ''
+
+          const mainPart = `${msg}(${prm})${ret}`
+          console.log(mainPart)
+          if (mainPart !== '()') {
+            parts.push(mainPart)
+          }
+          const labelText = parts.join('\n')
+
+          if (labelText) {
+            edge.setLabels([{ attrs: { label: { text: labelText } } }])
+          } else {
+            edge.setLabels([])
+          }
+        }
+      })
+
       // 边删除时清理对应的 port
       if (!readOnly) {
         graph.on('edge:removed', ({ edge }) => {
@@ -284,115 +313,105 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
           setContextMenu(prev => ({ ...prev, visible: false, cell: null }))
         })
 
-        // 1. 恢复：针对坐标级线条（时序图横线），悬停时显示可拖拽指示器
-        graph.on('edge:mouseenter', ({ edge }: any) => {
-          const src = edge.getSource()
-          if (!src?.cell && containerRef.current) {
-            // 如果 source 没有关联 cell，说明它是通过绝对坐标连接的（如我们的时序图边）
-            containerRef.current.style.cursor = 'ns-resize'
-            // 为没有顶点的数据提供 boundary 工具（使得悬停时有视觉反馈）
-            edge.addTools({ name: 'boundary', args: { padding: 5, attrs: { fill: 'transparent', stroke: '#1890ff', strokeWidth: 1, strokeDasharray: '3, 3' } } })
-          } else {
-            edge.addTools({ name: 'vertices', args: { attrs: { fill: '#8f8f8f' } } })
-          }
+        // ====== 悬停时添加源/目标端点拖拽工具，实现坐标系边的「拉伸」 ======
+        graph.on('edge:mouseenter', ({ edge }) => {
+          edge.addTools([
+            { name: 'source-arrowhead', args: { attrs: { fill: '#1890ff', stroke: '#fff', 'stroke-width': 2, r: 4 } } },
+            { name: 'target-arrowhead', args: { attrs: { fill: '#1890ff', stroke: '#fff', 'stroke-width': 2, r: 4 } } }
+          ])
         })
 
-        graph.on('edge:mouseleave', ({ edge }: any) => {
-          if (edge.hasTool('vertices')) edge.removeTool('vertices')
-          if (edge.hasTool('boundary')) edge.removeTool('boundary')
-          // 拖拽模式中保持 ns-resize 光标，且离开时重置
-          if (containerRef.current && !draggingEdge) {
-            containerRef.current.style.cursor = ''
-          }
+        graph.on('edge:mouseleave', ({ edge }) => {
+          edge.removeTools()
         })
 
         // ====== 时序图边垂直拖拽（双击进入，点击空白退出） ======
         // 用于跟踪当前拖拽状态
-        let draggingEdge: Edge | null = null
-        let dragStartClientY = 0
-        let dragStartSourceY = 0
-        let dragStartTargetY = 0
-        let onMouseMove: ((evt: MouseEvent | PointerEvent) => void) | null = null
+        // let draggingEdge: Edge | null = null
+        // let dragStartClientY = 0
+        // let dragStartSourceY = 0
+        // let dragStartTargetY = 0
+        // let onMouseMove: ((evt: MouseEvent | PointerEvent) => void) | null = null
 
-        // 双击边进入拖拽模式
-        graph.on('edge:dblclick', ({ e, edge }: any) => {
-          const src = edge.getSource()
-          // 仅处理基于坐标的时序图边
-          if (src?.cell) return
+        // // 双击边进入拖拽模式
+        // graph.on('edge:dblclick', ({ e, edge }: any) => {
+        //   const src = edge.getSource()
+        //   // 仅处理基于坐标的时序图边
+        //   if (src?.cell) return
 
-          // 如果已有拖拽中的边，先退出上一次
-          if (draggingEdge) {
-            stopDrag()
-          }
+        //   // 如果已有拖拽中的边，先退出上一次
+        //   if (draggingEdge) {
+        //     stopDrag()
+        //   }
 
-          draggingEdge = edge
-          dragStartClientY = e.clientY
-          dragStartSourceY = edge.getSource().y || 0
-          dragStartTargetY = edge.getTarget().y || 0
+        //   draggingEdge = edge
+        //   dragStartClientY = e.clientY
+        //   dragStartSourceY = edge.getSource().y || 0
+        //   dragStartTargetY = edge.getTarget().y || 0
 
-          // 拖拽期间禁用画布平移 & 设置光标
-          graph.disablePanning()
-          if (containerRef.current) {
-            containerRef.current.style.cursor = 'ns-resize'
-          }
+        //   // 拖拽期间禁用画布平移 & 设置光标
+        //   graph.disablePanning()
+        //   if (containerRef.current) {
+        //     containerRef.current.style.cursor = 'ns-resize'
+        //   }
 
-          // 高亮正在拖拽的边
-          edge.attr('line/stroke', '#ff4d4f')
-          edge.attr('line/strokeWidth', 3)
+        //   // 高亮正在拖拽的边
+        //   edge.attr('line/stroke', '#ff4d4f')
+        //   edge.attr('line/strokeWidth', 3)
 
-          onMouseMove = (evt: MouseEvent | PointerEvent) => {
-            if (!draggingEdge) return
-            const zoom = graph.zoom()
-            const deltaY = (evt.clientY - dragStartClientY) / zoom
+        //   onMouseMove = (evt: MouseEvent | PointerEvent) => {
+        //     if (!draggingEdge) return
+        //     const zoom = graph.zoom()
+        //     const deltaY = (evt.clientY - dragStartClientY) / zoom
 
-            // 直接更新 source 和 target 的绝对 y 坐标
-            const newSourceY = dragStartSourceY + deltaY
-            const newTargetY = dragStartTargetY + deltaY
+        //     // 直接更新 source 和 target 的绝对 y 坐标
+        //     const newSourceY = dragStartSourceY + deltaY
+        //     const newTargetY = dragStartTargetY + deltaY
 
-            draggingEdge.setSource({
-              ...draggingEdge.getSource(),
-              y: newSourceY,
-            })
-            draggingEdge.setTarget({
-              ...draggingEdge.getTarget(),
-              y: newTargetY,
-            })
-          }
+        //     draggingEdge.setSource({
+        //       ...draggingEdge.getSource(),
+        //       y: newSourceY,
+        //     })
+        //     draggingEdge.setTarget({
+        //       ...draggingEdge.getTarget(),
+        //       y: newTargetY,
+        //     })
+        //   }
 
-          // 监听鼠标移动（捕获阶段，防止被 X6 内部机制拦截）
-          document.addEventListener('mousemove', onMouseMove, { capture: true })
-          document.addEventListener('pointermove', onMouseMove, { capture: true })
-        })
+        //   // 监听鼠标移动（捕获阶段，防止被 X6 内部机制拦截）
+        //   document.addEventListener('mousemove', onMouseMove, { capture: true })
+        //   document.addEventListener('pointermove', onMouseMove, { capture: true })
+        // })
 
-        // 退出拖拽模式的函数
-        const stopDrag = () => {
-          if (!draggingEdge) return
+        // // 退出拖拽模式的函数
+        // const stopDrag = () => {
+        //   if (!draggingEdge) return
 
-          // 恢复边的样式
-          draggingEdge.attr('line/stroke', '#1890ff')
-          draggingEdge.attr('line/strokeWidth', 2)
+        //   // 恢复边的样式
+        //   draggingEdge.attr('line/stroke', '#1890ff')
+        //   draggingEdge.attr('line/strokeWidth', 2)
 
-          // 移除 mousemove 监听
-          if (onMouseMove) {
-            document.removeEventListener('mousemove', onMouseMove, { capture: true })
-            document.removeEventListener('pointermove', onMouseMove, { capture: true })
-            onMouseMove = null
-          }
+        //   // 移除 mousemove 监听
+        //   if (onMouseMove) {
+        //     document.removeEventListener('mousemove', onMouseMove, { capture: true })
+        //     document.removeEventListener('pointermove', onMouseMove, { capture: true })
+        //     onMouseMove = null
+        //   }
 
-          draggingEdge = null
+        //   draggingEdge = null
 
-          graph.enablePanning()
-          if (containerRef.current) {
-            containerRef.current.style.cursor = ''
-          }
-        }
+        //   graph.enablePanning()
+        //   if (containerRef.current) {
+        //     containerRef.current.style.cursor = ''
+        //   }
+        // }
 
-        // 点击画布空白处退出拖拽模式
-        graph.on('blank:click', () => {
-          if (draggingEdge) {
-            stopDrag()
-          }
-        })
+        // // 点击画布空白处退出拖拽模式
+        // graph.on('blank:click', () => {
+        //   if (draggingEdge) {
+        //     stopDrag()
+        //   }
+        // })
       }
 
       graph.use(new Snapline({ enabled: true }))
