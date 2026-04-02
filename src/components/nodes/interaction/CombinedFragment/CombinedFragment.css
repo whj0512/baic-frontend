@@ -27,6 +27,17 @@
     line-height: 1.4;
 }
 
+/* 条件区 */
+.seq-fragment__condition {
+    position: absolute;
+    top: 30px;
+    left: 10px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
 /* 主体内容区 */
 .seq-fragment__body {
     width: 100%;

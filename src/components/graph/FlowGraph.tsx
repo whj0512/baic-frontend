@@ -225,7 +225,6 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
       // 监听时序图边的数据变化，自动更新 label
       graph.on('edge:change:data', ({ edge }) => {
         const data = edge.getData() || {}
-        console.log('data', data)
         // 判断是否是时序图消息边
         if (data.sourceId !== undefined && data.targetId !== undefined) {
           const parts = []
@@ -237,7 +236,6 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
           const ret = data.returnType ? `: ${data.returnType}` : ''
 
           const mainPart = `${msg}(${prm})${ret}`
-          console.log(mainPart)
           if (mainPart !== '()') {
             parts.push(mainPart)
           }
@@ -248,6 +246,20 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
           } else {
             edge.setLabels([])
           }
+
+          // 根据 msgType 切换箭头形态
+          if (data.msgType === 'async') {
+            edge.attr('line/targetMarker/name', 'classic')
+          } else if (data.msgType === 'sync') {
+            edge.attr('line/targetMarker/name', 'block')
+          }
+
+          // 根据 isReturn 切换实线与虚线
+          edge.attr({
+            line: {
+              strokeDasharray: data.isReturn ? 5 : null
+            }
+          })
         }
       })
 
@@ -466,7 +478,11 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
           <div ref={containerRef} className="x6-graph-container" />
           {!readOnly && graphReady && graphRef.current && (
             <div className="graph-toolbar">
-              <AddEdgePanel graph={graphRef.current} edgeRules={strategy.edgeRules} />
+              <AddEdgePanel 
+                graph={graphRef.current} 
+                edgeRules={strategy.edgeRules} 
+                defaultEdgeMarker={strategy.defaultEdgeMarker}
+              />
             </div>
           )}
           {!readOnly && <div className="graph-help-text">Ctrl + 滚轮缩放 | 拖拽空白处平移</div>}

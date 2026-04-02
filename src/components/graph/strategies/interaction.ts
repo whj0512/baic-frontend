@@ -30,6 +30,16 @@ const formConfig: FormConfig = {
                 ]
               },
               { label: '返回类型', name: 'returnType', shape: 'InputText' },
+              {
+                label: '消息类型',
+                name: 'msgType',
+                shape: 'Select',
+                options: [
+                  { value: 'sync', label: '同步' },
+                  { value: 'async', label: '异步' }
+                ]
+              },
+              { label: '返回消息', name: 'isReturn', shape: 'Checkbox' }
             ]
           }
         ]
@@ -118,6 +128,11 @@ const formConfig: FormConfig = {
                   {
                     label: '片段名称',
                     name: 'fragmentName',
+                    shape: 'InputText'
+                  },
+                  {
+                    label: '条件',
+                    name: 'condition',
                     shape: 'InputText'
                   }
                 ]

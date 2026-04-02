@@ -1,11 +1,157 @@
 import { register } from '@antv/x6-react-shape'
-import type { GraphStrategy } from './types'
+import type { FormConfig, GraphStrategy } from './types'
 import Device from '../../nodes/environment/Device'
 import Controller from '../../nodes/environment/Controller'
 import Human from '../../nodes/environment/Human'
 import FunctionalModule from '../../nodes/environment/FunctionalModule'
 import ControllerUnit from '../../nodes/environment/ControllerUnit'
 import Machine from '../../nodes/environment/Machine'
+import ControllerTimer from '../../form-panel/controls/environment/ControllerTimer'
+
+const formConfig: FormConfig = {
+  nodes: {
+    'device-node': {
+      schema: {
+        tabs: [
+          {
+            name: '数据',
+            groups: [
+              {
+                controls: [
+                  { label: '设备名', name: 'deviceName', shape: 'InputText' },
+                ]
+              },
+            ]
+          },
+          {
+            name: '样式',
+            groups: [
+              {
+                controls: [
+                  { label: '边框颜色', name: 'stroke', shape: 'InputText' },
+                  { label: '填充颜色', name: 'fill', shape: 'InputText' },
+                ],
+              },
+            ],
+          },
+        ]
+      },
+    },
+    'controller-unit-node': {
+      schema: {
+        tabs: [
+          {
+            name: '数据',
+            groups: [
+              {
+                controls: [
+                  { label: '控制单元名', name: 'ctrlUnitName', shape: 'InputText' },
+                  { label: '控制单元计时器', name: 'ctrlUnitTimer', shape: 'ControllerTimer' },
+                  { label: '控制单元控制周期', name: 'ctrlUnitPeriod', shape: 'InputNumber' },
+                ]
+              },
+            ]
+          },
+          {
+            name: '样式',
+            groups: [
+              {
+                controls: [
+                  { label: '边框颜色', name: 'stroke', shape: 'InputText' },
+                  { label: '填充颜色', name: 'fill', shape: 'InputText' },
+                ],
+              },
+            ],
+          },
+        ]
+      },
+      controlMap: {
+        'ControllerTimer': ControllerTimer
+      }
+    },
+    'machine-node': {
+      schema: {
+        tabs: [
+          {
+            name: '数据',
+            groups: [
+              {
+                controls: [
+                  { label: '机器名', name: 'machineName', shape: 'InputText' },
+                ]
+              },
+            ]
+          },
+          {
+            name: '样式',
+            groups: [
+              {
+                controls: [
+                  { label: '边框颜色', name: 'stroke', shape: 'InputText' },
+                  { label: '填充颜色', name: 'fill', shape: 'InputText' },
+                ],
+              },
+            ],
+          },
+        ]
+      },
+    },
+    'controller-node': {
+      schema: {
+        tabs: [
+          {
+            name: '数据',
+            groups: [
+              {
+                controls: [
+                  { label: '控制器名', name: 'ctrlName', shape: 'InputText' },
+                ]
+              },
+            ]
+          },
+          {
+            name: '样式',
+            groups: [
+              {
+                controls: [
+                  { label: '边框颜色', name: 'stroke', shape: 'InputText' },
+                  { label: '填充颜色', name: 'fill', shape: 'InputText' },
+                ],
+              },
+            ],
+          },
+        ]
+      },
+    },
+    'functional-module-node': {
+      schema: {
+        tabs: [
+          {
+            name: '数据',
+            groups: [
+              {
+                controls: [
+                  { label: '功能模块名', name: 'fmName', shape: 'InputText' },
+                ]
+              },
+            ]
+          },
+          {
+            name: '样式',
+            groups: [
+              {
+                controls: [
+                  { label: '边框颜色', name: 'stroke', shape: 'InputText' },
+                  { label: '填充颜色', name: 'fill', shape: 'InputText' },
+                ],
+              },
+            ],
+          },
+        ]
+      },
+    },
+  }
+}
 
 const environmentStrategy: GraphStrategy = {
   stencilLayoutOptions: {
@@ -124,7 +270,7 @@ const environmentStrategy: GraphStrategy = {
     // 获取节点的 port group 配置
     getPortGroups: (nodeShape: string) => {
       const basePortStyle = {
-        width: 5,
+        width: 10,
         height: 10,
         x: -5,
         y: -5,
@@ -173,7 +319,9 @@ const environmentStrategy: GraphStrategy = {
     getInitialPorts: (nodeShape: string) => {
       return []
     }
-  }
+  },
+  formConfig: formConfig,
+  defaultEdgeMarker: null,
 }
 
 export default environmentStrategy

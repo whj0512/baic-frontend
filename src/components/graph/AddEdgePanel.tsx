@@ -8,6 +8,7 @@ import './AddEdgePanel.css'
 interface AddEdgePanelProps {
   graph: Graph
   edgeRules?: EdgeRules
+  defaultEdgeMarker?: string | Record<string, any> | null
 }
 
 interface NodeOption {
@@ -16,7 +17,7 @@ interface NodeOption {
   shape: string
 }
 
-const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules }) => {
+const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, defaultEdgeMarker }) => {
   const [expanded, setExpanded] = useState(false)
   const [sourceId, setSourceId] = useState<string>('')
   const [targetId, setTargetId] = useState<string>('')
@@ -105,7 +106,7 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules }) => {
           stroke: '#1890ff',
           strokeWidth: 2,
           strokeDasharray: '5 5',
-          targetMarker: { name: 'classic', size: 8 },
+          targetMarker: defaultEdgeMarker !== undefined ? defaultEdgeMarker : { name: 'classic', size: 8 },
           style: { animation: 'ant-line 30s infinite linear' },
         },
       },
@@ -305,7 +306,7 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules }) => {
         line: {
           stroke: '#1890ff',
           strokeWidth: 2,
-          targetMarker: { name: 'block', width: 12, height: 8 },
+          targetMarker: defaultEdgeMarker !== undefined ? defaultEdgeMarker : { name: 'block', width: 12, height: 8 },
         },
       },
       router: { name: 'orth' },

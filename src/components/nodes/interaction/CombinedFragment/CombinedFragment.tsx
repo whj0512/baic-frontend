@@ -22,6 +22,7 @@ const CombinedFragment: FC<CombinedFragmentProps> = (props) => {
 
     const fragmentType = nodeData.fragmentType || '';
     const fragmentName = nodeData.fragmentName || '';
+    const condition = nodeData.condition || '';
 
     useEffect(() => {
         const currentData = node?.getData?.() || {};
@@ -51,6 +52,16 @@ const CombinedFragment: FC<CombinedFragmentProps> = (props) => {
             >
                 {children || `${fragmentType} ${fragmentName}`}
             </div>
+
+            {/* 条件区（如果存在） */}
+            {Boolean(condition) && (
+                <div
+                    className="seq-fragment__condition"
+                    style={{ color: stroke }}
+                >
+                    [{condition}]
+                </div>
+            )}
 
             {/* 内容区（用于放置内部交互） */}
             <div className="seq-fragment__body" />
