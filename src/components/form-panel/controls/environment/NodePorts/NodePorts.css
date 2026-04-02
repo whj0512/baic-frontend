@@ -1,0 +1,129 @@
+.node-ports-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+/* === Port Card === */
+.node-port-card {
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #fafafa;
+}
+
+.node-port-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: #f0f0f0;
+  cursor: pointer;
+}
+
+.node-port-title {
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.node-port-direction {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.node-port-direction.in {
+  background: #e6f7ff;
+  color: #1890ff;
+}
+
+.node-port-direction.out {
+  background: #f6ffed;
+  color: #52c41a;
+}
+
+.node-port-direction.inout {
+  background: #fff7e6;
+  color: #fa8c16;
+}
+
+/* === Port Body === */
+.node-port-body {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.node-port-fields {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 8px;
+  align-items: center;
+}
+
+.node-port-fields label {
+  font-size: 12px;
+  color: #666;
+  white-space: nowrap;
+}
+
+/* === PortTables === */
+.node-port-tables {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.node-port-tables-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.node-port-tables-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+}
+
+.node-port-table-card {
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  padding: 8px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.node-port-table-header {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.node-port-table-name {
+  margin-bottom: 2px;
+}
+
+/* === PortTableItems === */
+.node-port-table-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 4px;
+}
+
+.node-port-table-item-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}

@@ -7,8 +7,24 @@ import FunctionalModule from '../../nodes/environment/FunctionalModule'
 import ControllerUnit from '../../nodes/environment/ControllerUnit'
 import Machine from '../../nodes/environment/Machine'
 import ControllerTimer from '../../form-panel/controls/environment/ControllerTimer'
+import NodePorts from '../../form-panel/controls/environment/NodePorts'
 
 const formConfig: FormConfig = {
+  edge: {
+    tabs: [
+      {
+        name: '数据',
+        groups: [
+          {
+            controls: [
+              { label: '交互名称', name: 'intName', shape: 'InputText' },
+              { label: '数据', name: 'intData', shape: 'InputText' }
+            ]
+          }
+        ]
+      }
+    ]
+  },
   nodes: {
     'device-node': {
       schema: {
@@ -19,35 +35,7 @@ const formConfig: FormConfig = {
               {
                 controls: [
                   { label: '设备名', name: 'deviceName', shape: 'InputText' },
-                ]
-              },
-            ]
-          },
-          {
-            name: '样式',
-            groups: [
-              {
-                controls: [
-                  { label: '边框颜色', name: 'stroke', shape: 'InputText' },
-                  { label: '填充颜色', name: 'fill', shape: 'InputText' },
-                ],
-              },
-            ],
-          },
-        ]
-      },
-    },
-    'controller-unit-node': {
-      schema: {
-        tabs: [
-          {
-            name: '数据',
-            groups: [
-              {
-                controls: [
-                  { label: '控制单元名', name: 'ctrlUnitName', shape: 'InputText' },
-                  { label: '控制单元计时器', name: 'ctrlUnitTimer', shape: 'ControllerTimer' },
-                  { label: '控制单元控制周期', name: 'ctrlUnitPeriod', shape: 'InputNumber' },
+                  { label: '端口信息', name: 'ports', shape: 'NodePorts' },
                 ]
               },
             ]
@@ -66,7 +54,41 @@ const formConfig: FormConfig = {
         ]
       },
       controlMap: {
-        'ControllerTimer': ControllerTimer
+        'NodePorts': NodePorts
+      }
+    },
+    'controller-unit-node': {
+      schema: {
+        tabs: [
+          {
+            name: '数据',
+            groups: [
+              {
+                controls: [
+                  { label: '控制单元名', name: 'ctrlUnitName', shape: 'InputText' },
+                  { label: '控制单元计时器', name: 'ctrlUnitTimer', shape: 'ControllerTimer' },
+                  { label: '控制单元控制周期', name: 'ctrlUnitPeriod', shape: 'InputNumber' },
+                  { label: '端口信息', name: 'ports', shape: 'NodePorts' },
+                ]
+              },
+            ]
+          },
+          {
+            name: '样式',
+            groups: [
+              {
+                controls: [
+                  { label: '边框颜色', name: 'stroke', shape: 'InputText' },
+                  { label: '填充颜色', name: 'fill', shape: 'InputText' },
+                ],
+              },
+            ],
+          },
+        ]
+      },
+      controlMap: {
+        'ControllerTimer': ControllerTimer,
+        'NodePorts': NodePorts
       }
     },
     'machine-node': {
