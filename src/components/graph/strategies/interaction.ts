@@ -5,6 +5,7 @@ import ActorNode from '../../nodes/interaction/Actor'
 import ActivationBoxNode from '../../nodes/interaction/ActivationBox'
 import CombinedFragmentNode from '../../nodes/interaction/CombinedFragment'
 import Params from '../../form-panel/controls/interaction/Params'
+import Conditions from '../../form-panel/controls/interaction/Conditions'
 
 const formConfig: FormConfig = {
   edge: {
@@ -132,14 +133,17 @@ const formConfig: FormConfig = {
                   },
                   {
                     label: '条件',
-                    name: 'condition',
-                    shape: 'InputText'
+                    name: 'conditions',
+                    shape: 'Conditions'
                   }
                 ]
               }
             ]
           }
         ]
+      },
+      controlMap: {
+        'Conditions': Conditions
       }
     }
   }

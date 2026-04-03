@@ -8,6 +8,7 @@ import ControllerUnit from '../../nodes/environment/ControllerUnit'
 import Machine from '../../nodes/environment/Machine'
 import ControllerTimer from '../../form-panel/controls/environment/ControllerTimer'
 import NodePorts from '../../form-panel/controls/environment/NodePorts'
+import EdgeConnect from '../../form-panel/controls/environment/EdgeConnect'
 
 const formConfig: FormConfig = {
   edge: {
@@ -17,13 +18,15 @@ const formConfig: FormConfig = {
         groups: [
           {
             controls: [
-              { label: '交互名称', name: 'intName', shape: 'InputText' },
-              { label: '数据', name: 'intData', shape: 'InputText' }
+              { label: '连接', name: 'connect', shape: 'EdgeConnect' },
             ]
           }
         ]
       }
-    ]
+    ],
+    controlMap: {
+      'EdgeConnect': EdgeConnect
+    }
   },
   nodes: {
     'device-node': {

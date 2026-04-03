@@ -4,7 +4,7 @@ import { ArrowLeftOutlined, SaveOutlined, DownloadOutlined, ThunderboltOutlined 
 import type { Requirement } from '../../models/Requirement'
 import FlowGraph, { type FlowGraphRef } from '../graph'
 import DslEditor from '../dsl-editor'
-import { exportGraphToJSON, importGraphFromJSON } from '../../models/strategies/internalConstraints'
+import { getModelStrategy } from '../../models/strategies'
 import { API_ENDPOINTS } from '../../config/api'
 import './DimensionEditor.css'
 
@@ -38,6 +38,7 @@ interface DimensionEditorProps {
 
 function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionEditorProps) {
   const config = SECTION_CONFIG[sectionKey]
+  const modelStrategy = getModelStrategy(sectionKey)
 
   // 获取初始的图数据
   const getInitialGraphData = (): object => {
@@ -141,7 +142,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
     setDslError(undefined)
 
     try {
-      const jsonData = exportGraphToJSON(graph, sectionKey, config.label)
+      const jsonData = modelStrategy.exportGraphToJSON(graph, sectionKey, config.label)
       // console.log(jsonData)
       const response = await fetch(API_ENDPOINTS.rbgToDsl, {
         method: 'POST',
@@ -189,7 +190,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
       }
 
       const result = await response.text()
-      const x6Data = importGraphFromJSON(result)
+      const x6Data = modelStrategy.importGraphFromJSON(result)
 
       // 更新图数据
       setGraphData(x6Data)
@@ -214,7 +215,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
     const graph = flowGraphRef.current?.getGraph()
     if (!graph) return
 
-    const jsonData = exportGraphToJSON(graph, sectionKey, config.label)
+    const jsonData = modelStrategy.exportGraphToJSON(graph)
     const blob = new Blob([JSON.stringify(jsonData, null, 2)], {
       type: 'application/json',
     })
