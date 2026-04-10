@@ -16,6 +16,7 @@ const formConfig: FormConfig = {
           {
             title: '基础信息',
             controls: [
+              { label: '交互名称', name: 'name', shape: 'InputText' },
               { label: '消息', name: 'message', shape: 'InputText' },
               { label: '参数', name: 'params', shape: 'Params' },
               {
@@ -61,6 +62,18 @@ const formConfig: FormConfig = {
                 controls: [
                   { label: '对象名', name: 'objectName', shape: 'InputText' },
                   { label: '类名', name: 'className', shape: 'InputText' },
+                  {
+                    label: '类型',
+                    name: 'type',
+                    shape: 'Select',
+                    options: [
+                      { value: 'device', label: 'device' },
+                      { value: 'control-unit', label: 'control-unit' },
+                      { value: 'controller', label: 'controller' },
+                      { value: 'functional-module', label: 'functional-module' },
+                      { value: 'machine', label: 'machine' },
+                    ]
+                  }
                 ]
               }
             ]

@@ -8,6 +8,7 @@ import './AddEdgePanel.css'
 interface AddEdgePanelProps {
   graph: Graph
   edgeRules?: EdgeRules
+  defaultSourceMarker?: string | Record<string, any> | null
   defaultEdgeMarker?: string | Record<string, any> | null
 }
 
@@ -17,7 +18,7 @@ interface NodeOption {
   shape: string
 }
 
-const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, defaultEdgeMarker }) => {
+const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, defaultSourceMarker, defaultEdgeMarker }) => {
   const [expanded, setExpanded] = useState(false)
   const [sourceId, setSourceId] = useState<string>('')
   const [targetId, setTargetId] = useState<string>('')
@@ -93,32 +94,56 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, defaultEd
     }
   }
 
+  // 是否允许自连线（无 edgeRules 时，如时序图，允许节点自连线）
+  const allowSelfLoop = !edgeRules
+
   // 创建临时预览边
   const createTempEdge = (srcId: string, tgtId: string) => {
-    if (!graph || !srcId || !tgtId || srcId === tgtId) return
+    if (!graph || !srcId || !tgtId) return
+    if (srcId === tgtId && !allowSelfLoop) return
     cleanupTempEdge()
 
-    const edge = graph.addEdge({
-      source: srcId,
-      target: tgtId,
+    const edgeOpts: any = {
       attrs: {
         line: {
           stroke: '#1890ff',
           strokeWidth: 2,
           strokeDasharray: '5 5',
+          sourceMarker: defaultSourceMarker !== undefined ? defaultSourceMarker : undefined,
           targetMarker: defaultEdgeMarker !== undefined ? defaultEdgeMarker : { name: 'classic', size: 8 },
           style: { animation: 'ant-line 30s infinite linear' },
         },
       },
-      router: { name: 'orth' },
       zIndex: -1,
-    })
+    }
+
+    if (srcId === tgtId) {
+      // 自连线：用坐标 + vertices 画出可见的回环
+      const node = graph.getCellById(srcId) as Node
+      if (!node) return
+      const bbox = node.getBBox()
+      const rightX = bbox.x + bbox.width
+      const centerY = bbox.center.y
+      const loopOffset = 40
+      edgeOpts.source = { x: rightX, y: centerY }
+      edgeOpts.target = { x: rightX, y: centerY + 20 }
+      edgeOpts.vertices = [
+        { x: rightX + loopOffset, y: centerY },
+        { x: rightX + loopOffset, y: centerY + 20 },
+      ]
+    } else {
+      edgeOpts.source = srcId
+      edgeOpts.target = tgtId
+      edgeOpts.router = { name: 'orth' }
+    }
+
+    const edge = graph.addEdge(edgeOpts)
     tempEdgeRef.current = edge
   }
 
   // 更新临时边
   const updateTempEdge = (srcId: string, tgtId: string) => {
-    if (srcId && tgtId && srcId !== tgtId) {
+    if (srcId && tgtId && (srcId !== tgtId || allowSelfLoop)) {
       createTempEdge(srcId, tgtId)
     } else {
       cleanupTempEdge()
@@ -292,7 +317,8 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, defaultEd
 
   // 确认创建连线
   const handleConfirm = () => {
-    if (!sourceId || !targetId || sourceId === targetId) return
+    if (!sourceId || !targetId) return
+    if (sourceId === targetId && !allowSelfLoop) return
 
     cleanupTempEdge()
 
@@ -306,6 +332,7 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, defaultEd
         line: {
           stroke: '#1890ff',
           strokeWidth: 2,
+          sourceMarker: defaultSourceMarker !== undefined ? defaultSourceMarker : undefined,
           targetMarker: defaultEdgeMarker !== undefined ? defaultEdgeMarker : { name: 'block', width: 12, height: 8 },
         },
       },
@@ -348,16 +375,33 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, defaultEd
       const initData = { ...edgeConfig.data, sourceId, targetId }
       edgeConfig.data = initData
 
-      const sourceCenter = sourceNode.getBBox().center
-      const targetCenter = targetNode.getBBox().center
+      if (sourceId === targetId) {
+        // === 自连线：从节点右侧画出回环 ===
+        const bbox = sourceNode.getBBox()
+        const rightX = bbox.x + bbox.width
+        const centerY = bbox.center.y + offsetY
+        const loopOffset = 40
 
-      edgeConfig.source = {
-        x: sourceCenter.x,
-        y: sourceCenter.y + offsetY,
-      }
-      edgeConfig.target = {
-        x: targetCenter.x,
-        y: targetCenter.y + offsetY,
+        edgeConfig.source = { x: rightX, y: centerY }
+        edgeConfig.target = { x: rightX, y: centerY + 20 }
+        edgeConfig.vertices = [
+          { x: rightX + loopOffset, y: centerY },
+          { x: rightX + loopOffset, y: centerY + 20 },
+        ]
+        // 自连线不使用 orth router，用直连折线
+        delete edgeConfig.router
+      } else {
+        const sourceCenter = sourceNode.getBBox().center
+        const targetCenter = targetNode.getBBox().center
+
+        edgeConfig.source = {
+          x: sourceCenter.x,
+          y: sourceCenter.y + offsetY,
+        }
+        edgeConfig.target = {
+          x: targetCenter.x,
+          y: targetCenter.y + offsetY,
+        }
       }
 
       const formatLabel = (data: any) => {
@@ -421,8 +465,9 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, defaultEd
     }, 200)
   }
 
-  const sourceOptions = filterOptions(sourceSearch, targetId)
-  const targetOptions = filterOptions(targetSearch, sourceId)
+  // 无 edgeRules 时允许自连线，不排除已选节点
+  const sourceOptions = filterOptions(sourceSearch, allowSelfLoop ? undefined : targetId)
+  const targetOptions = filterOptions(targetSearch, allowSelfLoop ? undefined : sourceId)
 
   if (!expanded) {
     return (
@@ -538,7 +583,7 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, defaultEd
         <Button
           size="small"
           type="primary"
-          disabled={!sourceId || !targetId || sourceId === targetId}
+          disabled={!sourceId || !targetId || (sourceId === targetId && !allowSelfLoop)}
           onClick={handleConfirm}
         >
           确认

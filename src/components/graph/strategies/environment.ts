@@ -4,11 +4,11 @@ import Device from '../../nodes/environment/Device'
 import Controller from '../../nodes/environment/Controller'
 import Human from '../../nodes/environment/Human'
 import FunctionalModule from '../../nodes/environment/FunctionalModule'
-import ControllerUnit from '../../nodes/environment/ControllerUnit'
 import Machine from '../../nodes/environment/Machine'
 import ControllerTimer from '../../form-panel/controls/environment/ControllerTimer'
 import NodePorts from '../../form-panel/controls/environment/NodePorts'
 import EdgeConnect from '../../form-panel/controls/environment/EdgeConnect'
+import ControlUnit from '../../nodes/environment/ControlUnit'
 
 const formConfig: FormConfig = {
   edge: {
@@ -60,7 +60,7 @@ const formConfig: FormConfig = {
         'NodePorts': NodePorts
       }
     },
-    'controller-unit-node': {
+    'control-unit-node': {
       schema: {
         tabs: [
           {
@@ -94,6 +94,33 @@ const formConfig: FormConfig = {
         'NodePorts': NodePorts
       }
     },
+    'human-node': {
+      schema: {
+        tabs: [
+          {
+            name: '数据',
+            groups: [
+              {
+                controls: [
+                  { label: '人名', name: 'humanName', shape: 'InputText' },
+                ]
+              },
+            ]
+          },
+          {
+            name: '样式',
+            groups: [
+              {
+                controls: [
+                  { label: '边框颜色', name: 'stroke', shape: 'InputText' },
+                  { label: '填充颜色', name: 'fill', shape: 'InputText' },
+                ],
+              },
+            ],
+          },
+        ]
+      },
+    },
     'machine-node': {
       schema: {
         tabs: [
@@ -103,6 +130,7 @@ const formConfig: FormConfig = {
               {
                 controls: [
                   { label: '机器名', name: 'machineName', shape: 'InputText' },
+                  { label: '需求ID', name: 'requirementID', shape: 'InputText' }
                 ]
               },
             ]
@@ -130,6 +158,7 @@ const formConfig: FormConfig = {
               {
                 controls: [
                   { label: '控制器名', name: 'ctrlName', shape: 'InputText' },
+                  { label: '需求ID', name: 'requirementID', shape: 'InputText' }
                 ]
               },
             ]
@@ -157,6 +186,7 @@ const formConfig: FormConfig = {
               {
                 controls: [
                   { label: '功能模块名', name: 'fmName', shape: 'InputText' },
+                  { label: '需求ID', name: 'requirementID', shape: 'InputText' }
                 ]
               },
             ]
@@ -241,9 +271,9 @@ const environmentStrategy: GraphStrategy = {
       }
     },
     {
-      type: 'controller-unit',
-      label: 'Controller Unit',
-      shape: 'controller-unit-node',
+      type: 'control-unit',
+      label: 'Control Unit',
+      shape: 'control-unit-node',
       color: '#ffffffff',
       defaultAttrs: {
         width: 80,
@@ -283,8 +313,8 @@ const environmentStrategy: GraphStrategy = {
       component: FunctionalModule
     })
     register({
-      shape: 'controller-unit-node',
-      component: ControllerUnit
+      shape: 'control-unit-node',
+      component: ControlUnit
     })
     register({
       shape: 'machine-node',

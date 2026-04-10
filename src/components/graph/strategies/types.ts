@@ -87,6 +87,8 @@ export interface GraphStrategy {
   formConfig?: FormConfig
   // 边规则配置
   edgeRules?: EdgeRules
+  // 边默认起点箭头类型
+  defaultSourceMarker?: string | Record<string, any> | null
   // 边默认箭头类型
   defaultEdgeMarker?: string | Record<string, any> | null
   // 拖拽面板布局配置

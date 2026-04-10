@@ -1,7 +1,7 @@
 import NodeWrapper from "../NodeWrapper";
 
-const ControllerUnit = (props: any) => (
+const ControlUnit = (props: any) => (
     <NodeWrapper {...props}></NodeWrapper>
 )
 
-export default ControllerUnit
+export default ControlUnit

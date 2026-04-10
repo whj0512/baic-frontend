@@ -136,7 +136,8 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
                 line: {
                   stroke: '#1890ff',
                   strokeWidth: 2,
-                  targetMarker: {
+                  sourceMarker: strategy.defaultSourceMarker !== undefined ? strategy.defaultSourceMarker : undefined,
+                  targetMarker: strategy.defaultEdgeMarker !== undefined ? strategy.defaultEdgeMarker : {
                     name: 'block',
                     width: 12,
                     height: 8,
@@ -329,7 +330,8 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
         graph.on('edge:mouseenter', ({ edge }) => {
           edge.addTools([
             { name: 'source-arrowhead', args: { attrs: { fill: '#1890ff', stroke: '#fff', 'stroke-width': 2, r: 4 } } },
-            { name: 'target-arrowhead', args: { attrs: { fill: '#1890ff', stroke: '#fff', 'stroke-width': 2, r: 4 } } }
+            { name: 'target-arrowhead', args: { attrs: { fill: '#1890ff', stroke: '#fff', 'stroke-width': 2, r: 4 } } },
+            { name: 'vertices' }
           ])
         })
 
@@ -478,9 +480,10 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
           <div ref={containerRef} className="x6-graph-container" />
           {!readOnly && graphReady && graphRef.current && (
             <div className="graph-toolbar">
-              <AddEdgePanel 
-                graph={graphRef.current} 
-                edgeRules={strategy.edgeRules} 
+              <AddEdgePanel
+                graph={graphRef.current}
+                edgeRules={strategy.edgeRules}
+                defaultSourceMarker={strategy.defaultSourceMarker}
                 defaultEdgeMarker={strategy.defaultEdgeMarker}
               />
             </div>

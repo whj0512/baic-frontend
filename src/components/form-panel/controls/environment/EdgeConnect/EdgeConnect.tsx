@@ -5,14 +5,14 @@ import type { Graph, Edge } from '@antv/x6'
 import './EdgeConnect.css'
 
 // ============ Data Types ============
-export interface Interaction {
+interface Interaction {
   name: string
   sender: string
   receiver: string
   message: string
 }
 
-export interface Connect {
+interface Connect {
   interactions: Interaction[]
 }
 

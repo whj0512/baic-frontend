@@ -2,7 +2,7 @@ import React from 'react'
 import './ControllerTimer.css'
 import { Input } from 'antd'
 
-export interface ControllerTimerValue {
+interface ControllerTimerValue {
   timerName?: string
   intervalNum?: number
   addrNum?: string
