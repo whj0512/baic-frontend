@@ -79,14 +79,22 @@ export interface EdgeRules {
   getOutputOptions?: (nodeId: string, nodeShape: string) => Array<{ value: string; label: string }>
 }
 
+// 连线模式
+// 'sequence': 时序图模式，按坐标连线，支持 offsetY 防重叠、自动 label 等
+// 'direct'  : 直连节点模式，使用普通 source/target cell 连线，支持 orth router
+export type EdgeMode = 'sequence' | 'direct'
+
 // 扩展后的策略类型
 export interface GraphStrategy {
   sidebarItems: SidebarItem[]
   registerNodes?: () => void
   // 表单配置
   formConfig?: FormConfig
-  // 边规则配置
+  // 边规则配置（基于 Port 的连线，优先级最高）
   edgeRules?: EdgeRules
+  // 无 edgeRules 时的连线模式，默认 'direct'
+  // 'sequence' 专用于时序图的坐标连线逻辑
+  edgeMode?: EdgeMode
   // 边默认起点箭头类型
   defaultSourceMarker?: string | Record<string, any> | null
   // 边默认箭头类型

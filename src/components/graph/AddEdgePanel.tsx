@@ -2,12 +2,14 @@ import React, { useState, useMemo, useRef } from 'react'
 import { Button, Radio } from 'antd'
 import { PlusOutlined, CloseOutlined } from '@ant-design/icons'
 import type { Graph, Node } from '@antv/x6'
-import type { EdgeRules } from './strategies/types'
+import type { EdgeRules, EdgeMode } from './strategies/types'
 import './AddEdgePanel.css'
 
 interface AddEdgePanelProps {
   graph: Graph
   edgeRules?: EdgeRules
+  /** 无 edgeRules 时的连线模式，默认 'direct'（直连节点）；'sequence' 为时序图坐标连线模式 */
+  edgeMode?: EdgeMode
   defaultSourceMarker?: string | Record<string, any> | null
   defaultEdgeMarker?: string | Record<string, any> | null
 }
@@ -18,7 +20,12 @@ interface NodeOption {
   shape: string
 }
 
-const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, defaultSourceMarker, defaultEdgeMarker }) => {
+const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, edgeMode, defaultSourceMarker, defaultEdgeMarker }) => {
+  // 当前连线模式判断：
+  // - 有 edgeRules：走 Port 连线逻辑（优先级最高，本变量不影响）
+  // - edgeMode === 'sequence'：走时序图坐标连线逻辑（offsetY 防重叠 + 自连线 + 自动 label）
+  // - 其他（默认 'direct'）：走简单直连节点逻辑
+  const isSequenceMode = !edgeRules && edgeMode === 'sequence'
   const [expanded, setExpanded] = useState(false)
   const [sourceId, setSourceId] = useState<string>('')
   const [targetId, setTargetId] = useState<string>('')
@@ -94,8 +101,8 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, defaultSo
     }
   }
 
-  // 是否允许自连线（无 edgeRules 时，如时序图，允许节点自连线）
-  const allowSelfLoop = !edgeRules
+  // 是否允许自连线（仅时序图 sequence 模式允许，直连模式下自连线无意义）
+  const allowSelfLoop = isSequenceMode
 
   // 创建临时预览边
   const createTempEdge = (srcId: string, tgtId: string) => {
@@ -344,7 +351,7 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, defaultSo
     }
 
     if (edgeRules) {
-      // === 有 edgeRules 时，通过 port 连接 ===
+      // === 模式一：有 edgeRules，通过 Port 连接 ===
       ensurePortGroups(sourceNode)
       ensureInitialPorts(sourceNode)
       ensurePortGroups(targetNode)
@@ -357,8 +364,8 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, defaultSo
 
       edgeConfig.source = { cell: sourceId, port: sourcePortId }
       edgeConfig.target = { cell: targetId, port: targetPortId }
-    } else {
-      // === 无 edgeRules 时（如时序图），直接连接节点 ===
+    } else if (isSequenceMode) {
+      // === 模式二：时序图坐标连线（sequence mode） ===
       // 计算相同节点对之间已有的边数量，用于 Y 轴偏移避免重叠
       const existingEdges = graph.getEdges().filter((e) => {
         const eSrc = e.getSource() as { cell?: string }
@@ -428,6 +435,11 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, defaultSo
           }
         }]
       }
+    } else {
+      // === 模式三：直连节点（direct mode，默认） ===
+      // 直接使用 cell id 连接，让 X6 自动计算连线位置
+      edgeConfig.source = sourceId
+      edgeConfig.target = targetId
     }
 
     graph.addEdge(edgeConfig)

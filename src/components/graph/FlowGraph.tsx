@@ -483,6 +483,7 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
               <AddEdgePanel
                 graph={graphRef.current}
                 edgeRules={strategy.edgeRules}
+                edgeMode={strategy.edgeMode}
                 defaultSourceMarker={strategy.defaultSourceMarker}
                 defaultEdgeMarker={strategy.defaultEdgeMarker}
               />

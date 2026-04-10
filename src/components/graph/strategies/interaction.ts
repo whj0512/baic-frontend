@@ -237,7 +237,9 @@ const interactionStrategy: GraphStrategy = {
       component: CombinedFragmentNode,
     })
   },
-  // 时序图不使用 port 连线，edge 直接连接节点（锚点在生命线虚线上）
+  // 时序图不使用 port 连线，edge 直接按坐标连接（锚点在生命线虚线上）
+  // 使用 'sequence' 模式：支持 offsetY 防重叠、自连线回环、自动 label 等时序图专用逻辑
+  edgeMode: 'sequence',
   formConfig: formConfig
 }
 
