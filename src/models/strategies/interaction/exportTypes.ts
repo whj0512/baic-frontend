@@ -39,7 +39,7 @@ export interface RelationScope {
 }
 
 // 对应组合片段
-export interface InterfaceRelation {
+export interface InteractionRelation {
     id: string
     type: string
     scope?: RelationScope[]
@@ -54,5 +54,5 @@ export interface ESD {
     desc?: string
     graph_type?: 'ESD'
     interactions: Interaction[]
-    interfaceRelations: InterfaceRelation[]
+    interactionRelations: InteractionRelation[]
 }

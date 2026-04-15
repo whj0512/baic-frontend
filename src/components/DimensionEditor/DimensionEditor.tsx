@@ -5,7 +5,7 @@ import type { Requirement } from '../../models/Requirement'
 import FlowGraph, { type FlowGraphRef } from '../graph'
 import DslEditor from '../dsl-editor'
 import { getModelStrategy } from '../../models/strategies'
-import { API_ENDPOINTS } from '../../config/api'
+import { API_ENDPOINTS, getDslToRbgEndpoint, getRbgToDslEndpoint } from '../../config/api'
 import './DimensionEditor.css'
 
 type ViewMode = 'visual' | 'dsl'
@@ -144,7 +144,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
     try {
       const jsonData = modelStrategy.exportGraphToJSON(graph, sectionKey, config.label)
       // console.log(jsonData)
-      const response = await fetch(API_ENDPOINTS.rbgToDsl, {
+      const response = await fetch(getRbgToDslEndpoint(config.dimensionCode), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -177,7 +177,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
     setDslError(undefined)
 
     try {
-      const response = await fetch(API_ENDPOINTS.dslToRbg, {
+      const response = await fetch(getDslToRbgEndpoint(config.dimensionCode), {
         method: 'POST',
         headers: {
           'Content-Type': 'text/plain',

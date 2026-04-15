@@ -14,10 +14,18 @@ export const WS_ENDPOINTS = {
 
 // API 端点
 export const API_ENDPOINTS = {
-  // 将图 JSON 转换为 DSL
+  // 通用图 JSON ↔ DSL 转换（SC 维度使用通用端点）
   rbgToDsl: `${DSL_SERVICE_BASE_URL}/rbg-to-dsl`,
-  // 将 DSL 转换为图 JSON
   dslToRbg: `${DSL_SERVICE_BASE_URL}/dsl-to-rbg`,
+
+  // 按维度的图 JSON ↔ DSL 转换（v2 新增）
+  rbgToDslIBD: `${DSL_SERVICE_BASE_URL}/rbg-to-dsl/IBD`,
+  dslToRbgIBD: `${DSL_SERVICE_BASE_URL}/dsl-to-rbg/IBD`,
+  rbgToDslBDD: `${DSL_SERVICE_BASE_URL}/rbg-to-dsl/BDD`,
+  dslToRbgBDD: `${DSL_SERVICE_BASE_URL}/dsl-to-rbg/BDD`,
+  rbgToDslESD: `${DSL_SERVICE_BASE_URL}/rbg-to-dsl/ESD`,
+  dslToRbgESD: `${DSL_SERVICE_BASE_URL}/dsl-to-rbg/ESD`,
+
   // 将自然语言转换为 DSL
   nlToDsl: `${DSL_SERVICE_BASE_URL}/nl-to-dsl`,
   // 用户注册
@@ -30,4 +38,32 @@ export const API_ENDPOINTS = {
   requirements: `${DSL_SERVICE_BASE_URL}/requirements`,
   // 单条需求操作（GET / PUT / DELETE）
   requirementById: (id: string) => `${DSL_SERVICE_BASE_URL}/requirements/${id}`,
+}
+
+/**
+ * 根据维度代码获取对应的 dslToRbg 端点。
+ * - IBD / BDD / ESD / ISD 使用各自的类型化端点（ISD 复用 ESD）
+ * - SC 使用通用端点
+ */
+export function getDslToRbgEndpoint(dimensionCode: string): string {
+  switch (dimensionCode) {
+    case 'IBD': return API_ENDPOINTS.dslToRbgIBD
+    case 'BDD': return API_ENDPOINTS.dslToRbgBDD
+    case 'ESD': return API_ENDPOINTS.dslToRbgESD
+    case 'ISD': return API_ENDPOINTS.dslToRbgESD // ISD 与 ESD 共用
+    default:    return API_ENDPOINTS.dslToRbg     // SC 等使用通用端点
+  }
+}
+
+/**
+ * 根据维度代码获取对应的 rbgToDsl 端点。
+ */
+export function getRbgToDslEndpoint(dimensionCode: string): string {
+  switch (dimensionCode) {
+    case 'IBD': return API_ENDPOINTS.rbgToDslIBD
+    case 'BDD': return API_ENDPOINTS.rbgToDslBDD
+    case 'ESD': return API_ENDPOINTS.rbgToDslESD
+    case 'ISD': return API_ENDPOINTS.rbgToDslESD // ISD 与 ESD 共用
+    default:    return API_ENDPOINTS.rbgToDsl     // SC 等使用通用端点
+  }
 }

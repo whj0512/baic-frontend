@@ -24,7 +24,8 @@ function Home() {
         throw new Error('Failed to fetch projects')
       }
       const data = await response.json()
-      setProjects(data || [])
+      // v2 API 返回 { projects: [...] }，兼容直接返回数组的情况
+      setProjects(Array.isArray(data) ? data : (data.projects || []))
     } catch (error) {
       console.error('Error fetching projects:', error)
       message.error('获取项目列表失败')
@@ -106,7 +107,7 @@ function Home() {
     (project) =>
       project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.description.toLowerCase().includes(searchQuery.toLowerCase())
+      (project.description || '').toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   const isAllSelected =

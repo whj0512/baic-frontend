@@ -1,5 +1,5 @@
 import type { Edge, Graph, Node } from "@antv/x6"
-import type { Componenet, Interaction, InterfaceRelation, Message, RelationScope } from './exportTypes'
+import type { Componenet, Interaction, InteractionRelation, Message, RelationScope } from './exportTypes'
 
 // 生成唯一 ID
 const generateId = (): string => {
@@ -62,7 +62,7 @@ export const exportGraphTOJSON = (graph: Graph, graphId?: string, graphDesc?: st
     const components: Componenet[] = []
     const fragments: Node[] = []
     const interactions: Interaction[] = []
-    const interfaceRelations: InterfaceRelation[] = []
+    const interactionRelations: InteractionRelation[] = []
 
     graph.getNodes().forEach(node => {
         switch (node.shape) {
@@ -128,7 +128,7 @@ export const exportGraphTOJSON = (graph: Graph, graphId?: string, graphDesc?: st
             }
         })
 
-        const interactionRelation: InterfaceRelation = {
+        const interactionRelation: InteractionRelation = {
             id: fragment.id,
             type: fragmentData.fragmentType,
             scope,
@@ -137,7 +137,7 @@ export const exportGraphTOJSON = (graph: Graph, graphId?: string, graphDesc?: st
             width: fragmentSize.width,
             height: fragmentSize.height,
         }
-        interfaceRelations.push(interactionRelation)
+        interactionRelations.push(interactionRelation)
     })
 
     return {
@@ -145,6 +145,6 @@ export const exportGraphTOJSON = (graph: Graph, graphId?: string, graphDesc?: st
         desc: graphDesc || '',
         graph_type: 'ESD',
         interactions,
-        interfaceRelations
+        interactionRelations
     }
 }

@@ -46,8 +46,8 @@ function ProjectWorkSpace() {
         const projRes = await fetch(API_ENDPOINTS.projects)
         if (!projRes.ok) throw new Error('获取项目列表失败')
         const projData = await projRes.json()
-
-        const currentProject = projData?.find((p: any) => p.key === projectKey)
+        const projects = Array.isArray(projData) ? projData : (projData.projects || [])
+        const currentProject = projects.find((p: any) => p.key === projectKey)
 
         if (!currentProject) {
           message.error('未找到该项目')
@@ -249,7 +249,6 @@ function ProjectWorkSpace() {
   const draftRequirement: Requirement = {
     id: 'NEW',
     project_id: projectKey || '',
-    current_version_id: '',
     nl_text: createFormData.nl_text,
     created_by: 'CurrentUser',
     created_at: new Date().toISOString(),
@@ -400,7 +399,7 @@ function ProjectWorkSpace() {
                 currentVersions.map((version) => (
                   <div key={version.id} className="version-item">
                     <div className="version-header">
-                      <span className="version-number">v{version.version_number}</span>
+                      <span className="version-number">v{version.version_code}</span>
                       <span className="version-date">{formatDate(version.created_at)}</span>
                     </div>
                     <div className="version-info">

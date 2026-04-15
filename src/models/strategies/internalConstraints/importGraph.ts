@@ -1,7 +1,4 @@
 // 将 dsl-to-rbg API 返回的 JSON 转换为 X6 图数据格式
-
-import type { NodeTypeName } from './exportTypes'
-
 // API 返回的节点渲染配置
 interface RenderConfig {
   x: number
