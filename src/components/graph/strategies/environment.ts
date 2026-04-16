@@ -37,7 +37,7 @@ const formConfig: FormConfig = {
             groups: [
               {
                 controls: [
-                  { label: '设备名', name: 'deviceName', shape: 'InputText' },
+                  { label: '设备名', name: 'nodeName', shape: 'InputText' },
                   { label: '端口信息', name: 'ports', shape: 'NodePorts' },
                 ]
               },
@@ -68,7 +68,7 @@ const formConfig: FormConfig = {
             groups: [
               {
                 controls: [
-                  { label: '控制单元名', name: 'ctrlUnitName', shape: 'InputText' },
+                  { label: '控制单元名', name: 'nodeName', shape: 'InputText' },
                   { label: '控制单元计时器', name: 'ctrlUnitTimer', shape: 'ControllerTimer' },
                   { label: '控制单元控制周期', name: 'ctrlUnitPeriod', shape: 'InputNumber' },
                   { label: '端口信息', name: 'ports', shape: 'NodePorts' },
@@ -102,7 +102,7 @@ const formConfig: FormConfig = {
             groups: [
               {
                 controls: [
-                  { label: '人名', name: 'humanName', shape: 'InputText' },
+                  { label: '人名', name: 'nodeName', shape: 'InputText' },
                 ]
               },
             ]
@@ -129,7 +129,7 @@ const formConfig: FormConfig = {
             groups: [
               {
                 controls: [
-                  { label: '机器名', name: 'machineName', shape: 'InputText' },
+                  { label: '机器名', name: 'nodeName', shape: 'InputText' },
                   { label: '需求ID', name: 'requirementID', shape: 'InputText' }
                 ]
               },
@@ -157,7 +157,7 @@ const formConfig: FormConfig = {
             groups: [
               {
                 controls: [
-                  { label: '控制器名', name: 'ctrlName', shape: 'InputText' },
+                  { label: '控制器名', name: 'nodeName', shape: 'InputText' },
                   { label: '需求ID', name: 'requirementID', shape: 'InputText' }
                 ]
               },
@@ -185,7 +185,7 @@ const formConfig: FormConfig = {
             groups: [
               {
                 controls: [
-                  { label: '功能模块名', name: 'fmName', shape: 'InputText' },
+                  { label: '功能模块名', name: 'nodeName', shape: 'InputText' },
                   { label: '需求ID', name: 'requirementID', shape: 'InputText' }
                 ]
               },

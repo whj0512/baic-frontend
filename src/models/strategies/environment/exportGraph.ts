@@ -22,14 +22,14 @@ const convertNode = (
         case 'device-node':
             return {
                 ...component,
-                name: nodeData.deviceName,
+                name: nodeData.nodeName,
                 type: 'device',
                 ports: nodeData.ports
             }
         case 'control-unit-node':
             return {
                 ...component,
-                name: nodeData.ctrlUnitName,
+                name: nodeData.nodeName,
                 type: 'control-unit',
                 ports: nodeData.ports,
                 timer: nodeData.ctrlUnitTimer,
@@ -38,27 +38,27 @@ const convertNode = (
         case 'human-node':
             return {
                 ...component,
-                name: nodeData.humanName,
+                name: nodeData.nodeName,
                 type: 'human'
             }
         case 'machine-node':
             return {
                 ...component,
-                name: nodeData.machineName,
+                name: nodeData.nodeName,
                 type: 'machine',
                 requirementID: nodeData.requirementID
             }
         case 'controller-node':
             return {
                 ...component,
-                name: nodeData.ctrlName,
+                name: nodeData.nodeName,
                 type: 'controller',
                 requirementID: nodeData.requirementID
             }
         case 'functional-module-node':
             return {
                 ...component,
-                name: nodeData.fmName,
+                name: nodeData.nodeName,
                 type: 'functional-module',
                 requirementID: nodeData.requirementID
             }

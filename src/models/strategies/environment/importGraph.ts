@@ -16,33 +16,33 @@ const convertNode = (apiNode: any, index: number): any => {
     switch (apiNode.type?.toLowerCase()) {
         case 'device':
             shape = 'device-node'
-            data.deviceName = apiNode.name
+            data.nodeName = apiNode.name
             data.ports = apiNode.ports
             break
         case 'control-unit':
             shape = 'control-unit-node'
-            data.ctrlUnitName = apiNode.name
+            data.nodeName = apiNode.name
             data.ports = apiNode.ports
             data.ctrlUnitTimer = apiNode.timer
             data.ctrlUnitPeriod = apiNode.controlPeriod
             break
         case 'human':
             shape = 'human-node'
-            data.humanName = apiNode.name
+            data.nodeName = apiNode.name
             break
         case 'machine':
             shape = 'machine-node'
-            data.machineName = apiNode.name
+            data.nodeName = apiNode.name
             data.requirementID = apiNode.requirementID
             break
         case 'controller':
             shape = 'controller-node'
-            data.ctrlName = apiNode.name
+            data.nodeName = apiNode.name
             data.requirementID = apiNode.requirementID
             break
         case 'functional-module':
             shape = 'functional-module-node'
-            data.fmName = apiNode.name
+            data.nodeName = apiNode.name
             data.requirementID = apiNode.requirementID
             break
         default:

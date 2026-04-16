@@ -1,4 +1,4 @@
-import type { BDD, Component, Relation } from './exportTypes'
+import type { BDD, Relation } from './exportTypes'
 
 /**
  * 将 API 节点转换为 X6 节点数据
