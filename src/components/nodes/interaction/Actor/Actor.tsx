@@ -20,7 +20,7 @@ const Actor: FC<ActorProps> = (props) => {
     const stroke = propStroke || nodeData.stroke || '#4a90d9';
 
     const actorName = nodeData.actorName || '';
-    
+
     useEffect(() => {
         const currentData = node?.getData?.() || {};
         if (currentData.actorName === undefined) {
@@ -77,7 +77,6 @@ const Actor: FC<ActorProps> = (props) => {
             headerContent={headerContent}
             headerHeight={headerHeight}
             tailOffset={20}
-            node={node}
         />
     );
 };

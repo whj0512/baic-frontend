@@ -3,6 +3,7 @@ import { Button, Radio } from 'antd'
 import { PlusOutlined, CloseOutlined } from '@ant-design/icons'
 import type { Graph, Node } from '@antv/x6'
 import type { EdgeRules, EdgeMode } from './strategies/types'
+import Draggable from 'react-draggable'
 import './AddEdgePanel.css'
 
 interface AddEdgePanelProps {
@@ -37,6 +38,7 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, edgeMode,
   const sourceInputRef = useRef<HTMLInputElement>(null)
   const targetInputRef = useRef<HTMLInputElement>(null)
   const tempEdgeRef = useRef<any>(null)
+  const nodeRef = useRef<HTMLDivElement>(null)
 
   // 获取画布上所有节点
   const nodes = useMemo<NodeOption[]>(() => {
@@ -483,125 +485,131 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, edgeMode,
 
   if (!expanded) {
     return (
-      <Button
-        type="primary"
-        icon={<PlusOutlined />}
-        onClick={() => setExpanded(true)}
-      >
-        添加连线
-      </Button>
+      <div className="add-edge-toolbar">
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => setExpanded(true)}
+        >
+          添加连线
+        </Button>
+      </div>
     )
   }
 
   return (
-    <div className="add-edge-panel">
-      <div className="add-edge-panel-header">
-        <span>添加连线</span>
-        <CloseOutlined className="add-edge-panel-close" onClick={handleCancel} />
-      </div>
-
-      <div className="add-edge-panel-body">
-        {/* 起始节点选择器 */}
-        <div
-          className="add-edge-selector"
-          onBlur={(e) => handleBlur(e, setShowSourceDropdown, setSourceSearch)}
-        >
-          <label>起始节点</label>
-          <input
-            ref={sourceInputRef}
-            type="text"
-            className="add-edge-input"
-            placeholder={sourceId ? getNodeName(sourceId) : '搜索节点...'}
-            value={sourceSearch}
-            onChange={(e) => {
-              setSourceSearch(e.target.value)
-              setShowSourceDropdown(true)
-            }}
-            onFocus={() => setShowSourceDropdown(true)}
-          />
-          {showSourceDropdown && sourceOptions.length > 0 && (
-            <div className="add-edge-dropdown">
-              {sourceOptions.map(option => (
-                <div
-                  key={option.id}
-                  className="add-edge-option"
-                  onMouseDown={() => handleSelectSource(option)}
-                  onMouseEnter={() => highlightNode(option.id)}
-                  onMouseLeave={() => unhighlightNode(option.id)}
-                >
-                  {option.name}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* 输出选择器（仅当起始节点有多个输出时显示） */}
-        {hasMultipleOutputs && outputOptions.length > 0 && (
-          <div className="add-edge-selector">
-            <label>输出端口</label>
-            <Radio.Group
-              value={sourceOutput}
-              onChange={(e) => setSourceOutput(e.target.value)}
-              className="add-edge-output-selector"
-            >
-              {outputOptions.map(option => (
-                <Radio key={option.value} value={option.value}>
-                  {option.label}
-                </Radio>
-              ))}
-            </Radio.Group>
+    <Draggable nodeRef={nodeRef} handle=".add-edge-panel-header" bounds="parent">
+      <div ref={nodeRef} className="add-edge-panel-container">
+        <div className="add-edge-panel">
+          <div className="add-edge-panel-header" style={{ cursor: 'move' }}>
+            <span style={{ userSelect: 'none' }}>添加连线</span>
+            <CloseOutlined className="add-edge-panel-close" onClick={handleCancel} />
           </div>
-        )}
 
-        {/* 目标节点选择器 */}
-        <div
-          className="add-edge-selector"
-          onBlur={(e) => handleBlur(e, setShowTargetDropdown, setTargetSearch)}
-        >
-          <label>目标节点</label>
-          <input
-            ref={targetInputRef}
-            type="text"
-            className="add-edge-input"
-            placeholder={targetId ? getNodeName(targetId) : '搜索节点...'}
-            value={targetSearch}
-            onChange={(e) => {
-              setTargetSearch(e.target.value)
-              setShowTargetDropdown(true)
-            }}
-            onFocus={() => setShowTargetDropdown(true)}
-          />
-          {showTargetDropdown && targetOptions.length > 0 && (
-            <div className="add-edge-dropdown">
-              {targetOptions.map(option => (
-                <div
-                  key={option.id}
-                  className="add-edge-option"
-                  onMouseDown={() => handleSelectTarget(option)}
-                  onMouseEnter={() => highlightNode(option.id)}
-                  onMouseLeave={() => unhighlightNode(option.id)}
-                >
-                  {option.name}
+          <div className="add-edge-panel-body">
+            {/* 起始节点选择器 */}
+            <div
+              className="add-edge-selector"
+              onBlur={(e) => handleBlur(e, setShowSourceDropdown, setSourceSearch)}
+            >
+              <label>起始节点</label>
+              <input
+                ref={sourceInputRef}
+                type="text"
+                className="add-edge-input"
+                placeholder={sourceId ? getNodeName(sourceId) : '搜索节点...'}
+                value={sourceSearch}
+                onChange={(e) => {
+                  setSourceSearch(e.target.value)
+                  setShowSourceDropdown(true)
+                }}
+                onFocus={() => setShowSourceDropdown(true)}
+              />
+              {showSourceDropdown && sourceOptions.length > 0 && (
+                <div className="add-edge-dropdown">
+                  {sourceOptions.map(option => (
+                    <div
+                      key={option.id}
+                      className="add-edge-option"
+                      onMouseDown={() => handleSelectSource(option)}
+                      onMouseEnter={() => highlightNode(option.id)}
+                      onMouseLeave={() => unhighlightNode(option.id)}
+                    >
+                      {option.name}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
+
+            {/* 输出选择器（仅当起始节点有多个输出时显示） */}
+            {hasMultipleOutputs && outputOptions.length > 0 && (
+              <div className="add-edge-selector">
+                <label>输出端口</label>
+                <Radio.Group
+                  value={sourceOutput}
+                  onChange={(e) => setSourceOutput(e.target.value)}
+                  className="add-edge-output-selector"
+                >
+                  {outputOptions.map(option => (
+                    <Radio key={option.value} value={option.value}>
+                      {option.label}
+                    </Radio>
+                  ))}
+                </Radio.Group>
+              </div>
+            )}
+
+            {/* 目标节点选择器 */}
+            <div
+              className="add-edge-selector"
+              onBlur={(e) => handleBlur(e, setShowTargetDropdown, setTargetSearch)}
+            >
+              <label>目标节点</label>
+              <input
+                ref={targetInputRef}
+                type="text"
+                className="add-edge-input"
+                placeholder={targetId ? getNodeName(targetId) : '搜索节点...'}
+                value={targetSearch}
+                onChange={(e) => {
+                  setTargetSearch(e.target.value)
+                  setShowTargetDropdown(true)
+                }}
+                onFocus={() => setShowTargetDropdown(true)}
+              />
+              {showTargetDropdown && targetOptions.length > 0 && (
+                <div className="add-edge-dropdown">
+                  {targetOptions.map(option => (
+                    <div
+                      key={option.id}
+                      className="add-edge-option"
+                      onMouseDown={() => handleSelectTarget(option)}
+                      onMouseEnter={() => highlightNode(option.id)}
+                      onMouseLeave={() => unhighlightNode(option.id)}
+                    >
+                      {option.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="add-edge-panel-footer">
+            <Button size="small" onClick={handleCancel}>取消</Button>
+            <Button
+              size="small"
+              type="primary"
+              disabled={!sourceId || !targetId || (sourceId === targetId && !allowSelfLoop)}
+              onClick={handleConfirm}
+            >
+              确认
+            </Button>
+          </div>
         </div>
       </div>
-
-      <div className="add-edge-panel-footer">
-        <Button size="small" onClick={handleCancel}>取消</Button>
-        <Button
-          size="small"
-          type="primary"
-          disabled={!sourceId || !targetId || (sourceId === targetId && !allowSelfLoop)}
-          onClick={handleConfirm}
-        >
-          确认
-        </Button>
-      </div>
-    </div>
+    </Draggable>
   )
 }
 

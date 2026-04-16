@@ -220,7 +220,7 @@ const environmentStrategy: GraphStrategy = {
   },
   stencilGraphWidth: 120,
   stencilGraphHeight: 1000,
-  stencilGraphPadding: 5,
+  stencilGraphPadding: 10,
   sidebarItems: [
     {
       type: 'device',

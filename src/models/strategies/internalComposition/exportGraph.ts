@@ -22,21 +22,21 @@ const convertNode = (
         case 'machine-node':
             return {
                 ...component,
-                name: nodeData.machineName,
+                name: nodeData.nodeName,
                 type: 'machine',
                 requirementID: nodeData.requirementID
             }
         case 'controller-node':
             return {
                 ...component,
-                name: nodeData.ctrlName,
+                name: nodeData.nodeName,
                 type: 'controller',
                 requirementID: nodeData.requirementID
             }
         case 'functional-module-node':
             return {
                 ...component,
-                name: nodeData.fmName,
+                name: nodeData.nodeName,
                 type: 'functional-module',
                 requirementID: nodeData.requirementID
             }

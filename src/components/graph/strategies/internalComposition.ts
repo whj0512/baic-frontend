@@ -14,7 +14,7 @@ const formConfig: FormConfig = {
             groups: [
               {
                 controls: [
-                  { label: '机器名', name: 'machineName', shape: 'InputText' },
+                  { label: '机器名', name: 'nodeName', shape: 'InputText' },
                   { label: '需求ID', name: 'requirementID', shape: 'InputText' }
                 ]
               },
@@ -42,7 +42,7 @@ const formConfig: FormConfig = {
             groups: [
               {
                 controls: [
-                  { label: '控制器名', name: 'ctrlName', shape: 'InputText' },
+                  { label: '控制器名', name: 'nodeName', shape: 'InputText' },
                   { label: '需求ID', name: 'requirementID', shape: 'InputText' }
                 ]
               },
@@ -70,7 +70,7 @@ const formConfig: FormConfig = {
             groups: [
               {
                 controls: [
-                  { label: '功能模块名', name: 'fmName', shape: 'InputText' },
+                  { label: '功能模块名', name: 'nodeName', shape: 'InputText' },
                   { label: '需求ID', name: 'requirementID', shape: 'InputText' }
                 ]
               },

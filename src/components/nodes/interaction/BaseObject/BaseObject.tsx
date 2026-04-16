@@ -63,7 +63,6 @@ const BaseObject: FC<BaseObjectProps> = (props) => {
             className="seq-lifeline"
             headerContent={headerContent}
             headerHeight={headerHeight}
-            node={node}
         />
     );
 };

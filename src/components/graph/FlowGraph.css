@@ -113,20 +113,7 @@
   user-select: none;
 }
 
-/* 底部工具栏 */
-.graph-toolbar {
-  position: absolute;
-  bottom: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 8px 16px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  z-index: 10;
-}
+/* 底部工具栏已迁移至 AddEdgePanel 自行管理定位 */
 
 /* 右侧表单面板 wrapper */
 .form-panel-wrapper {

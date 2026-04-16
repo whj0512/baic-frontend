@@ -87,8 +87,13 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
 
       if (!containerRef.current) return
 
+      const graphInnerContainer = document.createElement('div')
+      graphInnerContainer.style.width = '100%'
+      graphInnerContainer.style.height = '100%'
+      containerRef.current.appendChild(graphInnerContainer)
+
       const graph = new Graph({
-        container: containerRef.current,
+        container: graphInnerContainer,
         autoResize: true,
         grid: { size: 10, visible: true },
         panning: true,
@@ -105,7 +110,7 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
           edgeLabelMovable: true,
         } : false,
         background: { color: '#f8f9fa' },
-        // 启用选中功能
+        // // 启用选中功能
         selecting: {
           enabled: true,
           showNodeSelectionBox: true,
@@ -316,29 +321,41 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
           })
         })
 
-        // 点击画布空白处关闭菜单
+        // 点击画布空白处关闭菜单和收起属性面板
         graph.on('blank:click', () => {
           setContextMenu(prev => ({ ...prev, visible: false, cell: null }))
+          setFormPanelCollapsed(true)
         })
 
-        // 点击节点/边时关闭菜单
-        graph.on('cell:click', () => {
+        // 点击节点时关闭菜单并展开属性面板
+        graph.on('node:click', () => {
           setContextMenu(prev => ({ ...prev, visible: false, cell: null }))
+          setFormPanelCollapsed(false)
+        })
+
+        // 点击边时关闭菜单并展开属性面板
+        graph.on('edge:click', () => {
+          setContextMenu(prev => ({ ...prev, visible: false, cell: null }))
+          setFormPanelCollapsed(false)
         })
 
         // ====== 悬停时添加源/目标端点拖拽工具，实现坐标系边的「拉伸」 ======
-        graph.on('edge:mouseenter', ({ edge }) => {
-          edge.addTools([
-            { name: 'source-arrowhead', args: { attrs: { fill: '#1890ff', stroke: '#fff', 'stroke-width': 2, r: 4 } } },
-            { name: 'target-arrowhead', args: { attrs: { fill: '#1890ff', stroke: '#fff', 'stroke-width': 2, r: 4 } } },
-            { name: 'vertices' }
-          ])
-        })
+        if (sectionKey === 'interaction' || sectionKey === 'moduleResponses') {
+          graph.on('edge:mouseenter', ({ edge }) => {
+            edge.addTools([
+              { name: 'source-arrowhead', args: { attrs: { fill: '#1890ff', stroke: '#fff', 'stroke-width': 2, r: 4 } } },
+              { name: 'target-arrowhead', args: { attrs: { fill: '#1890ff', stroke: '#fff', 'stroke-width': 2, r: 4 } } },
+              // { name: 'vertices' }
+            ])
+          })
 
-        graph.on('edge:mouseleave', ({ edge }) => {
-          edge.removeTools()
-        })
+          graph.on('edge:mouseleave', ({ edge }) => {
+            edge.removeTools()
+          })
+        }
+
       }
+
 
       graph.use(new Snapline({ enabled: true }))
       graph.use(new Transform({
@@ -350,15 +367,27 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
       }))
 
       return () => {
+        const currentStencil = stencilRef.current
+
         // 清理 stencil 实例及其 DOM
-        if (stencilRef.current) {
-          stencilRef.current.dispose()
-          stencilRef.current = null
-        }
-        if (stencilContainerRef.current) {
-          stencilContainerRef.current.innerHTML = ''
-        }
-        graph.dispose()
+        stencilRef.current = null
+
+        // 使用 setTimeout 延迟卸载，避免 React 18+ 中的同步卸载冲突
+        // 修复报错: "Attempted to synchronously unmount a root while React was already rendering"
+        setTimeout(() => {
+          if (currentStencil) {
+            if (currentStencil.container && currentStencil.container.parentNode) {
+              currentStencil.container.parentNode.removeChild(currentStencil.container)
+            }
+            currentStencil.dispose()
+          }
+
+          graph.dispose()
+          if (graphInnerContainer && graphInnerContainer.parentNode) {
+            graphInnerContainer.parentNode.removeChild(graphInnerContainer)
+          }
+        }, 0)
+
         setGraphReady(false)
       }
     }, [strategy, readOnly]) // Re-init when strategy changes (sectionKey changes) or readOnly changes.
@@ -391,15 +420,13 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
         <div className="graph-content-wrapper">
           <div ref={containerRef} className="x6-graph-container" />
           {!readOnly && graphReady && graphRef.current && (
-            <div className="graph-toolbar">
-              <AddEdgePanel
-                graph={graphRef.current}
-                edgeRules={strategy.edgeRules}
-                edgeMode={strategy.edgeMode}
-                defaultSourceMarker={strategy.defaultSourceMarker}
-                defaultEdgeMarker={strategy.defaultEdgeMarker}
-              />
-            </div>
+            <AddEdgePanel
+              graph={graphRef.current}
+              edgeRules={strategy.edgeRules}
+              edgeMode={strategy.edgeMode}
+              defaultSourceMarker={strategy.defaultSourceMarker}
+              defaultEdgeMarker={strategy.defaultEdgeMarker}
+            />
           )}
           {!readOnly && <div className="graph-help-text">Ctrl + 滚轮缩放 | 拖拽空白处平移</div>}
         </div>
