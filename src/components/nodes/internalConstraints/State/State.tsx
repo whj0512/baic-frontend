@@ -77,44 +77,6 @@ const State: FC<StateNodeProps> = (props) => {
     // 响应式尺寸调整 (仅在非 Stencil 模式下启用)
     useEffect(() => {
         if (!containerRef.current || !node || isStencil) return;
-
-        const resizeObserver = new ResizeObserver((entries) => {
-            for (const entry of entries) {
-                // 使用 borderBoxSize 或 contentRect 获取当前组件所需的实际大小
-                // 这里的 div 设置为 fit-content，所以它的大小会随内容变化
-                const targetBox = entry.borderBoxSize?.[0] || entry.contentRect;
-                // borderBoxSize is an object with inlineSize/blockSize, contentRect has width/height
-                // Using getBoundingClientRect is often safer for actual rendered pixel size including borders
-                const rect = containerRef.current!.getBoundingClientRect();
-                
-                // 由于 x6 的缩放，getBoundingClientRect 可能包含缩放因子
-                // 但 ResizeObserver 返回的 contentRect 通常是未缩放的 CSS 像素? 
-                // X6 节点是在 transform 容器内的。
-                // 简单做法：我们只关心 contentRect (它不包含 border) 或 offsetWidth/offsetHeight
-                
-                const newWidth = containerRef.current!.offsetWidth;
-                const newHeight = containerRef.current!.offsetHeight;
-                
-                const currentSize = node.getSize();
-
-                // 只有当尺寸发生显著变化且大于 0 时才更新
-                // 允许一定的误差 (e.g. 1px) 避免浮点数死循环
-                if (
-                    (Math.abs(currentSize.width - newWidth) > 2 ||
-                    Math.abs(currentSize.height - newHeight) > 2) &&
-                    newWidth > 0 &&
-                    newHeight > 0
-                ) {
-                     // 使用 requestAnimationFrame 或 setTimeout 避免 "ResizeObserver loop limit exceeded"
-                    requestAnimationFrame(() => {
-                        node.setSize({ width: newWidth, height: newHeight });
-                    });
-                }
-            }
-        });
-
-        resizeObserver.observe(containerRef.current);
-        return () => resizeObserver.disconnect();
     }, [node, isStencil]);
 
 
@@ -123,12 +85,11 @@ const State: FC<StateNodeProps> = (props) => {
             ref={containerRef}
             className="state-node"
             style={{
-                // 画布模式下使用 fit-content 允许内容撑开，同时设置最小尺寸
-                // Stencil 模式下使用固定尺寸
-                width: isStencil ? width : 'fit-content',
-                height: isStencil ? height : 'fit-content',
-                minWidth: isStencil ? undefined : 120, 
-                minHeight: isStencil ? undefined : 80,
+                // 画布模式下使用 100% 响应 Transform 缩放，内容溢出时由 ResizeObserver 撑开
+                width,
+                height,
+                minWidth: 120,
+                minHeight: 80,
                 color: fontColor,
                 fontSize,
                 ['--state-stroke' as any]: stroke,

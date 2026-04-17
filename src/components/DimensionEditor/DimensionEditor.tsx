@@ -6,6 +6,7 @@ import FlowGraph, { type FlowGraphRef } from '../graph'
 import DslEditor from '../dsl-editor'
 import { getModelStrategy } from '../../models/strategies'
 import { API_ENDPOINTS, getDslToRbgEndpoint, getRbgToDslEndpoint } from '../../config/api'
+import { exportGraphToRBG } from '../../models/strategies/internalConstraints/exportGraph'
 import './DimensionEditor.css'
 
 type ViewMode = 'visual' | 'dsl'
@@ -226,6 +227,20 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
     URL.revokeObjectURL(url)
   }
 
+  // ==== DEBUG 调试函数 ====
+  const handlePrintRBG = () => {
+    const graph = flowGraphRef.current?.getGraph()
+    if (!graph) return
+    if (sectionKey === 'internalConstraints') {
+      const rbgData = exportGraphToRBG(graph, requirement.id, content)
+      console.log('======  OUTPUT RUN RESULT: exportGraphToRBG ======')
+      console.log(rbgData) // 直接保持为对象，方便在浏览器折叠展开
+      message.success('打印成功！请按 F12 打开开发者工具控制台查看')
+    } else {
+      message.warning('仅支持内部约束画布使用该函数')
+    }
+  }
+
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
@@ -341,13 +356,24 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
               </label>
             </div>
             {viewMode === 'visual' && (
-              <Button
-                size="small"
-                icon={<DownloadOutlined />}
-                onClick={handleDownloadJSON}
-              >
-                导出 JSON
-              </Button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {sectionKey === 'internalConstraints' && (
+                  <Button
+                    size="small"
+                    onClick={handlePrintRBG}
+                    title="在控制台打印生成的 RBG 格式 JSON"
+                  >
+                    控制台打印 RBG
+                  </Button>
+                )}
+                <Button
+                  size="small"
+                  icon={<DownloadOutlined />}
+                  onClick={handleDownloadJSON}
+                >
+                  导出 JSON
+                </Button>
+              </div>
             )}
           </div>
           <div className="editor-canvas-container">

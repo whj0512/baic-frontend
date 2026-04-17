@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { CloseOutlined, HolderOutlined } from '@ant-design/icons'
-import ActionEditor from '../../../ActionEditor'
+import { Input } from 'antd'
 import EditableSwitch from '../../../../common/EditableSwitch'
 import type { ActionValue } from '../../Action'
 import './ActionItem.css'
@@ -25,9 +25,8 @@ const ActionItem: React.FC<ActionItemProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(editableMode)
 
-  const { name, symbol, value: v } = value
-  const readonlyValue =
-    symbol === '()' ? `${name}(${v})` : `${name}${symbol}${v}`
+  const { express } = value
+  const readonlyValue = express
 
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -38,19 +37,25 @@ const ActionItem: React.FC<ActionItemProps> = ({
     setIsEditing(editable)
     if (!editable) {
       // 如果内容为空，删除该项
-      const shouldBeClear = !name.trim() && !symbol && !v.trim()
-      if (shouldBeClear) {
+      if (!express || !express.trim()) {
         onRemove()
       }
       onFinishEdit()
     }
   }
 
-  const handleActionUpdate = (updatedValue: ActionValue) => {
+  const handleActionUpdate = (e: React.ChangeEvent<HTMLInputElement>) => {
     onUpdate({
       ...value,
-      ...updatedValue,
+      express: e.target.value,
     })
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, onFinish: () => void) => {
+    if (e.key === 'Enter') {
+      onFinish()
+      handleFinish()
+    }
   }
 
   const handleFinish = () => {
@@ -66,14 +71,17 @@ const ActionItem: React.FC<ActionItemProps> = ({
         onChange={handleChangeEditMode}
       >
         {(onFinish) => (
-          <ActionEditor
-            value={value}
-            onUpdate={handleActionUpdate}
-            onFinish={() => {
+          <Input
+            autoFocus
+            value={express}
+            onChange={handleActionUpdate}
+            onKeyDown={(e) => handleKeyDown(e, onFinish)}
+            onBlur={() => {
               onFinish()
               handleFinish()
             }}
-            controlSchema={controlSchema}
+            placeholder="请输入执行语句，如 save(25)"
+            style={{ width: '100%', minWidth: '150px' }}
           />
         )}
       </EditableSwitch>
