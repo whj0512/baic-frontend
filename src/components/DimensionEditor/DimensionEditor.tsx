@@ -230,6 +230,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
   // ==== DEBUG 调试函数 ====
   const handlePrintRBG = () => {
     const graph = flowGraphRef.current?.getGraph()
+    console.log(graph)
     if (!graph) return
     if (sectionKey === 'internalConstraints') {
       const rbgData = exportGraphToRBG(graph, requirement.id, content)

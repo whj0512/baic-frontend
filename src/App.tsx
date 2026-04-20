@@ -5,7 +5,6 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import ProjectWorkSpace from './pages/ProjectWorkSpace'
 import CreateProject from './pages/CreateProject'
-import RelationshipAnalysis from './pages/RelationshipAnalysis'
 import './App.css'
 
 function App() {
@@ -19,7 +18,6 @@ function App() {
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/workspace/:projectKey" element={<ProjectWorkSpace />} />
-          <Route path="/workspace/:projectKey/relationship" element={<RelationshipAnalysis />} />
           <Route path="/create-project" element={<CreateProject />} />
         </Route>
 

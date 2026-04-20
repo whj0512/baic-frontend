@@ -1,3 +1,12 @@
+import type { ModelStrategy } from '../types'
+import { exportGraphTOJSON } from './exportGraph'
+import importGraphFromJSON from './importGraph'
+
 export * from './exportTypes'
-export { exportGraphTOJSON } from './exportGraph'
-export { importGraphFromJSON } from './importGraph'
+
+const environmentStrategy: ModelStrategy = {
+    exportGraphToJSON: exportGraphTOJSON,
+    importGraphFromJSON: importGraphFromJSON
+}
+
+export default environmentStrategy

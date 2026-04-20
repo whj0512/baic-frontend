@@ -8,11 +8,12 @@ import type { RequirementVersion } from '../models/RequirementVersion'
 import RequirementOverview, { type SectionKey } from '../components/RequirementOverview'
 import DimensionEditor from '../components/DimensionEditor'
 import RequirementCreator from '../components/RequirementCreator/RequirementCreator'
+import ReqRelationShip from '../components/ReqRelationShip'
 import { API_ENDPOINTS } from '../config/api'
 import { useProjectSync } from '../hooks/useProjectSync'
 
 // 中间区域视图类型
-type CenterView = 'overview' | 'editor' | 'create' | 'create-editor'
+type CenterView = 'overview' | 'editor' | 'create' | 'create-editor' | 'relationship'
 
 function ProjectWorkSpace() {
   const { projectKey } = useParams<{ projectKey: string }>()
@@ -334,7 +335,10 @@ function ProjectWorkSpace() {
             type="default"
             icon={<ShareAltOutlined />}
             block
-            onClick={() => navigate(`/workspace/${projectKey}/relationship`)}
+            onClick={() => {
+              setSelectedRequirement(null)
+              setCenterView('relationship')
+            }}
           >
             需求间关系
           </Button>
@@ -382,11 +386,15 @@ function ProjectWorkSpace() {
             onSave={handleCreateEditorSave}
           />
         )}
+
+        {centerView === 'relationship' && (
+          <ReqRelationShip requirements={requirements} />
+        )}
       </div>
 
       {/* Right Panel */}
-      {/* ... (Unchanged logic, hidden when create or create-editor) ... */}
-      {!['create', 'create-editor'].includes(centerView) && (
+      {/* ... (Unchanged logic, hidden when create, create-editor or relationship) ... */}
+      {!['create', 'create-editor', 'relationship'].includes(centerView) && (
         <div className="workspace-right">
           {/* ... (Unchanged) ... */}
           {/* 版本记录 */}

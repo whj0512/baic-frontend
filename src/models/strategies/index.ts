@@ -2,14 +2,13 @@ import type { ModelStrategy } from './types'
 import environmentStrategy from './environment'
 import interactionStrategy from './interaction'
 import internalCompositionStrategy from './internalComposition'
-import moduleResponsesStrategy from './moduleResponses'
 import internalConstraintsStrategy from './internalConstraints'
 
 const strategies: Record<string, ModelStrategy> = {
   environment: environmentStrategy,
   interaction: interactionStrategy,
   internalComposition: internalCompositionStrategy,
-  moduleResponses: moduleResponsesStrategy,
+  moduleResponses: interactionStrategy,
   internalConstraints: internalConstraintsStrategy,
 }
 
