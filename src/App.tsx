@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import ProjectWorkSpace from './pages/ProjectWorkSpace'
 import CreateProject from './pages/CreateProject'
+import AuthCallback from './pages/AuthCallback'
 import './App.css'
 
 function App() {
@@ -13,6 +14,7 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/auth-callback" element={<AuthCallback />} />
 
         {/* Authenticated Routes wrapped in MainLayout */}
         <Route element={<MainLayout />}>
@@ -21,7 +23,7 @@ function App() {
           <Route path="/create-project" element={<CreateProject />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/auth-callback" replace />} />
       </Routes>
     </BrowserRouter>
   )

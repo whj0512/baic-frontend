@@ -38,8 +38,15 @@ export const API_ENDPOINTS = {
   requirements: `${SERVICE_BASE_URL}/requirements`,
   // 单条需求操作（GET / PUT / DELETE）
   requirementById: (id: string) => `${SERVICE_BASE_URL}/requirements/${id}`,
-  dependency: `${SERVICE_BASE_URL}/dependency`
+  // 需求间依赖关系
+  dependency: `${SERVICE_BASE_URL}/dependency`,
+  // 鉴权登录
+  auth: `${SERVICE_BASE_URL}/auth/email`,
 }
+
+// 已有系统的登录页面地址 (可按需修改)
+export const EXISTING_SYSTEM_LOGIN_URL = 'www.baidu.com';
+
 
 /**
  * 根据维度代码获取对应的 dslToRbg 端点。
