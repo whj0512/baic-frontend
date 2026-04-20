@@ -1,10 +1,10 @@
 // API 配置
 
-// 后端服务地址
-export const SERVICE_BASE_URL = 'http://localhost:8000'
+// 后端服务地址（由 .env.development / .env.production 注入）
+export const SERVICE_BASE_URL = import.meta.env.VITE_API_BASE_URL
 
-// WebSocket 服务地址
-export const WS_BASE_URL = 'ws://localhost:8000'
+// WebSocket 服务地址（由 .env.development / .env.production 注入）
+export const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL
 
 // WebSocket 端点
 export const WS_ENDPOINTS = {
