@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Spin, message, Card } from 'antd';
+import { Spin, message, Card, Button } from 'antd';
+import { ArrowLeftOutlined } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
 import { Graph } from '@antv/x6';
 import { exportGraphToRBG } from '../../models/strategies/internalConstraints/exportGraph';
@@ -14,9 +15,10 @@ import './ReqRelationShip.css';
 
 interface ReqRelationShipProps {
   requirements: Requirement[];
+  onBack?: () => void;
 }
 
-const ReqRelationShip: React.FC<ReqRelationShipProps> = ({ requirements }) => {
+const ReqRelationShip: React.FC<ReqRelationShipProps> = ({ requirements, onBack }) => {
   const [loading, setLoading] = useState(false);
   const [resultData, setResultData] = useState<any>(null);
 
@@ -202,12 +204,7 @@ const ReqRelationShip: React.FC<ReqRelationShipProps> = ({ requirements }) => {
       series: [
         {
           type: 'graph',
-          layout: 'force',
-          force: {
-            repulsion: 1500,
-            edgeLength: [150, 300],
-            gravity: 0.1
-          },
+          layout: 'circular',
           roam: true,
           draggable: true,
           label: {
@@ -232,6 +229,16 @@ const ReqRelationShip: React.FC<ReqRelationShipProps> = ({ requirements }) => {
   return (
     <div className="req-relationship-container">
       <div className="req-relationship-header">
+        {onBack && (
+          <Button
+            type="text"
+            icon={<ArrowLeftOutlined />}
+            onClick={onBack}
+            className="req-relationship-back-btn"
+          >
+            返回
+          </Button>
+        )}
         <h2>需求间关系</h2>
       </div>
       <div className="req-relationship-content">

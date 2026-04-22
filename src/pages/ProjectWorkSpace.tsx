@@ -28,14 +28,29 @@ function ProjectWorkSpace() {
   // 当前选中的需求
   const [selectedRequirement, setSelectedRequirement] = useState<string | null>(null)
 
-  // IDE 风格 Tab 管理
+  // IDE 风格 Tab 管理 - 每个 tab 独立记忆视图状态
   interface ReqTab {
     id: string
-    label: string  // 截取的 nl_text 前缀
+    label: string         // 截取的 nl_text 前缀
+    savedView: CenterView // 该 tab 上次的视图状态
+    savedSection: SectionKey | null // 该 tab 上次编辑的 section
   }
   const [openTabs, setOpenTabs] = useState<ReqTab[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const tabBarRef = useRef<HTMLDivElement>(null)
+
+  // 进入 relationship 视图前保存上一个视图状态，以便返回
+  const prevViewStateRef = useRef<{ view: CenterView; reqId: string | null; section: SectionKey | null }>({
+    view: 'overview', reqId: null, section: null
+  })
+
+  // 保存当前活跃 tab 的视图快照
+  const saveCurrentTabState = () => {
+    if (!activeTabId) return
+    setOpenTabs(prev => prev.map(t =>
+      t.id === activeTabId ? { ...t, savedView: centerView, savedSection: editingSection } : t
+    ))
+  }
 
   // 中间区域视图状态
   const [centerView, setCenterView] = useState<CenterView>('overview')
@@ -155,12 +170,24 @@ function ProjectWorkSpace() {
   const handleSectionClick = (sectionKey: SectionKey) => {
     setEditingSection(sectionKey)
     setCenterView('editor')
+    // 同步更新当前 tab 的保存状态
+    if (activeTabId) {
+      setOpenTabs(prev => prev.map(t =>
+        t.id === activeTabId ? { ...t, savedView: 'editor', savedSection: sectionKey } : t
+      ))
+    }
   }
 
   // 返回概览视图
   const handleBackToOverview = () => {
     setEditingSection(null)
     setCenterView('overview')
+    // 同步更新当前 tab 的保存状态
+    if (activeTabId) {
+      setOpenTabs(prev => prev.map(t =>
+        t.id === activeTabId ? { ...t, savedView: 'overview', savedSection: null } : t
+      ))
+    }
   }
 
   // 保存编辑器数据 —— DimensionEditor 内部已通过 PUT API 保存到后端
@@ -172,25 +199,45 @@ function ProjectWorkSpace() {
 
   // 选择需求时重置视图 & 管理 tab
   const handleRequirementSelect = (reqId: string) => {
+    // 先保存当前 tab 的视图快照
+    saveCurrentTabState()
+
     const req = requirements.find(r => r.id === reqId)
     const label = req?.nl_text ? (req.nl_text.length > 18 ? req.nl_text.slice(0, 18) + '…' : req.nl_text) : reqId.slice(0, 8)
-    // 若 tab 不存在则追加
+
     setOpenTabs(prev => {
-      if (prev.find(t => t.id === reqId)) return prev
-      return [...prev, { id: reqId, label }]
+      const existing = prev.find(t => t.id === reqId)
+      if (existing) {
+        // tab 已存在：恢复其视图
+        setCenterView(existing.savedView)
+        setEditingSection(existing.savedSection)
+        return prev
+      }
+      // 新 tab：默认 overview
+      setCenterView('overview')
+      setEditingSection(null)
+      return [...prev, { id: reqId, label, savedView: 'overview', savedSection: null }]
     })
     setActiveTabId(reqId)
     setSelectedRequirement(reqId)
-    setCenterView('overview')
-    setEditingSection(null)
   }
 
-  // 切换 tab（不重置 section/视图，只切换激活目标）
+  // 切换 tab - 恢复目标 tab 的视图状态
   const handleTabClick = (tabId: string) => {
+    if (tabId === activeTabId) return
+    // 先保存当前 tab 的视图快照
+    saveCurrentTabState()
+
+    const targetTab = openTabs.find(t => t.id === tabId)
     setActiveTabId(tabId)
     setSelectedRequirement(tabId)
-    setCenterView('overview')
-    setEditingSection(null)
+    if (targetTab) {
+      setCenterView(targetTab.savedView)
+      setEditingSection(targetTab.savedSection)
+    } else {
+      setCenterView('overview')
+      setEditingSection(null)
+    }
   }
 
   // 关闭 tab
@@ -199,13 +246,18 @@ function ProjectWorkSpace() {
     setOpenTabs(prev => {
       const idx = prev.findIndex(t => t.id === tabId)
       const next = prev.filter(t => t.id !== tabId)
-      // 若关闭的是当前激活 tab，切到相邻
+      // 若关闭的是当前激活 tab，切到相邻 tab 并恢复其视图
       if (tabId === activeTabId) {
-        const nextTab = next[Math.max(0, idx - 1)] ?? next[0] ?? null
-        setActiveTabId(nextTab?.id ?? null)
-        setSelectedRequirement(nextTab?.id ?? null)
-        setCenterView('overview')
-        setEditingSection(null)
+        const neighborTab = next[Math.min(idx, next.length - 1)] ?? null
+        setActiveTabId(neighborTab?.id ?? null)
+        setSelectedRequirement(neighborTab?.id ?? null)
+        if (neighborTab) {
+          setCenterView(neighborTab.savedView)
+          setEditingSection(neighborTab.savedSection)
+        } else {
+          setCenterView('overview')
+          setEditingSection(null)
+        }
       }
       return next
     })
@@ -235,19 +287,25 @@ function ProjectWorkSpace() {
           }
           message.success('需求已删除')
           removeRequirement(req.id)
-          // 同时关闭对应 tab
+          // 同时关闭对应 tab 并恢复相邻 tab 视图
           setOpenTabs(prev => {
             const idx = prev.findIndex(t => t.id === req.id)
             const next = prev.filter(t => t.id !== req.id)
             if (req.id === activeTabId) {
-              const nextTab = next[Math.max(0, idx - 1)] ?? next[0] ?? null
-              setActiveTabId(nextTab?.id ?? null)
-              setSelectedRequirement(nextTab?.id ?? null)
-              setCenterView('overview')
+              const neighborTab = next[Math.min(idx, next.length - 1)] ?? null
+              setActiveTabId(neighborTab?.id ?? null)
+              setSelectedRequirement(neighborTab?.id ?? null)
+              if (neighborTab) {
+                setCenterView(neighborTab.savedView)
+                setEditingSection(neighborTab.savedSection)
+              } else {
+                setCenterView('overview')
+                setEditingSection(null)
+              }
             }
             return next
           })
-          if (selectedRequirement === req.id) {
+          if (selectedRequirement === req.id && activeTabId !== req.id) {
             setSelectedRequirement(null)
             setCenterView('overview')
           }
@@ -394,6 +452,12 @@ function ProjectWorkSpace() {
             icon={<ShareAltOutlined />}
             block
             onClick={() => {
+              // 保存当前视图状态，以便从 relationship 返回时恢复
+              prevViewStateRef.current = {
+                view: centerView,
+                reqId: activeTabId,
+                section: editingSection
+              }
               setSelectedRequirement(null)
               setCenterView('relationship')
             }}
@@ -444,6 +508,7 @@ function ProjectWorkSpace() {
 
           {centerView === 'editor' && currentRequirement && editingSection && (
             <DimensionEditor
+              key={`${currentRequirement.id}-${editingSection}`}
               requirement={currentRequirement}
               sectionKey={editingSection}
               onBack={handleBackToOverview}
@@ -472,7 +537,22 @@ function ProjectWorkSpace() {
           )}
 
           {centerView === 'relationship' && (
-            <ReqRelationShip requirements={requirements} />
+            <ReqRelationShip
+              requirements={requirements}
+              onBack={() => {
+                const prev = prevViewStateRef.current
+                if (prev.reqId) {
+                  // 恢复之前的 tab 和视图状态
+                  setActiveTabId(prev.reqId)
+                  setSelectedRequirement(prev.reqId)
+                  setCenterView(prev.view)
+                  setEditingSection(prev.section)
+                } else {
+                  setCenterView('overview')
+                  setEditingSection(null)
+                }
+              }}
+            />
           )}
         </div>
       </div>
