@@ -108,7 +108,7 @@ const internalCompositionStrategy: DslEditorStrategy = {
     theme,
     completionItemProviders: [nodeCompletionProvider],
     lsp: {
-        wsUrl: 'ws://127.0.0.1:3003',
+        wsUrl: import.meta.env.VITE_LSP_WS_INTERNAL_COMPOSITION ?? 'ws://127.0.0.1:3003',
     },
 };
 

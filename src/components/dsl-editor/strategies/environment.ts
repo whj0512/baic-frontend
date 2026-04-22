@@ -178,7 +178,7 @@ const environmentStrategy: DslEditorStrategy = {
     theme,
     completionItemProviders: [nodeCompletionProvider, propertyCompletionProvider],
     lsp: {
-        wsUrl: 'ws://127.0.0.1:3001',
+        wsUrl: import.meta.env.VITE_LSP_WS_ENVIRONMENT ?? 'ws://127.0.0.1:3001',
     },
 };
 

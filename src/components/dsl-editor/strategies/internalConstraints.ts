@@ -348,7 +348,7 @@ const internalConstraintsStrategy: DslEditorStrategy = {
     theme,
     completionItemProviders: [nodeCompletionProvider, propertyCompletionProvider],
     lsp: {
-        wsUrl: 'ws://127.0.0.1:3000',
+        wsUrl: import.meta.env.VITE_LSP_WS_INTERNAL_CONSTRAINTS ?? 'ws://127.0.0.1:3000',
     },
 };
 

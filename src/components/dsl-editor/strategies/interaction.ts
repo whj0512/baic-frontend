@@ -189,7 +189,7 @@ const interactionStrategy: DslEditorStrategy = {
     theme,
     completionItemProviders: [nodeCompletionProvider, propertyCompletionProvider],
     lsp: {
-        wsUrl: 'ws://127.0.0.1:3002',
+        wsUrl: import.meta.env.VITE_LSP_WS_INTERACTION ?? 'ws://127.0.0.1:3002',
     },
 };
 
