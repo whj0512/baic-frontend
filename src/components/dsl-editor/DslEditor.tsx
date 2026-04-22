@@ -122,6 +122,7 @@ const DslEditor: React.FC<DslEditorProps> = ({
         language={languageId}
         options={{
           readOnly,
+          hover: { above: false },
         }}
       />
     </div>
