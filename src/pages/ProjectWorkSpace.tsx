@@ -34,6 +34,9 @@ function ProjectWorkSpace() {
   // 当前编辑的 section
   const [editingSection, setEditingSection] = useState<SectionKey | null>(null)
 
+  // 右侧面板折叠状态
+  const [rightCollapsed, setRightCollapsed] = useState(false)
+
   // 删除模式
   const [deleteMode, setDeleteMode] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -393,40 +396,47 @@ function ProjectWorkSpace() {
       </div>
 
       {/* Right Panel */}
-      {/* ... (Unchanged logic, hidden when create, create-editor or relationship) ... */}
       {!['create', 'create-editor', 'relationship'].includes(centerView) && (
-        <div className="workspace-right">
-          {/* ... (Unchanged) ... */}
-          {/* 版本记录 */}
-          <div className="version-panel">
-            <div className="panel-header">
-              <h3>版本记录</h3>
-            </div>
-            <div className="version-list">
-              {currentVersions.length > 0 ? (
-                currentVersions.map((version) => (
-                  <div key={version.id} className="version-item">
-                    <div className="version-header">
-                      <span className="version-number">v{version.version_code}</span>
-                      <span className="version-date">{formatDate(version.created_at)}</span>
-                    </div>
-                    <div className="version-info">
-                      <span className="version-author">创建者: {version.created_by}</span>
-                      <span className="version-desc">{truncateText(version.nl_text, 40)}</span>
-                    </div>
-                    <div className="version-actions">
-                      <button className="btn-link">对比</button>
-                      <button className="btn-link">回滚</button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="version-empty">
-                  {selectedRequirement ? '暂无版本记录' : '请选择一个需求'}
-                </div>
-              )}
-            </div>
+        <div className={`workspace-right${rightCollapsed ? ' workspace-right-collapsed' : ''}`}>
+          {/* 折叠/展开触发区 */}
+          <div className="right-collapse-bar" onClick={() => setRightCollapsed(prev => !prev)} title={rightCollapsed ? '展开面板' : '收起面板'}>
+            <span className="right-collapse-icon">{rightCollapsed ? '‹' : '›'}</span>
           </div>
+          {/* 面板内容（折叠时隐藏）*/}
+          {!rightCollapsed && (
+            <div className="workspace-right-content">
+              {/* 版本记录 */}
+              <div className="version-panel">
+                <div className="panel-header">
+                  <h3>版本记录</h3>
+                </div>
+                <div className="version-list">
+                  {currentVersions.length > 0 ? (
+                    currentVersions.map((version) => (
+                      <div key={version.id} className="version-item">
+                        <div className="version-header">
+                          <span className="version-number">v{version.version_code}</span>
+                          <span className="version-date">{formatDate(version.created_at)}</span>
+                        </div>
+                        <div className="version-info">
+                          <span className="version-author">创建者: {version.created_by}</span>
+                          <span className="version-desc">{truncateText(version.nl_text, 40)}</span>
+                        </div>
+                        <div className="version-actions">
+                          <button className="btn-link">对比</button>
+                          <button className="btn-link">回滚</button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="version-empty">
+                      {selectedRequirement ? '暂无版本记录' : '请选择一个需求'}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
