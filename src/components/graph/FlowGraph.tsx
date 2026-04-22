@@ -1,5 +1,5 @@
 import { useEffect, useRef, useMemo, useState, forwardRef, useImperativeHandle, useCallback } from 'react'
-import { Graph, Snapline, Stencil, Edge, Cell, Transform } from '@antv/x6'
+import { Graph, Snapline, Stencil, Edge, Cell, Transform, Keyboard, Clipboard, Selection } from '@antv/x6'
 import { register } from '@antv/x6-react-shape'
 import { Dropdown } from 'antd'
 import type { MenuProps } from 'antd'
@@ -112,12 +112,6 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
           edgeLabelMovable: true,
         } : false,
         background: { color: '#f8f9fa' },
-        // // 启用选中功能
-        selecting: {
-          enabled: true,
-          showNodeSelectionBox: true,
-          showEdgeSelectionBox: true,
-        },
         // 连线配置
         connecting: {
           // 允许边悬空（因为时序图等坐标级别的线必须在未指定特定节点的情况下放置且可拖拉）
@@ -367,6 +361,39 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
           restrict: true,
         }
       }))
+      graph.use(
+        new Selection({
+          enabled: true,
+          showNodeSelectionBox: true,
+        }),
+      )
+      graph.use(
+        new Clipboard({
+          enabled: true,
+        }),
+      )
+      graph.use(
+        new Keyboard({
+          enabled: true,
+        }),
+      )
+
+      graph.bindKey('ctrl+c', () => {
+        const cells = graph.getSelectedCells()
+        if (cells.length) {
+          graph.copy(cells)
+        }
+        return false
+      })
+
+      graph.bindKey('ctrl+v', () => {
+        if (!graph.isClipboardEmpty()) {
+          const cells = graph.paste({ offset: 32 })
+          graph.cleanSelection()
+          graph.select(cells)
+        }
+        return false
+      })
 
       return () => {
         const currentStencil = stencilRef.current

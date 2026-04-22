@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Button, message, Select } from 'antd'
-import { ArrowLeftOutlined, SaveOutlined, DownloadOutlined, ThunderboltOutlined } from '@ant-design/icons'
+import { Button, message } from 'antd'
+import { ArrowLeftOutlined, SaveOutlined, DownloadOutlined, FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons'
 import type { Requirement } from '../../models/Requirement'
 import FlowGraph, { type FlowGraphRef } from '../graph'
 import DslEditor from '../dsl-editor'
@@ -70,10 +70,6 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
   // 可视化视图中的错误（RBG→DSL 转换失败时显示在 FlowGraph 顶部）
   const [graphError, setGraphError] = useState<string | undefined>()
 
-  // 大模型生成状态
-  const [selectedLLM, setSelectedLLM] = useState<string>('gpt-4')
-  const [generating, setGenerating] = useState(false)
-
   const handleGraphChange = (data: object) => {
     graphDataRef.current = data
     setGraphData(data)
@@ -104,37 +100,6 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requirement, config.dslField])
 
-  // 使用大模型生成 DSL
-  const handleGenerateDsl = useCallback(async () => {
-    if (!content.trim()) {
-      return
-    }
-
-    setGenerating(true)
-    setDslError(undefined)
-
-    try {
-      const response = await fetch(API_ENDPOINTS.nlToDsl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain',
-        },
-        body: content,
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const result = await response.text()
-      setDslContent(result)
-    } catch (error) {
-      setDslError(error instanceof Error ? error.message : '生成失败，请稍后重试')
-    } finally {
-      setGenerating(false)
-    }
-  }, [content])
-
   // 切换到 DSL 视图并转换
   const handleSwitchToDsl = useCallback(async () => {
     // 已经在 DSL 视图时，直接返回，不重复调用转换接口
@@ -147,7 +112,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
     setGraphError(undefined)
 
     try {
-      const jsonData = modelStrategy.exportGraphToJSON(graph, sectionKey, config.label)
+      const jsonData = modelStrategy.exportGraphToJSON(graph)
       // console.log(jsonData)
       const response = await fetch(getRbgToDslEndpoint(config.dimensionCode), {
         method: 'POST',
@@ -262,6 +227,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
   }
 
   const [saving, setSaving] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   const handleSave = async () => {
     // If it's a new requirement (draft), just call onSave and return
@@ -341,7 +307,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
           />
         </div>
 
-        <div className="editor-group">
+        <div className={`editor-group${isFullscreen ? ' editor-group--fullscreen' : ''}`}>
           <div className="editor-group-header">
             <div className="editor-view-tabs">
               <label
@@ -357,26 +323,34 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
                 可视化模型 (Flow/Logic)
               </label>
             </div>
-            {viewMode === 'visual' && (
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {sectionKey === 'internalConstraints' && (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {viewMode === 'visual' && (
+                <>
+                  {sectionKey === 'internalConstraints' && (
+                    <Button
+                      size="small"
+                      onClick={handlePrintRBG}
+                      title="在控制台打印生成的 RBG 格式 JSON"
+                    >
+                      控制台打印 RBG
+                    </Button>
+                  )}
                   <Button
                     size="small"
-                    onClick={handlePrintRBG}
-                    title="在控制台打印生成的 RBG 格式 JSON"
+                    icon={<DownloadOutlined />}
+                    onClick={handleDownloadJSON}
                   >
-                    控制台打印 RBG
+                    导出 JSON
                   </Button>
-                )}
-                <Button
-                  size="small"
-                  icon={<DownloadOutlined />}
-                  onClick={handleDownloadJSON}
-                >
-                  导出 JSON
-                </Button>
-              </div>
-            )}
+                </>
+              )}
+              <Button
+                size="small"
+                icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+                onClick={() => setIsFullscreen((f) => !f)}
+                title={isFullscreen ? '退出全屏' : '全屏'}
+              />
+            </div>
           </div>
           <div className="editor-canvas-container">
             {viewMode === 'visual' ? (
