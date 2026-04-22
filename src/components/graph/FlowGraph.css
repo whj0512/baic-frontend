@@ -73,12 +73,12 @@
   cursor: move;
   user-select: none;
   transition: all 0.2s;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .sidebar-item:hover {
   border-color: #3b82f6;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transform: translateY(-1px);
 }
 
@@ -111,6 +111,66 @@
   border-radius: 4px;
   pointer-events: none;
   user-select: none;
+}
+
+/* 错误横幅：RBG→DSL 转换失败时显示在画布顶部 */
+.flow-graph-error-banner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: linear-gradient(90deg, #fff1f0 0%, #fff8f7 100%);
+  border-bottom: 1.5px solid #ffa39e;
+  box-shadow: 0 2px 8px rgba(255, 77, 79, 0.08);
+  font-size: 0.85rem;
+  color: #a8071a;
+  animation: errorBannerSlideIn 0.2s ease;
+}
+
+@keyframes errorBannerSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.flow-graph-error-icon {
+  font-size: 15px;
+  color: #ff4d4f;
+  flex-shrink: 0;
+}
+
+.flow-graph-error-text {
+  flex: 1;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.flow-graph-error-dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #ff4d4f;
+  font-size: 14px;
+  padding: 0 4px;
+  line-height: 1;
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.flow-graph-error-dismiss:hover {
+  opacity: 1;
 }
 
 /* 底部工具栏已迁移至 AddEdgePanel 自行管理定位 */

@@ -67,6 +67,9 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
   const [dslLoading, setDslLoading] = useState(false)
   const [dslError, setDslError] = useState<string | undefined>()
 
+  // 可视化视图中的错误（RBG→DSL 转换失败时显示在 FlowGraph 顶部）
+  const [graphError, setGraphError] = useState<string | undefined>()
+
   // 大模型生成状态
   const [selectedLLM, setSelectedLLM] = useState<string>('gpt-4')
   const [generating, setGenerating] = useState(false)
@@ -134,12 +137,14 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
 
   // 切换到 DSL 视图并转换
   const handleSwitchToDsl = useCallback(async () => {
+    // 已经在 DSL 视图时，直接返回，不重复调用转换接口
+    if (viewMode === 'dsl') return
+
     const graph = flowGraphRef.current?.getGraph()
     if (!graph) return
 
-    setViewMode('dsl')
     setDslLoading(true)
-    setDslError(undefined)
+    setGraphError(undefined)
 
     try {
       const jsonData = modelStrategy.exportGraphToJSON(graph, sectionKey, config.label)
@@ -153,17 +158,30 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
       })
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        const errBody = await response.json().catch(() => null)
+        throw new Error(errBody?.error || `HTTP error! status: ${response.status}`)
       }
 
       const result = await response.text()
+      setViewMode('dsl')
       setDslContent(result)
     } catch (error) {
-      setDslError(error instanceof Error ? error.message : '转换失败，请稍后重试')
+      // 转换失败时保持在可视化视图，将错误信息展示在 FlowGraph 顶部
+      setGraphError(error instanceof Error ? error.message : '转换失败，请稍后重试')
     } finally {
       setDslLoading(false)
     }
-  }, [sectionKey, config.label])
+  }, [viewMode, sectionKey, config.label, config.dimensionCode, modelStrategy])
+
+  // 清除 DSL 错误，让用户继续在编辑器中编辑
+  const handleDismissError = useCallback(() => {
+    setDslError(undefined)
+  }, [])
+
+  // 清除可视化视图中的图错误
+  const handleDismissGraphError = useCallback(() => {
+    setGraphError(undefined)
+  }, [])
 
   // 切换到可视化视图
   const handleSwitchToVisual = useCallback(async () => {
@@ -186,7 +204,8 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
       })
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        const errBody = await response.json().catch(() => null)
+        throw new Error(errBody?.error || `HTTP error! status: ${response.status}`)
       }
 
       const result = await response.text()
@@ -320,24 +339,6 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
             onChange={(e) => setContent(e.target.value)}
             placeholder={`请输入${config.label}详细内容...`}
           />
-          <div className="editor-generate-row">
-            <Select
-              value={selectedLLM}
-              onChange={setSelectedLLM}
-              options={LLM_OPTIONS}
-              style={{ width: 160 }}
-              placeholder="选择大模型"
-            />
-            <Button
-              type="primary"
-              icon={<ThunderboltOutlined />}
-              onClick={handleGenerateDsl}
-              loading={generating}
-              disabled={!content.trim()}
-            >
-              生成
-            </Button>
-          </div>
         </div>
 
         <div className="editor-group">
@@ -384,6 +385,8 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
                 sectionKey={sectionKey}
                 data={graphData}
                 onChange={handleGraphChange}
+                errorMessage={graphError}
+                onDismissError={handleDismissGraphError}
               />
             ) : (
               <DslEditor
@@ -391,6 +394,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
                 value={dslContent}
                 loading={dslLoading}
                 error={dslError}
+                onDismissError={handleDismissError}
                 readOnly={false}
                 onChange={setDslContent}
               />

@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect, useRef, useCallback } from 'react'
-import { Spin } from 'antd'
+import { Spin, Button } from 'antd'
+import { CloseCircleOutlined, EditOutlined } from '@ant-design/icons'
 import './DslEditor.css'
 import { Editor, type Monaco } from '@monaco-editor/react'
 import type * as monacoNs from 'monaco-editor'
@@ -11,6 +12,7 @@ interface DslEditorProps {
   value: string
   loading?: boolean
   error?: string
+  onDismissError?: () => void
   onChange?: (value: string) => void
   readOnly?: boolean
 }
@@ -20,6 +22,7 @@ const DslEditor: React.FC<DslEditorProps> = ({
   value,
   loading = false,
   error,
+  onDismissError,
   onChange,
   readOnly = true,
 }) => {
@@ -87,17 +90,29 @@ const DslEditor: React.FC<DslEditorProps> = ({
     )
   }
 
-  if (error) {
-    return (
-      <div className="dsl-editor-error">
-        <div className="dsl-editor-error-title">转换失败</div>
-        <div className="dsl-editor-error-message">{error}</div>
-      </div>
-    )
-  }
-
   return (
     <div className="dsl-editor">
+      {error && (
+        <div className="dsl-editor-error-banner">
+          <div className="dsl-editor-error-banner-content">
+            <CloseCircleOutlined className="dsl-editor-error-banner-icon" />
+            <div className="dsl-editor-error-banner-body">
+              <div className="dsl-editor-error-banner-title">转换失败</div>
+              <div className="dsl-editor-error-banner-message">{error}</div>
+            </div>
+          </div>
+          {onDismissError && (
+            <Button
+              size="small"
+              icon={<EditOutlined />}
+              onClick={onDismissError}
+              className="dsl-editor-error-banner-btn"
+            >
+              继续编辑
+            </Button>
+          )}
+        </div>
+      )}
       <Editor
         value={value}
         onChange={handleChange}

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { message } from 'antd';
-import { API_ENDPOINTS, EXISTING_SYSTEM_LOGIN_URL } from '../config/api';
+import { API_ENDPOINTS } from '../config/api';
 import './AuthCallback.css';
 
 function AuthCallback() {
@@ -9,20 +9,11 @@ function AuthCallback() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const redirectToLogin = () => {
-      let url = EXISTING_SYSTEM_LOGIN_URL;
-      if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        url = `http://${url}`;
-      }
-      window.location.href = url;
-    };
-
     const handleAuthAction = async () => {
       const token = searchParams.get('token');
 
       if (!token) {
-        message.warning('缺少认证token，跳转至登录页');
-        redirectToLogin();
+        navigate('/auth-failure', { replace: true });
         return;
       }
 
@@ -45,8 +36,7 @@ function AuthCallback() {
         // }
 
         if (!email) {
-          message.error('Token中未包含email信息');
-          redirectToLogin();
+          navigate('/auth-failure', { replace: true });
           return;
         }
 
@@ -69,13 +59,11 @@ function AuthCallback() {
           // 登录成功后跳转到首页
           navigate('/');
         } else {
-          message.error('鉴权失败，该用户未授权访问此系统');
-          redirectToLogin();
+          navigate('/auth-failure', { replace: true });
         }
       } catch (error) {
         console.error('鉴权请求出错', error);
-        message.error('请求服务器鉴权失败');
-        redirectToLogin();
+        navigate('/auth-failure', { replace: true });
       }
     };
 

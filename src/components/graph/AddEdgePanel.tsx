@@ -45,7 +45,7 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, edgeMode,
     if (!expanded) return []
     return graph.getNodes().map(node => ({
       id: node.id,
-      name: node.getData()?.nodeName || node.id.substring(0, 8),
+      name: node.getData()?.className || node.getData()?.nodeName || node.id.substring(0, 8),
       shape: node.shape,
     }))
   }, [graph, expanded])

@@ -6,6 +6,7 @@ import Register from './pages/Register'
 import ProjectWorkSpace from './pages/ProjectWorkSpace'
 import CreateProject from './pages/CreateProject'
 import AuthCallback from './pages/AuthCallback'
+import AuthFailure from './pages/AuthFailure'
 import './App.css'
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/auth-callback" element={<AuthCallback />} />
+        <Route path="/auth-failure" element={<AuthFailure />} />
 
         {/* Authenticated Routes wrapped in MainLayout */}
         <Route element={<MainLayout />}>

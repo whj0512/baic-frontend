@@ -3,7 +3,7 @@ import { Graph, Snapline, Stencil, Edge, Cell, Transform } from '@antv/x6'
 import { register } from '@antv/x6-react-shape'
 import { Dropdown } from 'antd'
 import type { MenuProps } from 'antd'
-import { DeleteOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
+import { CloseCircleOutlined, DeleteOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
 import NodeWrapper from '../nodes/internalConstraints/NodeWrapper'
 import { getStrategy } from './strategies'
 import FormPanelContainer from '../form-panel'
@@ -23,6 +23,8 @@ interface FlowGraphProps {
   data?: any
   onChange?: (data: any) => void
   readOnly?: boolean
+  errorMessage?: string
+  onDismissError?: () => void
 }
 
 // 暴露给父组件的方法
@@ -31,7 +33,7 @@ export interface FlowGraphRef {
 }
 
 const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
-  ({ sectionKey, data, onChange, readOnly = false }, ref) => {
+  ({ sectionKey, data, onChange, readOnly = false, errorMessage, onDismissError }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null)
     const stencilContainerRef = useRef<HTMLDivElement>(null)
     const graphRef = useRef<Graph | null>(null)
@@ -401,6 +403,18 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
 
     return (
       <div className="flow-graph-container" onClick={closeContextMenu}>
+        {/* 错误横幅：转换失败时在顶部显示 */}
+        {errorMessage && (
+          <div className="flow-graph-error-banner">
+            <CloseCircleOutlined className="flow-graph-error-icon" />
+            <span className="flow-graph-error-text">{errorMessage}</span>
+            {onDismissError && (
+              <button className="flow-graph-error-dismiss" onClick={onDismissError} title="关闭">
+                ✕
+              </button>
+            )}
+          </div>
+        )}
         {!readOnly && (
           <div className={`graph-sidebar-wrapper${sidebarCollapsed ? ' collapsed' : ''}`}>
             <div
