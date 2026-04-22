@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button, message, Spin, Badge, Modal } from 'antd'
-import { ShareAltOutlined, ArrowLeftOutlined, DeleteOutlined } from '@ant-design/icons'
+import { ShareAltOutlined, ArrowLeftOutlined, DeleteOutlined, CloseOutlined, FileTextOutlined } from '@ant-design/icons'
 import './ProjectWorkSpace.css'
 import type { Requirement } from '../models/Requirement'
 import type { RequirementVersion } from '../models/RequirementVersion'
@@ -27,6 +27,15 @@ function ProjectWorkSpace() {
 
   // 当前选中的需求
   const [selectedRequirement, setSelectedRequirement] = useState<string | null>(null)
+
+  // IDE 风格 Tab 管理
+  interface ReqTab {
+    id: string
+    label: string  // 截取的 nl_text 前缀
+  }
+  const [openTabs, setOpenTabs] = useState<ReqTab[]>([])
+  const [activeTabId, setActiveTabId] = useState<string | null>(null)
+  const tabBarRef = useRef<HTMLDivElement>(null)
 
   // 中间区域视图状态
   const [centerView, setCenterView] = useState<CenterView>('overview')
@@ -161,11 +170,45 @@ function ProjectWorkSpace() {
     // useProjectSync 会通过 WebSocket 接收 requirement_updated 事件并更新状态
   }
 
-  // 选择需求时重置视图
+  // 选择需求时重置视图 & 管理 tab
   const handleRequirementSelect = (reqId: string) => {
+    const req = requirements.find(r => r.id === reqId)
+    const label = req?.nl_text ? (req.nl_text.length > 18 ? req.nl_text.slice(0, 18) + '…' : req.nl_text) : reqId.slice(0, 8)
+    // 若 tab 不存在则追加
+    setOpenTabs(prev => {
+      if (prev.find(t => t.id === reqId)) return prev
+      return [...prev, { id: reqId, label }]
+    })
+    setActiveTabId(reqId)
     setSelectedRequirement(reqId)
     setCenterView('overview')
     setEditingSection(null)
+  }
+
+  // 切换 tab（不重置 section/视图，只切换激活目标）
+  const handleTabClick = (tabId: string) => {
+    setActiveTabId(tabId)
+    setSelectedRequirement(tabId)
+    setCenterView('overview')
+    setEditingSection(null)
+  }
+
+  // 关闭 tab
+  const handleTabClose = (e: React.MouseEvent, tabId: string) => {
+    e.stopPropagation()
+    setOpenTabs(prev => {
+      const idx = prev.findIndex(t => t.id === tabId)
+      const next = prev.filter(t => t.id !== tabId)
+      // 若关闭的是当前激活 tab，切到相邻
+      if (tabId === activeTabId) {
+        const nextTab = next[Math.max(0, idx - 1)] ?? next[0] ?? null
+        setActiveTabId(nextTab?.id ?? null)
+        setSelectedRequirement(nextTab?.id ?? null)
+        setCenterView('overview')
+        setEditingSection(null)
+      }
+      return next
+    })
   }
 
   // 删除需求
@@ -192,6 +235,18 @@ function ProjectWorkSpace() {
           }
           message.success('需求已删除')
           removeRequirement(req.id)
+          // 同时关闭对应 tab
+          setOpenTabs(prev => {
+            const idx = prev.findIndex(t => t.id === req.id)
+            const next = prev.filter(t => t.id !== req.id)
+            if (req.id === activeTabId) {
+              const nextTab = next[Math.max(0, idx - 1)] ?? next[0] ?? null
+              setActiveTabId(nextTab?.id ?? null)
+              setSelectedRequirement(nextTab?.id ?? null)
+              setCenterView('overview')
+            }
+            return next
+          })
           if (selectedRequirement === req.id) {
             setSelectedRequirement(null)
             setCenterView('overview')
@@ -350,49 +405,76 @@ function ProjectWorkSpace() {
 
       {/* Center Panel */}
       <div className="workspace-center">
-        {centerView === 'overview' && (
-          <Spin spinning={loadingVersions} wrapperClassName="overview-spin-wrapper">
-            <RequirementOverview
-              requirement={currentRequirement || null}
-              versions={currentVersions}
-              projectKey={projectKey || ''}
-              onSectionClick={(section) => handleSectionClick(section)}
+        {/* IDE 风格 Tab 栏：仅在需求 tab 场景下显示 */}
+        {!['create', 'create-editor', 'relationship'].includes(centerView) && openTabs.length > 0 && (
+          <div className="center-tab-bar" ref={tabBarRef}>
+            {openTabs.map(tab => (
+              <div
+                key={tab.id}
+                className={`center-tab${activeTabId === tab.id ? ' center-tab-active' : ''}`}
+                onClick={() => handleTabClick(tab.id)}
+                title={requirements.find(r => r.id === tab.id)?.nl_text ?? tab.label}
+              >
+                <FileTextOutlined className="center-tab-file-icon" />
+                <span className="center-tab-label">{tab.label}</span>
+                <span
+                  className="center-tab-close"
+                  onClick={(e) => handleTabClose(e, tab.id)}
+                  title="关闭"
+                >
+                  <CloseOutlined />
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 内容区 */}
+        <div className="center-content">
+          {centerView === 'overview' && (
+            <Spin spinning={loadingVersions} wrapperClassName="overview-spin-wrapper">
+              <RequirementOverview
+                requirement={currentRequirement || null}
+                versions={currentVersions}
+                projectKey={projectKey || ''}
+                onSectionClick={(section) => handleSectionClick(section)}
+              />
+            </Spin>
+          )}
+
+          {centerView === 'editor' && currentRequirement && editingSection && (
+            <DimensionEditor
+              requirement={currentRequirement}
+              sectionKey={editingSection}
+              onBack={handleBackToOverview}
+              onSave={handleEditorSave}
             />
-          </Spin>
-        )}
+          )}
 
-        {centerView === 'editor' && currentRequirement && editingSection && (
-          <DimensionEditor
-            requirement={currentRequirement}
-            sectionKey={editingSection}
-            onBack={handleBackToOverview}
-            onSave={handleEditorSave}
-          />
-        )}
+          {centerView === 'create' && (
+            <RequirementCreator
+              projectKey={projectKey}
+              formData={createFormData}
+              onChange={setCreateFormData}
+              onSectionClick={handleCreateSectionClick}
+              onCancel={handleCreateFinish}
+              onSuccess={handleCreateFinish}
+            />
+          )}
 
-        {centerView === 'create' && (
-          <RequirementCreator
-            projectKey={projectKey}
-            formData={createFormData}
-            onChange={setCreateFormData}
-            onSectionClick={handleCreateSectionClick}
-            onCancel={handleCreateFinish}
-            onSuccess={handleCreateFinish}
-          />
-        )}
+          {centerView === 'create-editor' && editingSection && (
+            <DimensionEditor
+              requirement={draftRequirement}
+              sectionKey={editingSection}
+              onBack={() => setCenterView('create')}
+              onSave={handleCreateEditorSave}
+            />
+          )}
 
-        {centerView === 'create-editor' && editingSection && (
-          <DimensionEditor
-            requirement={draftRequirement}
-            sectionKey={editingSection}
-            onBack={() => setCenterView('create')}
-            onSave={handleCreateEditorSave}
-          />
-        )}
-
-        {centerView === 'relationship' && (
-          <ReqRelationShip requirements={requirements} />
-        )}
+          {centerView === 'relationship' && (
+            <ReqRelationShip requirements={requirements} />
+          )}
+        </div>
       </div>
 
       {/* Right Panel */}
