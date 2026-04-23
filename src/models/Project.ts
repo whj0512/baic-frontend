@@ -3,6 +3,7 @@ export interface Project {
   key: string
   name: string
   description: string
+  created_by: string
   created_at: string
   updated_at: string
 }

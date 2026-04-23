@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useRef } from 'react'
 import { Button, Input, Select } from 'antd'
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import type { Graph, Edge } from '@antv/x6'
@@ -35,6 +35,7 @@ const EMPTY_INTERACTION = (): Interaction => ({
 
 const EdgeConnect: React.FC<Props> = ({ value, onChange, graph, currentNodeId }) => {
   const [expanded, setExpanded] = useState<number | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const interactions: Interaction[] = value?.interactions ?? []
 
@@ -120,8 +121,12 @@ const EdgeConnect: React.FC<Props> = ({ value, onChange, graph, currentNodeId })
     )
 
   // ============ Render ============
+  // 将 Select 弹层挂载到组件自身容器，避免被 overflow:hidden 的祖先裁剪，
+  // 同时确保全屏模式下 z-index > 9999 的容器层级问题也得到规避。
+  const getPopupContainer = () => containerRef.current ?? document.body
+
   return (
-    <div className="edge-connect-container">
+    <div className="edge-connect-container" ref={containerRef}>
       {interactions.map((item, idx) => (
         <div key={idx} className="edge-connect-card">
           {/* 卡片标题行 */}
@@ -166,6 +171,7 @@ const EdgeConnect: React.FC<Props> = ({ value, onChange, graph, currentNodeId })
                   options={nodeOptions}
                   onChange={(val) => updateField(idx, 'sender', val)}
                   optionRender={makeOptionRender()}
+                  getPopupContainer={getPopupContainer}
                   allowClear
                 />
               </div>
@@ -179,6 +185,7 @@ const EdgeConnect: React.FC<Props> = ({ value, onChange, graph, currentNodeId })
                   options={nodeOptions}
                   onChange={(val) => updateField(idx, 'receiver', val)}
                   optionRender={makeOptionRender()}
+                  getPopupContainer={getPopupContainer}
                   allowClear
                 />
               </div>

@@ -16,6 +16,7 @@ interface RelationItem {
 interface RequirementCreatorProps {
     projectKey?: string
     formData?: {
+        name: string
         nl_text: string
         relationships: RelationItem[]
         sectionData: Record<string, any>
@@ -70,6 +71,7 @@ function RequirementCreator({
 
     // Local state fallback if not provided via props (for standalone usage safety)
     const [localFormData, setLocalFormData] = useState({
+        name: '',
         nl_text: '',
         relationships: [] as RelationItem[],
         sectionData: {} as Record<string, any>,
@@ -144,6 +146,10 @@ function RequirementCreator({
 
     const handleSubmit = async () => {
         // Validation
+        if (!currentFormData.name) {
+            message.error('请输入需求名称')
+            return
+        }
         if (!currentFormData.nl_text) {
             message.error('请输入需求描述')
             return
@@ -159,6 +165,7 @@ function RequirementCreator({
                 },
                 body: JSON.stringify({
                     project_key: projectKey,
+                    name: currentFormData.name,
                     nl_text: currentFormData.nl_text,
                     // TODO: Map other fields like relationships or graph data if available
                     // For now, based on RequirementSaveRequest, we send what we have.
@@ -214,6 +221,23 @@ function RequirementCreator({
     const renderManualForm = () => (
         <>
             <div className="creator-content">
+                {/* Requirement Name */}
+                <div className="creator-section">
+                    <div className="section-header">
+                        <span className="section-title">需求名称 <span style={{ color: '#ef4444' }}>*</span></span>
+                    </div>
+                    <div className="form-group">
+                        <input
+                            type="text"
+                            name="name"
+                            className="form-input"
+                            placeholder="请输入需求名称"
+                            value={currentFormData.name}
+                            onChange={handleChange}
+                        />
+                    </div>
+                </div>
+
                 {/* Natural Language Description */}
                 <div className="creator-section">
                     <div className="section-header">

@@ -88,6 +88,10 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
               <span className="info-value">{requirement.id}</span>
             </div>
             <div className="info-item">
+              <label>需求名称</label>
+              <span className="info-value">{requirement.name || '-'}</span>
+            </div>
+            <div className="info-item">
               <label>需求类型</label>
               <span className="info-value">{requirement.type || '-'}</span>
             </div>

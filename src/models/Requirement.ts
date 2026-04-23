@@ -1,5 +1,6 @@
 export interface Requirement {
   id: string
+  name: string
   requirement_group_id?: string  // v2 逻辑需求 ID（API 中仍以该值作为 requirement_id）
   version_code?: number          // v2 版本号
   project_id: string

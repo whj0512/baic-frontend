@@ -31,7 +31,7 @@ function ProjectWorkSpace() {
   // IDE 风格 Tab 管理 - 每个 tab 独立记忆视图状态
   interface ReqTab {
     id: string
-    label: string         // 截取的 nl_text 前缀
+    label: string         // 截取的 name 前缀
     savedView: CenterView // 该 tab 上次的视图状态
     savedSection: SectionKey | null // 该 tab 上次编辑的 section
   }
@@ -203,7 +203,7 @@ function ProjectWorkSpace() {
     saveCurrentTabState()
 
     const req = requirements.find(r => r.id === reqId)
-    const label = req?.nl_text ? (req.nl_text.length > 18 ? req.nl_text.slice(0, 18) + '…' : req.nl_text) : reqId.slice(0, 8)
+    const label = req?.name ? (req.name.length > 18 ? req.name.slice(0, 18) + '…' : req.name) : reqId.slice(0, 8)
 
     setOpenTabs(prev => {
       const existing = prev.find(t => t.id === reqId)
@@ -333,6 +333,7 @@ function ProjectWorkSpace() {
 
   // 新建需求表单状态
   const [createFormData, setCreateFormData] = useState({
+    name: '',
     nl_text: '',
     relationships: [] as any[],
     // Store graph data for each section
@@ -366,6 +367,7 @@ function ProjectWorkSpace() {
   const draftRequirement: Requirement = {
     id: 'NEW',
     project_id: projectKey || '',
+    name: createFormData.name,
     nl_text: createFormData.nl_text,
     created_by: 'CurrentUser',
     created_at: new Date().toISOString(),
@@ -440,7 +442,7 @@ function ProjectWorkSpace() {
                   )}
                 </div>
                 <div className="requirement-item-content">
-                  {truncateText(req.nl_text, 50)}
+                  {truncateText(req.name, 50)}
                 </div>
               </div>
             ))}
@@ -477,7 +479,7 @@ function ProjectWorkSpace() {
                 key={tab.id}
                 className={`center-tab${activeTabId === tab.id ? ' center-tab-active' : ''}`}
                 onClick={() => handleTabClick(tab.id)}
-                title={requirements.find(r => r.id === tab.id)?.nl_text ?? tab.label}
+                title={requirements.find(r => r.id === tab.id)?.name ?? tab.label}
               >
                 <FileTextOutlined className="center-tab-file-icon" />
                 <span className="center-tab-label">{tab.label}</span>
