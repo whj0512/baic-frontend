@@ -140,7 +140,7 @@ const ReqRelationShip: React.FC<ReqRelationShipProps> = ({ requirements, onBack 
             color: '#333'
           },
           tooltip: {
-            formatter: `Graph ID: ${source}`
+            formatter: `需求: ${source}`
           }
         });
       }

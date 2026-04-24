@@ -248,8 +248,8 @@ const convertNode = (apiNode: ApiNode): any => {
   return {
     id: apiNode.id,
     shape,
-    x: apiNode.render_config?.x ?? 100,
-    y: apiNode.render_config?.y ?? 100,
+    x: apiNode.render_config?.x,
+    y: apiNode.render_config?.y,
     width: defaultSize.width,
     height: defaultSize.height,
     data: nodeData,

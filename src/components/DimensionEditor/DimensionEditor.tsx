@@ -14,14 +14,6 @@ type ViewMode = 'visual' | 'dsl'
 // SectionKey 与 CreateRequirement.tsx 保持一致
 type SectionKey = 'environment' | 'interaction' | 'internalComposition' | 'moduleResponses' | 'internalConstraints'
 
-// 大模型选项
-const LLM_OPTIONS = [
-  { value: 'gpt-4', label: 'GPT-4' },
-  { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-  { value: 'claude-3', label: 'Claude 3' },
-  { value: 'qwen', label: '通义千问' },
-]
-
 const SECTION_CONFIG: Record<SectionKey, { dimensionCode: string; label: string; graphField: keyof Requirement; dslField: keyof Requirement }> = {
   environment: { dimensionCode: 'IBD', label: '所处环境', graphField: 'graph_IBD', dslField: 'dsl_IBD' },
   interaction: { dimensionCode: 'ESD', label: '与环境交互', graphField: 'graph_ESD', dslField: 'dsl_ESD' },

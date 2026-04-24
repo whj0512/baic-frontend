@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Button, message, Spin, Badge, Modal } from 'antd'
-import { ShareAltOutlined, ArrowLeftOutlined, DeleteOutlined, CloseOutlined, FileTextOutlined } from '@ant-design/icons'
+import { Button, message, Spin, Badge, Modal, Collapse } from 'antd'
+import type { CollapseProps } from 'antd'
+import { ShareAltOutlined, ArrowLeftOutlined, DeleteOutlined, CloseOutlined, FileTextOutlined, PartitionOutlined } from '@ant-design/icons'
 import './ProjectWorkSpace.css'
 import type { Requirement } from '../models/Requirement'
 import type { RequirementVersion } from '../models/RequirementVersion'
@@ -386,6 +387,41 @@ function ProjectWorkSpace() {
     dsl_SC: createFormData.sectionDslData.internalConstraints,
   } as Requirement // Cast as we might be missing some required fields but sufficient for editor
 
+  // 按类型对需求进行分组
+  const groupedRequirements = requirements.reduce((acc, req) => {
+    const type = req.type || '默认'
+    if (!acc[type]) acc[type] = []
+    acc[type].push(req)
+    return acc
+  }, {} as Record<string, Requirement[]>)
+
+  const collapseItems: CollapseProps['items'] = Object.entries(groupedRequirements).map(([type, reqs]) => ({
+    key: type,
+    label: `${type} (${reqs.length})`,
+    children: (
+      <div className="requirement-type-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {reqs.map((req) => (
+          <div
+            key={req.id}
+            className={`requirement-item ${selectedRequirement === req.id && !deleteMode ? 'selected' : ''} ${deleteMode ? 'delete-mode-item' : ''}`}
+            onClick={() => deleteMode ? handleDeleteRequirement(req) : handleRequirementSelect(req.id)}
+            style={{ marginBottom: 0 }}
+          >
+            <div className="requirement-item-header">
+              <span className="requirement-date">{formatDate(req.updated_at)}</span>
+              {deleteMode && (
+                <DeleteOutlined style={{ color: '#ff4d4f', fontSize: 13 }} />
+              )}
+            </div>
+            <div className="requirement-item-content">
+              {truncateText(req.name, 50)}
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }))
+
   return (
     <div className="workspace-container">
       {/* ... Left Panel ... */}
@@ -429,23 +465,13 @@ function ProjectWorkSpace() {
             {requirements.length === 0 && !loading && (
               <div className="list-empty">暂无需求</div>
             )}
-            {requirements.map((req) => (
-              <div
-                key={req.id}
-                className={`requirement-item ${selectedRequirement === req.id && !deleteMode ? 'selected' : ''} ${deleteMode ? 'delete-mode-item' : ''}`}
-                onClick={() => deleteMode ? handleDeleteRequirement(req) : handleRequirementSelect(req.id)}
-              >
-                <div className="requirement-item-header">
-                  <span className="requirement-date">{formatDate(req.updated_at)}</span>
-                  {deleteMode && (
-                    <DeleteOutlined style={{ color: '#ff4d4f', fontSize: 13 }} />
-                  )}
-                </div>
-                <div className="requirement-item-content">
-                  {truncateText(req.name, 50)}
-                </div>
-              </div>
-            ))}
+            {requirements.length > 0 && (
+              <Collapse
+                ghost
+                items={collapseItems}
+                defaultActiveKey={Object.keys(groupedRequirements)}
+              />
+            )}
           </Spin>
         </div>
         <div className="panel-footer">
@@ -465,6 +491,13 @@ function ProjectWorkSpace() {
             }}
           >
             需求间关系
+          </Button>
+          <Button
+            type='default'
+            icon={<PartitionOutlined />}
+            block
+          >
+            测试用例
           </Button>
         </div>
       </div>
