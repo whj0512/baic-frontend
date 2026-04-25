@@ -55,4 +55,5 @@ export interface ESD {
     graph_type?: 'ESD'
     interactions: Interaction[]
     interactionRelations: InteractionRelation[]
+    components?: Componenet[]
 }

@@ -1,4 +1,4 @@
-import { type FC, type ReactNode, useEffect, useCallback } from 'react';
+import { type FC, type ReactNode } from 'react';
 import './BaseLifeline.css';
 
 interface BaseLifelineProps {
