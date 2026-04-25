@@ -165,15 +165,13 @@
 }
 
 .condition-node__branch-label--yes {
-    right: -30px;
-    top: 50%;
+    left: -20px;
     transform: translateY(-50%);
     color: #52c41a;
 }
 
 .condition-node__branch-label--no {
-    left: -30px;
-    top: 50%;
+    right: -20px;
     transform: translateY(-50%);
     color: #ff4d4f;
 }

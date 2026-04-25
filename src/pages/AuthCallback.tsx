@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { message } from 'antd';
-import { API_ENDPOINTS } from '../config/api';
+import { API_ENDPOINTS, clearAuth } from '../config/api';
 import './AuthCallback.css';
 
 function AuthCallback() {
@@ -51,7 +51,8 @@ function AuthCallback() {
         const data = await response.json();
 
         if (data.matched) {
-          // 保存相关登录信息
+          // 先清除旧的认证信息，再保存新的
+          clearAuth();
           localStorage.setItem('token', data.token);
           localStorage.setItem('user_id', data.user_id);
           localStorage.setItem('username', data.email);
@@ -59,10 +60,12 @@ function AuthCallback() {
           // 登录成功后跳转到首页
           navigate('/');
         } else {
+          clearAuth();
           navigate('/auth-failure', { replace: true });
         }
       } catch (error) {
         console.error('鉴权请求出错', error);
+        clearAuth();
         navigate('/auth-failure', { replace: true });
       }
     };
@@ -81,3 +84,4 @@ function AuthCallback() {
 }
 
 export default AuthCallback;
+

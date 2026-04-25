@@ -143,7 +143,7 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, edgeMode,
     } else {
       edgeOpts.source = srcId
       edgeOpts.target = tgtId
-      edgeOpts.router = { name: 'orth' }
+      edgeOpts.router = { name: 'manhattan' }
     }
 
     const edge = graph.addEdge(edgeOpts)
@@ -345,7 +345,7 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, edgeMode,
           targetMarker: defaultEdgeMarker !== undefined ? defaultEdgeMarker : { name: 'block', width: 12, height: 8 },
         },
       },
-      router: { name: 'orth' },
+      router: { name: 'manhattan' },
       connector: { name: 'rounded', args: { radius: 8 } },
       data: {
         sourceOutput: sourceOutput || undefined,
@@ -397,7 +397,7 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, edgeMode,
           { x: rightX + loopOffset, y: centerY },
           { x: rightX + loopOffset, y: centerY + 20 },
         ]
-        // 自连线不使用 orth router，用直连折线
+        // 自连线不使用 manhattan router，用直连折线
         delete edgeConfig.router
       } else {
         const sourceCenter = sourceNode.getBBox().center

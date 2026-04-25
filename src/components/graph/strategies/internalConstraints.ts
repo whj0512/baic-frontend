@@ -938,11 +938,11 @@ const internalConstraintsStrategy: GraphStrategy = {
             attrs: { circle: { ...basePortStyle } },
           },
           'out-yes': {
-            position: 'right',
+            position: 'left',
             attrs: { circle: { ...basePortStyle, stroke: '#52c41a' } },
           },
           'out-no': {
-            position: 'left',
+            position: 'right',
             attrs: { circle: { ...basePortStyle, stroke: '#ff4d4f' } },
           },
         }
@@ -998,8 +998,8 @@ const internalConstraintsStrategy: GraphStrategy = {
     getOutputOptions: (_nodeId: string, nodeShape: string) => {
       if (nodeShape === 'condition-node') {
         return [
-          { value: 'out-yes', label: 'Yes (右侧)' },
-          { value: 'out-no', label: 'No (左侧)' },
+          { value: 'out-yes', label: 'Yes (左侧)' },
+          { value: 'out-no', label: 'No (右侧)' },
         ]
       }
       return []

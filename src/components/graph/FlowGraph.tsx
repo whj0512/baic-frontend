@@ -146,7 +146,7 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
                 },
               },
               router: {
-                name: 'orth',
+                name: 'manhattan',
               },
               connector: {
                 name: 'rounded',
@@ -493,6 +493,7 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
             menu={{ items: contextMenuItems }}
             open={true}
             onOpenChange={(open) => !open && closeContextMenu()}
+            overlayStyle={{ zIndex: 10000 }}
           >
             <div
               style={{

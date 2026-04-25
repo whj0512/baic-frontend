@@ -23,8 +23,8 @@ const buildConditionBranchMap = (graph: Graph): Map<string, { branch_yes: string
     if (sourceCell.shape !== 'condition-node') return
 
     const sourceId = sourceCell.id
-    const targetId = targetCell.id
     const edgeData = edge.getData() || {}
+    const sourcePortId = edge.getSourcePortId()
 
     // 初始化映射
     if (!branchMap.has(sourceId)) {
@@ -34,10 +34,11 @@ const buildConditionBranchMap = (graph: Graph): Map<string, { branch_yes: string
     const branches = branchMap.get(sourceId)!
 
     // 根据 sourceOutput 判断是 yes 还是 no 分支
-    if (edgeData.sourceOutput === 'yes') {
-      branches.branch_yes = targetId
-    } else if (edgeData.sourceOutput === 'no') {
-      branches.branch_no = targetId
+    const output = sourcePortId || edgeData.sourceOutput
+    if (output === 'yes' || output === 'out-yes') {
+      branches.branch_yes = edge.id
+    } else if (output === 'no' || output === 'out-no') {
+      branches.branch_no = edge.id
     }
   })
 
@@ -198,7 +199,7 @@ export const exportGraphToJSON = (
 
 // UUID Mapping Helper
 const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
-const isSpecialPort = (id: string) => ['yes', 'no', 'top1', 'bottom', 'top', 'left', 'right', 'condition'].includes(id)
+const isSpecialPort = (id: string) => ['yes', 'no', 'out-yes', 'out-no', 'in', 'out', 'top1', 'bottom', 'top', 'left', 'right', 'condition'].includes(id)
 const generateUUID = () => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
     const r = Math.random() * 16 | 0

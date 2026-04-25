@@ -48,6 +48,82 @@ export const API_ENDPOINTS = {
 export const EXISTING_SYSTEM_LOGIN_URL = 'www.baidu.com';
 
 
+// ─── 身份认证工具函数 ────────────────────────────────────────────────
+
+/**
+ * 从 localStorage 获取当前 JWT token。
+ */
+export function getToken(): string | null {
+  return localStorage.getItem('token')
+}
+
+/**
+ * 构建带有 Authorization: Bearer <token> 的请求头对象。
+ * 若 token 不存在则返回空对象（不附加 Authorization）。
+ */
+export function getAuthHeaders(): Record<string, string> {
+  const token = getToken()
+  if (!token) return {}
+  return { Authorization: `Bearer ${token}` }
+}
+
+/**
+ * 清除 localStorage 中的认证信息（token / user_id / username）。
+ */
+export function clearAuth(): void {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user_id')
+  localStorage.removeItem('username')
+}
+
+/**
+ * 判断当前是否已认证（仅检查 token 是否存在；不校验有效期）。
+ */
+export function isAuthenticated(): boolean {
+  return !!getToken()
+}
+
+/**
+ * 带身份认证的 fetch 封装。
+ *
+ * - 自动在请求头中注入 `Authorization: Bearer <token>`
+ * - 当服务端返回 **401** 时，自动清除本地认证信息并跳转至 `/auth-callback`
+ * - 其余行为与原生 `fetch` 完全一致
+ *
+ * @param input  - 与 `window.fetch` 的第一个参数相同（URL 或 Request）
+ * @param init   - 与 `window.fetch` 的第二个参数相同（可选配置）
+ * @returns        Promise<Response>
+ */
+export async function authFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  const headers = new Headers(init?.headers)
+
+  // 注入 Authorization（仅当调用方未自行设置时）
+  if (!headers.has('Authorization')) {
+    const token = getToken()
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`)
+    }
+  }
+
+  const response = await fetch(input, { ...init, headers })
+
+  // 处理 401：token 缺失 / 无效 / 过期
+  if (response.status === 401) {
+    clearAuth()
+    // 避免在已经处于认证相关页面时重复跳转
+    const authPages = ['/login', '/register', '/auth-callback', '/auth-failure']
+    if (!authPages.some(p => window.location.pathname.startsWith(p))) {
+      window.location.href = '/auth-callback'
+    }
+  }
+
+  return response
+}
+
+
 /**
  * 根据维度代码获取对应的 dslToRbg 端点。
  * - IBD / BDD / ESD / ISD 使用各自的类型化端点（ISD 复用 ESD）

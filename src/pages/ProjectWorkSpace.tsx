@@ -418,6 +418,13 @@ function ProjectWorkSpace() {
             </div>
           </div>
         ))}
+        <Button
+          type='default'
+          icon={<PartitionOutlined />}
+          block
+        >
+          测试用例
+        </Button>
       </div>
     )
   }))
@@ -491,13 +498,6 @@ function ProjectWorkSpace() {
             }}
           >
             需求间关系
-          </Button>
-          <Button
-            type='default'
-            icon={<PartitionOutlined />}
-            block
-          >
-            测试用例
           </Button>
         </div>
       </div>

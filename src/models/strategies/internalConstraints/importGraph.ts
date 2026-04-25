@@ -125,8 +125,8 @@ const defaultNodeStyle: Record<string, { stroke: string; fill: string }> = {
 const portGroupMapping: Record<string, string> = {
   'top': 'in',
   'bottom': 'out',
-  'left': 'out-no',
-  'right': 'out-yes',
+  'left': 'out-yes',
+  'right': 'out-no',
 }
 
 // Port 基础样式
@@ -147,11 +147,11 @@ const getPortGroupsForShape = (shape: string): Record<string, any> => {
         attrs: { circle: { ...basePortStyle } },
       },
       'out-yes': {
-        position: 'right',
+        position: 'left',
         attrs: { circle: { ...basePortStyle, stroke: '#52c41a' } },
       },
       'out-no': {
-        position: 'left',
+        position: 'right',
         attrs: { circle: { ...basePortStyle, stroke: '#ff4d4f' } },
       },
     }
@@ -234,11 +234,27 @@ const convertNode = (apiNode: ApiNode): any => {
 
   if (apiNode.ports?.items) {
     apiNode.ports.items.forEach(item => {
-      const x6Group = portGroupMapping[item.group] || item.group
+      let x6Group = portGroupMapping[item.group] || item.group
+      let portId = item.id
+
+      // 针对 condition 节点的特殊处理，后端返回 group 为 condition，通过 id 区分 yes/no
+      if (shape === 'condition-node' && item.group === 'condition') {
+        if (item.id === 'yes') {
+          x6Group = 'out-yes'
+        } else if (item.id === 'no') {
+          x6Group = 'out-no'
+        }
+      }
+
+      // 处理 top_1 和 top1 不一致的问题
+      if (portId === 'top_1') {
+        portId = 'top1'
+      }
+
       // 仅添加 port groups 中存在的 group
       if (portGroups[x6Group]) {
         portItems.push({
-          id: item.id,
+          id: portId,
           group: x6Group,
         })
       }
@@ -301,7 +317,7 @@ const convertEdge = (apiTransition: ApiTransition): any => {
       },
     },
     router: {
-      name: 'orth',
+      name: 'manhattan',
     },
     connector: {
       name: 'rounded',
