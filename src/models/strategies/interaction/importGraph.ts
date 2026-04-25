@@ -50,6 +50,7 @@ type EdgeData = {
 type GraphCell = {
     id: string
     shape: string
+    zIndex?: number
     x?: number
     y?: number
     width?: number
@@ -80,6 +81,14 @@ const FRAGMENT_DEFAULT_X = 100
 const FRAGMENT_DEFAULT_WIDTH = 200
 const FRAGMENT_DEFAULT_HEIGHT = 120
 const FRAGMENT_TAG_HEIGHT = 28
+const FRAGMENT_MIN_GAP_Y = 5
+const FRAGMENT_BASE_Z_INDEX = -200
+
+type FragmentLayoutItem = {
+    cell: GraphCell
+    interactionIds: Set<string>
+    sourceIndex: number
+}
 
 const isInteraction = (value: unknown): value is Interaction => {
     if (!value || typeof value !== 'object') {
@@ -98,6 +107,7 @@ const normalizeFragmentSections = (relation: InteractionRelation): FragmentSecti
     }
 
     return rawScope.map(entry => {
+        // par: scope is Interaction[][]
         if (Array.isArray(entry)) {
             return {
                 condition: '',
@@ -105,6 +115,7 @@ const normalizeFragmentSections = (relation: InteractionRelation): FragmentSecti
             }
         }
 
+        // alt/opt/loop: scope is [{ condition, interactions }]
         if (entry && typeof entry === 'object') {
             const scopeEntry = entry as {
                 condition?: string | null
@@ -119,6 +130,7 @@ const normalizeFragmentSections = (relation: InteractionRelation): FragmentSecti
             }
         }
 
+        // Defensive fallback: tolerate malformed single item section.
         return {
             condition: '',
             interactions: isInteraction(entry) ? [entry] : [],
@@ -127,7 +139,7 @@ const normalizeFragmentSections = (relation: InteractionRelation): FragmentSecti
 }
 
 const formatLabel = (data: LabelData) => {
-    const parts = []
+    const parts: string[] = []
     if (data.stereotype && data.stereotype !== 'base') {
         parts.push(`<<${data.stereotype}>>`)
     }
@@ -302,12 +314,134 @@ const calculateFragmentVerticalBounds = (
     }
 }
 
+const collectInteractionIds = (sections: FragmentSection[]) => {
+    const interactionIds = new Set<string>()
+    sections.forEach(section => {
+        section.interactions.forEach(interaction => {
+            interactionIds.add(interaction.id)
+        })
+    })
+    return interactionIds
+}
+
+const getCellBounds = (cell: GraphCell) => {
+    const x = cell.x ?? FRAGMENT_DEFAULT_X
+    const y = cell.y ?? COMPONENT_Y
+    const width = cell.width ?? FRAGMENT_DEFAULT_WIDTH
+    const height = cell.height ?? FRAGMENT_DEFAULT_HEIGHT
+    return {
+        left: x,
+        top: y,
+        right: x + width,
+        bottom: y + height,
+        width,
+        height,
+    }
+}
+
+const isSubset = (left: Set<string>, right: Set<string>) => {
+    if (left.size === 0 || right.size === 0 || left.size > right.size) {
+        return false
+    }
+    return Array.from(left).every(item => right.has(item))
+}
+
+const isNestedFragment = (a: FragmentLayoutItem, b: FragmentLayoutItem) => {
+    const aBounds = getCellBounds(a.cell)
+    const bBounds = getCellBounds(b.cell)
+    const aInsideB =
+        aBounds.left >= bBounds.left &&
+        aBounds.right <= bBounds.right &&
+        aBounds.top >= bBounds.top &&
+        aBounds.bottom <= bBounds.bottom
+    const bInsideA =
+        bBounds.left >= aBounds.left &&
+        bBounds.right <= aBounds.right &&
+        bBounds.top >= aBounds.top &&
+        bBounds.bottom <= aBounds.bottom
+
+    if (aInsideB || bInsideA) {
+        return true
+    }
+
+    return isSubset(a.interactionIds, b.interactionIds) || isSubset(b.interactionIds, a.interactionIds)
+}
+
+const optimizeFragmentLayout = (items: FragmentLayoutItem[]) => {
+    const ordered = [...items].sort((a, b) => {
+        const ay = a.cell.y ?? 0
+        const by = b.cell.y ?? 0
+        if (ay !== by) return ay - by
+        return a.sourceIndex - b.sourceIndex
+    })
+
+    const placed: FragmentLayoutItem[] = []
+    ordered.forEach(item => {
+        const bounds = getCellBounds(item.cell)
+        let nextTop = bounds.top
+
+        // Resolve collisions for independent fragments by shifting downward.
+        for (let turn = 0; turn < ordered.length * 2; turn++) {
+            let blockerBottom: number | null = null
+
+            placed.forEach(prev => {
+                if (isNestedFragment(item, prev)) {
+                    return
+                }
+
+                const prevBounds = getCellBounds(prev.cell)
+                const horizontalOverlap =
+                    bounds.left < prevBounds.right &&
+                    bounds.right > prevBounds.left
+                const verticalConflict =
+                    nextTop < prevBounds.bottom + FRAGMENT_MIN_GAP_Y &&
+                    nextTop + bounds.height > prevBounds.top - FRAGMENT_MIN_GAP_Y
+
+                if (horizontalOverlap && verticalConflict) {
+                    blockerBottom = blockerBottom === null
+                        ? prevBounds.bottom
+                        : Math.max(blockerBottom, prevBounds.bottom)
+                }
+            })
+
+            if (blockerBottom === null) {
+                break
+            }
+
+            nextTop = blockerBottom + FRAGMENT_MIN_GAP_Y
+        }
+
+        item.cell.y = nextTop
+        placed.push(item)
+    })
+
+    const byAreaDesc = [...placed].sort((a, b) => {
+        const areaA = (a.cell.width ?? FRAGMENT_DEFAULT_WIDTH) * (a.cell.height ?? FRAGMENT_DEFAULT_HEIGHT)
+        const areaB = (b.cell.width ?? FRAGMENT_DEFAULT_WIDTH) * (b.cell.height ?? FRAGMENT_DEFAULT_HEIGHT)
+        if (areaA !== areaB) return areaB - areaA
+        return a.sourceIndex - b.sourceIndex
+    })
+
+    byAreaDesc.forEach((item, index) => {
+        const zIndex = FRAGMENT_BASE_Z_INDEX + index
+        item.cell.zIndex = zIndex
+        item.cell.data = {
+            ...(item.cell.data || {}),
+            zIndex,
+        }
+    })
+
+    return placed
+        .sort((a, b) => a.sourceIndex - b.sourceIndex)
+        .map(item => item.cell)
+}
+
 const convertFragmentNode = (
     relation: InteractionRelation,
+    sections: FragmentSection[],
     componentPositionMap: Map<string, ComponentLayout>,
     interactionPositionMap: Map<string, InteractionLayout>
 ): GraphCell => {
-    const sections = normalizeFragmentSections(relation)
     const conditions = sections.map(section => section.condition)
     const data = {
         fragmentType: relation.type,
@@ -315,7 +449,12 @@ const convertFragmentNode = (
         conditions
     }
 
-    if (relation.width > 0 && relation.height > 0) {
+    const hasFrameSize = relation.width > 0 && relation.height > 0
+    const hasPlacedPosition = relation.x !== 0 || relation.y !== 0
+
+    // Backend may return an origin placeholder frame (0,0,200,120) even when
+    // interactions exist. In that case we still rebuild coordinates.
+    if (hasFrameSize && hasPlacedPosition) {
         return {
             id: relation.id,
             shape: 'seq-fragment-node',
@@ -445,9 +584,17 @@ export const importGraphFromJSON = (jsonString: string): { cells: GraphCell[] } 
     }
 
     if (apiData.interactionRelations && Array.isArray(apiData.interactionRelations)) {
-        apiData.interactionRelations.forEach(relation => {
-            cells.push(convertFragmentNode(relation, componentPositionMap, interactionPositionMap))
+        const fragmentItems: FragmentLayoutItem[] = []
+        apiData.interactionRelations.forEach((relation, index) => {
+            const sections = normalizeFragmentSections(relation)
+            fragmentItems.push({
+                cell: convertFragmentNode(relation, sections, componentPositionMap, interactionPositionMap),
+                interactionIds: collectInteractionIds(sections),
+                sourceIndex: index,
+            })
         })
+
+        cells.push(...optimizeFragmentLayout(fragmentItems))
     }
 
     const totalInteractions = apiData.interactions?.length ?? 0

@@ -1,12 +1,19 @@
 import { type FC, type ReactNode, useEffect, useMemo } from 'react';
 import './CombinedFragment.css'
 
+type FragmentNodeLike = {
+    getData?: () => Record<string, unknown>
+    getSize?: () => { width?: number; height?: number }
+    setData?: (data: Record<string, unknown>) => void
+    setZIndex?: (zIndex: number) => void
+}
+
 interface CombinedFragmentProps {
     width?: number;
     height?: number;
     stroke?: string;
     fill?: string;
-    node?: any;
+    node?: FragmentNodeLike;
     children?: ReactNode;
 }
 
@@ -19,6 +26,7 @@ const CombinedFragment: FC<CombinedFragmentProps> = (props) => {
     const height = propHeight || nodeSize.height || nodeData.height || 120;
     const stroke = propStroke || nodeData.stroke || '#666';
     const fill = propFill || nodeData.fill || 'rgba(245, 245, 245, 0.5)';
+    const zIndex = typeof nodeData.zIndex === 'number' ? nodeData.zIndex : -1;
 
     const fragmentType = nodeData.fragmentType || '';
     const fragmentName = nodeData.fragmentName || '';
@@ -38,8 +46,8 @@ const CombinedFragment: FC<CombinedFragmentProps> = (props) => {
     }, [node]);
 
     useEffect(() => {
-        node?.setZIndex?.(-1);
-    }, [node]);
+        node?.setZIndex?.(zIndex);
+    }, [node, zIndex]);
 
     // body 区域的可用高度（去掉 tag 区域）
     const bodyHeight = height - TAG_AREA_HEIGHT;
