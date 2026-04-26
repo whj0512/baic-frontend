@@ -14,6 +14,9 @@ export interface ActionValue {
   pre_think_time: number
   post_think_time: number
   type: string
+  name?: string
+  symbol?: string
+  value?: string
 }
 
 export const createDefaultAction = (v: Partial<ActionValue> = {}): ActionValue => {
@@ -37,7 +40,7 @@ const Action: React.FC<ActionProps> = ({ value = [], onChange, controlSchema }) 
   const [newActionIndex, setNewActionIndex] = useState(-1)
 
   // 1. 标准化数据源，支持旧数据的平滑迁徙
-  const formItemValue: ActionValue[] = value.map((v: any) => {
+  const formItemValue: ActionValue[] = (value || []).map((v: any) => {
     // 兼容旧格式，向新格式靠拢：如果包含旧的 name/symbol/value
     let finalExpress = v.express || ''
     if (!v.express && v.name !== undefined) {
@@ -47,8 +50,9 @@ const Action: React.FC<ActionProps> = ({ value = [], onChange, controlSchema }) 
         finalExpress = `${v.name || ''}${v.symbol || ''}${v.value || ''}`
       }
     }
-    
+
     return {
+      ...v,
       id: v.id || generateId(),
       express: finalExpress,
       pre_think_time: v.pre_think_time ?? 0,

@@ -389,7 +389,15 @@ function ProjectWorkSpace() {
 
   // 按类型对需求进行分组
   const groupedRequirements = requirements.reduce((acc, req) => {
-    const type = req.type || '默认'
+    let type = req.type || '默认'
+    switch (type) {
+      case 'component':
+        type = '部件需求'
+        break
+      case 'system':
+        type = '系统需求'
+        break
+    }
     if (!acc[type]) acc[type] = []
     acc[type].push(req)
     return acc

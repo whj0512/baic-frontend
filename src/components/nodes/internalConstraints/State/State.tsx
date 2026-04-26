@@ -1,11 +1,12 @@
-import React, { FC, useEffect, useRef, ReactNode } from 'react';
+import { type FC, useEffect, useRef, type ReactNode } from 'react';
 import './State.css';
 
 interface ActionItem {
-    name: string;
-    value: string;
-    symbol: string;
-    isStandard: boolean;
+    name?: string;
+    value?: string;
+    symbol?: string;
+    isStandard?: boolean;
+    express?: string;
 }
 
 interface StateNodeProps {
@@ -29,7 +30,10 @@ interface StateNodeProps {
 
 // 将动作对象转换为表达式字符串
 const joinObject = (obj: ActionItem): string => {
-    const { name, symbol, value } = obj;
+    if (obj.express) {
+        return obj.express;
+    }
+    const { name = '', symbol = '', value = '' } = obj;
     if (symbol === '()') {
         return `${name}(${value})`;
     }
@@ -60,8 +64,8 @@ const State: FC<StateNodeProps> = (props) => {
     const fontColor = propFontColor || nodeData.fontColor || '#333';
     const fontSize = propFontSize || nodeData.fontSize || 12;
     const nodeName = propNodeName || nodeData.nodeName || 'State';
-    const normal = nodeData.normal || [];  // 动作-常规
-    const dynamic = nodeData.dynamic || []; // 动作-动态
+    const normal = nodeData.normal_test_action_list || [];  // 动作-常规
+    const dynamic = nodeData.dynamic_test_action_list || []; // 动作-动态
 
     // 获取尺寸
     const nodeSize = node?.getSize?.() || {};

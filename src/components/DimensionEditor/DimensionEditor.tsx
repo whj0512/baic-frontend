@@ -51,6 +51,9 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
   // Ref to access FlowGraph instance
   const flowGraphRef = useRef<FlowGraphRef>(null)
 
+  // 待应用的画布属性（DSL 转图时 FlowGraph 尚未挂载，需暂存到 ref）
+  const pendingCanvasDataRef = useRef<Record<string, any> | null>(null)
+
   // 视图模式状态
   const [viewMode, setViewMode] = useState<ViewMode>('dsl')
 
@@ -66,6 +69,27 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
     graphDataRef.current = data
     setGraphData(data)
   }
+
+  // 切换到可视化视图后，待 FlowGraph 挂载完成再将 canvasData 写入 graph 实例
+  useEffect(() => {
+    if (viewMode !== 'visual') return
+    const pending = pendingCanvasDataRef.current
+    if (!pending) return
+
+    // 此时 FlowGraph 已经渲染，尝试获取 graph 实例
+    const applyCanvasData = () => {
+      const graph = flowGraphRef.current?.getGraph()
+      if (graph) {
+        ;(graph as any).canvasData = pending
+        graph.trigger('canvas:change:data', { data: pending })
+        pendingCanvasDataRef.current = null
+      }
+    }
+
+    // 延迟一帧确保 FlowGraph 内部的 graph 实例已初始化
+    const timer = setTimeout(applyCanvasData, 100)
+    return () => clearTimeout(timer)
+  }, [viewMode])
 
   // 监听远程 graph 数据变化（WebSocket 推送导致 requirement prop 更新）
   useEffect(() => {
@@ -168,14 +192,16 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
       const result = await response.text()
       const x6Data = modelStrategy.importGraphFromJSON(result)
 
-      // 更新图数据
-      setGraphData(x6Data)
-      graphDataRef.current = x6Data
+      // 提取画布数据（含 canvasData）和单元格数据
+      const { canvasData, ...cellsData } = (x6Data as any)
 
-      // 如果图实例存在，重新加载数据
-      const graph = flowGraphRef.current?.getGraph()
-      if (graph) {
-        graph.fromJSON(x6Data)
+      // 更新图数据
+      setGraphData(cellsData)
+      graphDataRef.current = cellsData
+
+      // 将 canvasData 暂存，等 FlowGraph 挂载后再写入 graph 实例
+      if (canvasData) {
+        pendingCanvasDataRef.current = canvasData
       }
 
       setViewMode('visual')

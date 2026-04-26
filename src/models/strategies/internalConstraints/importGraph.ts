@@ -78,6 +78,13 @@ interface ApiGraphData {
   id: string
   desc?: string
   graph_type?: string
+  // 画布属性（对应 formConfig.canvas 的字段）
+  local_variable_list?: any[]
+  variable_action_list?: any[]
+  test_coverage?: any
+  h_function?: string
+  entry_action_list?: any[]
+  exit_action_list?: any[]
   nodes: ApiNode[]
   transitions: ApiTransition[]
 }
@@ -351,7 +358,18 @@ export const importGraphFromJSON = (jsonString: string): any => {
     })
   }
 
-  return { cells }
+  // 提取画布属性（对应 formConfig.canvas 的字段）
+  const canvasData: Record<string, any> = {
+    desc: apiData.desc || '',
+    local_variable_list: apiData.local_variable_list ?? [],
+    variable_action_list: apiData.variable_action_list ?? [],
+    test_coverage: apiData.test_coverage,
+    h_function: apiData.h_function || 'none',
+    entry_action_list: apiData.entry_action_list ?? [],
+    exit_action_list: apiData.exit_action_list ?? [],
+  }
+
+  return { cells, canvasData }
 }
 
 export default importGraphFromJSON

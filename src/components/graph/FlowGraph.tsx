@@ -212,6 +212,15 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
 
       if (data && Object.keys(data).length > 0) {
         graph.fromJSON(data)
+        // Ensure existing condition properties are displayed as labels when graph loads
+        graph.getEdges().forEach((edge) => {
+          const edgeData = edge.getData() || {}
+          if (edgeData.condition && (!edge.getLabels() || edge.getLabels().length === 0)) {
+            const conditionText = edgeData.condition
+            const displayLabel = conditionText.length > 25 ? conditionText.substring(0, 25) + '...' : conditionText
+            edge.setLabels([{ attrs: { text: { text: displayLabel } } }])
+          }
+        })
       }
 
       if (onChange && !readOnly) {
@@ -244,7 +253,8 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
           const labelText = parts.join('\n')
 
           if (labelText) {
-            edge.setLabels([{ attrs: { label: { text: labelText } } }])
+            const displayLabel = labelText.length > 25 ? labelText.substring(0, 25) + '...' : labelText
+            edge.setLabels([{ attrs: { label: { text: displayLabel } } }])
           } else {
             edge.setLabels([])
           }
@@ -262,6 +272,15 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
               strokeDasharray: data.isReturn ? 5 : null
             }
           })
+        } else if (data.condition !== undefined) {
+          // 处理带有 condition 的非时序图边
+          const conditionText = data.condition || ''
+          if (conditionText) {
+            const displayLabel = conditionText.length > 25 ? conditionText.substring(0, 25) + '...' : conditionText
+            edge.setLabels([{ attrs: { text: { text: displayLabel } } }])
+          } else {
+            edge.setLabels([])
+          }
         }
       })
 

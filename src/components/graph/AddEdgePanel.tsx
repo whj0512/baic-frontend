@@ -366,6 +366,13 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, edgeMode,
 
       edgeConfig.source = { cell: sourceId, port: sourcePortId }
       edgeConfig.target = { cell: targetId, port: targetPortId }
+
+      // 为 condition 节点的 output 赋予默认的 condition 属性和标签
+      if (sourceOutput === 'out-yes' || sourceOutput === 'out-no') {
+        const conditionText = sourceOutput === 'out-yes' ? '[Yes]' : '[No]'
+        edgeConfig.data.condition = conditionText
+        edgeConfig.labels = [{ attrs: { text: { text: conditionText } } }]
+      }
     } else if (isSequenceMode) {
       // === 模式二：时序图坐标连线（sequence mode） ===
       // 计算相同节点对之间已有的边数量，用于 Y 轴偏移避免重叠
@@ -431,9 +438,10 @@ const AddEdgePanel: React.FC<AddEdgePanelProps> = ({ graph, edgeRules, edgeMode,
 
       const labelText = formatLabel(initData)
       if (labelText) {
+        const displayLabel = labelText.length > 25 ? labelText.substring(0, 25) + '...' : labelText
         edgeConfig.labels = [{
           attrs: {
-            text: { text: labelText }
+            text: { text: displayLabel }
           }
         }]
       }

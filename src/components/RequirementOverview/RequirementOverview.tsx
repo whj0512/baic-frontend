@@ -120,30 +120,6 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
           </div>
         </div>
 
-        {/* DSL 文本 (按维度) */}
-        {/* <div className="overview-section">
-          <div className="section-header">
-            <span className="section-title">DSL 表示</span>
-          </div>
-          {SECTIONS.map((section) => {
-            const dslValue = requirement[section.dslField] as string | undefined
-            if (!dslValue) return null
-            return (
-              <div key={section.key} style={{ marginBottom: '0.5rem' }}>
-                <span className={`dimension-tag tag-${section.dimensionCode}`} style={{ marginRight: 8 }}>{section.dimensionCode}</span>
-                <div className="text-content dsl-content" style={{ marginTop: 4 }}>
-                  {dslValue}
-                </div>
-              </div>
-            )
-          })}
-          {SECTIONS.every(s => !requirement[s.dslField]) && (
-            <div className="text-content dsl-content">
-              <span className="text-placeholder">暂无 DSL 定义</span>
-            </div>
-          )}
-        </div> */}
-
         {/* 五维模型列表 */}
         <div className="overview-section">
           <div className="section-header">
@@ -161,7 +137,7 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
                   <span className="dimension-label">{section.label}</span>
                 </div>
                 <div className="dimension-item-right">
-                  {hasSectionData(section.graphField) ? (
+                  {hasSectionData(section.dslField || section.graphField) ? (
                     <span className="dimension-status has-data">已定义</span>
                   ) : (
                     <span className="dimension-status no-data">未定义</span>

@@ -52,14 +52,24 @@ export const FormPanelContainer: React.FC<Props> = ({ graph, formConfig }) => {
       console.log('[FormPanelContainer] Blank clicked. Restored canvas data:', persistedCanvasData)
     }
 
+    // 监听外部（如 DSL 导入）注入画布属性的事件
+    const onCanvasDataChange = ({ data }: { data: Record<string, any> }) => {
+      setSelectedCell(null)
+      setTargetType('canvas')
+      setCellData(data)
+      console.log('[FormPanelContainer] canvas:change:data received:', data)
+    }
+
     graph.on('node:click', onNodeClick)
     graph.on('edge:click', onEdgeClick)
     graph.on('blank:click', onBlankClick)
+    graph.on('canvas:change:data', onCanvasDataChange)
 
     return () => {
       graph.off('node:click', onNodeClick)
       graph.off('edge:click', onEdgeClick)
       graph.off('blank:click', onBlankClick)
+      graph.off('canvas:change:data', onCanvasDataChange)
     }
   }, [graph])
 

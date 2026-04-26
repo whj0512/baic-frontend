@@ -116,7 +116,9 @@ const ReqRelationShip: React.FC<ReqRelationShipProps> = ({ requirements, onBack 
 
     const nodesMap = new Map<string, any>();
     const links: any[] = [];
-    const edgeCountMap = new Map<string, number>();
+    // 使用归一化的 key（按字典序排序）来追踪任意两节点之间的所有边，
+    // 这样 A→B 和 B→A 共享同一个计数器，能正确分配不同的 curveness
+    const pairEdgeCountMap = new Map<string, number>();
 
     resultData.dependencies.forEach((dep: any) => {
       const source = dep.dependent_graph;
@@ -168,10 +170,19 @@ const ReqRelationShip: React.FC<ReqRelationShipProps> = ({ requirements, onBack 
         });
       }
 
-      const edgeKey = `${source}-${target}`;
-      const count = edgeCountMap.get(edgeKey) || 0;
-      let curveness = count === 0 ? 0 : (Math.ceil(count / 2) * 0.2) * (count % 2 === 0 ? -1 : 1);
-      edgeCountMap.set(edgeKey, count + 1);
+      // 归一化 key：无论 A→B 还是 B→A，都使用相同的 pairKey
+      const [first, second] = [source, target].sort();
+      const pairKey = `${first}||${second}`;
+      const pairIndex = pairEdgeCountMap.get(pairKey) || 0;
+      pairEdgeCountMap.set(pairKey, pairIndex + 1);
+
+      // curveness 分配策略：
+      // 第 0 条边: +0.2，第 1 条边: -0.2，第 2 条边: +0.4，第 3 条边: -0.4 ...
+      // 确保任意两节点间的边都有不同的曲率，标签自然分开
+      const curveStep = 0.2;
+      const level = Math.floor(pairIndex / 2) + 1;
+      const sign = pairIndex % 2 === 0 ? 1 : -1;
+      const curveness = level * curveStep * sign;
 
       links.push({
         source,
@@ -180,9 +191,12 @@ const ReqRelationShip: React.FC<ReqRelationShipProps> = ({ requirements, onBack 
         symbolSize: [0, 10],
         label: {
           show: true,
-          formatter: `<<Depend>>`,
+          formatter: `<<Depend>>\n${dep.data_name || ''}`,
           fontSize: 10,
           color: '#666',
+          backgroundColor: 'rgba(255, 255, 255, 0.85)',
+          padding: [2, 4],
+          borderRadius: 2,
         },
         lineStyle: {
           curveness,
