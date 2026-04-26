@@ -48,17 +48,14 @@ const ReqRelationShip: React.FC<ReqRelationShipProps> = ({ requirements, onBack 
               return null;
             }
 
-            // 为了避免 empty object 或者只包含元数据（如 { id: '...', desc: '...' }）时，
-            // fromJSON 把顶级对象当作缺少 shape 字段的独立节点处理，必须确保携带 cells 数组或者跳过。
-            if (!Array.isArray(graphData.cells) && !Array.isArray(graphData)) {
-              if (Object.keys(graphData).length > 0) {
-                graphData = { cells: [], ...graphData };
-              } else {
-                return null;
-              }
-            } else if (Array.isArray(graphData.cells) && graphData.cells.length === 0) {
-              return null;
-            } else if (Array.isArray(graphData) && graphData.length === 0) {
+            // 若 graphData 包含 cells 属性，说明是 X6 画布格式，需要走 fromJSON + exportGraphToRBG 转换；
+            // 否则认为已经是 RBG DSL 格式，直接返回。
+            if (!('cells' in graphData)) {
+              return graphData;
+            }
+
+            // cells 为空数组时跳过
+            if (Array.isArray(graphData.cells) && graphData.cells.length === 0) {
               return null;
             }
 

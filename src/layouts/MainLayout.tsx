@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Outlet, Navigate, useLocation } from 'react-router-dom'
 import TopBar from '../components/TopBar'
-import LeftBar from '../components/LeftBar'
 import { isAuthenticated } from '../config/api'
 import './MainLayout.css'
 
@@ -34,7 +33,6 @@ function MainLayout() {
   return (
     <div className="main-layout">
       <TopBar />
-      <LeftBar />
       <main className="layout-content">
         <Outlet />
       </main>
