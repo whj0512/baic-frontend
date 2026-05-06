@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Spin, message, Card, Button } from 'antd';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Spin, message, Card, Button, TreeSelect } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
 import { Graph } from '@antv/x6';
@@ -21,90 +21,113 @@ interface ReqRelationShipProps {
 const ReqRelationShip: React.FC<ReqRelationShipProps> = ({ requirements, onBack }) => {
   const [loading, setLoading] = useState(false);
   const [resultData, setResultData] = useState<any>(null);
+  const [selectedReqIds, setSelectedReqIds] = useState<string[]>([]);
+
+  const treeData = useMemo(() => {
+    const grouped = requirements.reduce((acc, req) => {
+      const type = req.type || '未分类';
+      if (!acc[type]) acc[type] = [];
+      acc[type].push(req);
+      return acc;
+    }, {} as Record<string, Requirement[]>);
+
+    return Object.entries(grouped).map(([type, reqs]) => ({
+      title: type,
+      value: `type:${type}`, // 保证上一级 key 的唯一性
+      children: reqs.map(req => ({
+        title: req.name || req.id,
+        value: req.id,
+      }))
+    }));
+  }, [requirements]);
 
   useEffect(() => {
-    const processAndSend = async () => {
-      setLoading(true);
-      try {
-        // 注册必要节点，防止从头进入时 X6 缺少节点配置报 "shape should be specified" 等错误
-        if (internalConstraintsStrategy.registerNodes) {
-          internalConstraintsStrategy.registerNodes();
-        }
-
-        const dummyContainer = document.createElement('div');
-        const headlessGraph = new Graph({ container: dummyContainer });
-
-        const requestBody = requirements
-          .map((req) => {
-            let graphData = req.graph_SC;
-            if (typeof graphData === 'string') {
-              try {
-                graphData = JSON.parse(graphData);
-              } catch (e) {
-                graphData = { cells: [] };
-              }
-            }
-            if (!graphData || typeof graphData !== 'object') {
-              return null;
-            }
-
-            // 若 graphData 包含 cells 属性，说明是 X6 画布格式，需要走 fromJSON + exportGraphToRBG 转换；
-            // 否则认为已经是 RBG DSL 格式，直接返回。
-            if (!('cells' in graphData)) {
-              return graphData;
-            }
-
-            // cells 为空数组时跳过
-            if (Array.isArray(graphData.cells) && graphData.cells.length === 0) {
-              return null;
-            }
-
-            headlessGraph.clearCells();
-            try {
-              // Hacky way: 将画布的额外数据赋回去，以防 exportGraphToRBG 获取到丢失
-              (headlessGraph as any).canvasData = graphData;
-              headlessGraph.fromJSON(graphData);
-              return exportGraphToRBG(headlessGraph, req.id, req.nl_text);
-            } catch (err) {
-              console.error(`解析需求 ${req.id} 时 X6 fromJSON 返回异常:`, err);
-              return null;
-            }
-          })
-          .filter(Boolean);
-
-        headlessGraph.dispose();
-
-        console.log('Sending dependencies Request Body:', requestBody);
-
-        const dependencyUrl = API_ENDPOINTS.dependency;
-        const token = localStorage.getItem('token');
-        const response = await fetch(dependencyUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify(requestBody),
-        });
-
-        if (!response.ok) {
-          throw new Error('请求依赖计算失败');
-        }
-
-        const data = await response.json();
-        setResultData(data);
-      } catch (error: any) {
-        console.error('ReqRelationShip Error:', error);
-        message.error(error.message || '获取需求间关系失败');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (requirements && requirements.length > 0) {
-      processAndSend();
+    const allIds = requirements.map(req => req.id);
+    setSelectedReqIds(allIds);
+    if (allIds.length > 0) {
+      processAndSend(allIds);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requirements]);
+
+  const processAndSend = async (idsToProcess: string[] = selectedReqIds) => {
+    setLoading(true);
+    try {
+      // 注册必要节点，防止从头进入时 X6 缺少节点配置报 "shape should be specified" 等错误
+      if (internalConstraintsStrategy.registerNodes) {
+        internalConstraintsStrategy.registerNodes();
+      }
+
+      const dummyContainer = document.createElement('div');
+      const headlessGraph = new Graph({ container: dummyContainer });
+
+      const requestBody = requirements
+        .filter(req => idsToProcess.includes(req.id))
+        .map((req) => {
+          let graphData = req.graph_SC;
+          if (typeof graphData === 'string') {
+            try {
+              graphData = JSON.parse(graphData);
+            } catch (e) {
+              graphData = { cells: [] };
+            }
+          }
+          if (!graphData || typeof graphData !== 'object') {
+            return null;
+          }
+
+          // 若 graphData 包含 cells 属性，说明是 X6 画布格式，需要走 fromJSON + exportGraphToRBG 转换；
+          // 否则认为已经是 RBG DSL 格式，直接返回。
+          if (!('cells' in graphData)) {
+            return graphData;
+          }
+
+          // cells 为空数组时跳过
+          if (Array.isArray(graphData.cells) && graphData.cells.length === 0) {
+            return null;
+          }
+
+          headlessGraph.clearCells();
+          try {
+            // Hacky way: 将画布的额外数据赋回去，以防 exportGraphToRBG 获取到丢失
+            (headlessGraph as any).canvasData = graphData;
+            headlessGraph.fromJSON(graphData);
+            return exportGraphToRBG(headlessGraph, req.id, req.nl_text);
+          } catch (err) {
+            console.error(`解析需求 ${req.id} 时 X6 fromJSON 返回异常:`, err);
+            return null;
+          }
+        })
+        .filter(Boolean);
+
+      headlessGraph.dispose();
+
+      console.log('Sending dependencies Request Body:', requestBody);
+
+      const dependencyUrl = API_ENDPOINTS.dependency;
+      const token = localStorage.getItem('token');
+      const response = await fetch(dependencyUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error('请求依赖计算失败');
+      }
+
+      const data = await response.json();
+      setResultData(data);
+    } catch (error: any) {
+      console.error('ReqRelationShip Error:', error);
+      message.error(error.message || '获取需求间关系失败');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getEchartsOption = () => {
     if (!resultData || !resultData.dependencies) {
@@ -267,6 +290,23 @@ const ReqRelationShip: React.FC<ReqRelationShipProps> = ({ requirements, onBack 
             !loading && <div className="empty-tip">没有计算结果或没有有效需求数据</div>
           )}
         </Spin>
+      </div>
+      <div className="req-relationship-operation">
+        <span className="operation-label">筛选分析需求：</span>
+        <TreeSelect
+          treeData={treeData}
+          treeCheckable={true}
+          showCheckedStrategy={TreeSelect.SHOW_CHILD}
+          allowClear
+          placeholder="请选择需要纳入关系分析的需求"
+          value={selectedReqIds}
+          onChange={(vals) => setSelectedReqIds(vals as string[])}
+          style={{ flex: 1, marginRight: 16 }}
+          maxTagCount="responsive"
+        />
+        <Button type="primary" onClick={() => processAndSend()} loading={loading}>
+          生成 / 刷新关系
+        </Button>
       </div>
     </div>
   );
