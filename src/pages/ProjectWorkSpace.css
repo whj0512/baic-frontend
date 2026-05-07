@@ -275,6 +275,23 @@
   background-color: #fff5f5;
 }
 
+/* subtype 内层折叠：左侧缩进线区分层级 */
+.subtype-collapse {
+  border-left: 2px solid #e5e7eb;
+  margin-left: 4px;
+  padding-left: 4px;
+}
+
+.subtype-collapse .ant-collapse-header {
+  font-size: 0.8rem !important;
+  color: #6b7280 !important;
+  padding: 4px 8px !important;
+}
+
+.subtype-collapse .ant-collapse-content-box {
+  padding: 4px 0 !important;
+}
+
 /* 需求树 */
 .tree-container {
   flex: 1;

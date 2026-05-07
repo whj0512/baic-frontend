@@ -17,6 +17,7 @@ interface RequirementCreatorProps {
     projectKey?: string
     formData?: {
         name: string
+        type: string
         nl_text: string
         relationships: RelationItem[]
         sectionData: Record<string, any>
@@ -72,6 +73,7 @@ function RequirementCreator({
     // Local state fallback if not provided via props (for standalone usage safety)
     const [localFormData, setLocalFormData] = useState({
         name: '',
+        type: '',
         nl_text: '',
         relationships: [] as RelationItem[],
         sectionData: {} as Record<string, any>,
@@ -166,6 +168,7 @@ function RequirementCreator({
                 body: JSON.stringify({
                     project_key: projectKey,
                     name: currentFormData.name,
+                    type: currentFormData.type || undefined,
                     nl_text: currentFormData.nl_text,
                     // TODO: Map other fields like relationships or graph data if available
                     // For now, based on RequirementSaveRequest, we send what we have.
@@ -233,6 +236,23 @@ function RequirementCreator({
                             className="form-input"
                             placeholder="请输入需求名称"
                             value={currentFormData.name}
+                            onChange={handleChange}
+                        />
+                    </div>
+                </div>
+
+                {/* Requirement Type */}
+                <div className="creator-section">
+                    <div className="section-header">
+                        <span className="section-title">需求类型</span>
+                    </div>
+                    <div className="form-group">
+                        <input
+                            type="text"
+                            name="type"
+                            className="form-input"
+                            placeholder="请输入需求类型"
+                            value={currentFormData.type}
                             onChange={handleChange}
                         />
                     </div>

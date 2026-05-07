@@ -13,6 +13,53 @@ import internalConstraintsStrategy from '../graph/strategies/internalConstraints
 
 import './ReqRelationShip.css';
 
+// ─── 节点样式表：按 requirement.type 映射不同的 ECharts 节点外观 ───────────────
+interface NodeStyle {
+  borderColor: string;
+  borderType: 'solid' | 'dashed' | 'dotted';
+  borderWidth: number;
+  backgroundColor: string;
+  labelColor: string;
+  symbolSize: number;
+}
+
+const NODE_STYLE_MAP: Record<string, NodeStyle> = {
+  /** 系统需求 */
+  系统级: {
+    borderColor: '#722ed1',
+    borderType: 'dashed',
+    borderWidth: 2,
+    backgroundColor: '#f9f0ff',
+    labelColor: '#531dab',
+    symbolSize: 75,
+  },
+  /** 部件需求 */
+  部件级: {
+    borderColor: '#1890ff',
+    borderType: 'dashed',
+    borderWidth: 2,
+    backgroundColor: '#e6f7ff',
+    labelColor: '#0050b3',
+    symbolSize: 70,
+  },
+  /** 默认 / 未分类 */
+  默认: {
+    borderColor: '#8c8c8c',
+    borderType: 'dashed',
+    borderWidth: 2,
+    backgroundColor: '#fafafa',
+    labelColor: '#595959',
+    symbolSize: 65,
+  },
+};
+
+/** 根据 requirement.type 原始值取对应样式，找不到时降级为 default */
+const getNodeStyle = (type?: string): NodeStyle => {
+  if (!type) return NODE_STYLE_MAP.default;
+  return NODE_STYLE_MAP[type] ?? NODE_STYLE_MAP.default;
+};
+// ────────────────────────────────────────────────────────────────────────────
+
 interface ReqRelationShipProps {
   requirements: Requirement[];
   onBack?: () => void;
@@ -89,7 +136,6 @@ const ReqRelationShip: React.FC<ReqRelationShipProps> = ({ requirements, onBack 
 
           headlessGraph.clearCells();
           try {
-            // Hacky way: 将画布的额外数据赋回去，以防 exportGraphToRBG 获取到丢失
             (headlessGraph as any).canvasData = graphData;
             headlessGraph.fromJSON(graphData);
             return exportGraphToRBG(headlessGraph, req.id, req.nl_text);
@@ -142,51 +188,57 @@ const ReqRelationShip: React.FC<ReqRelationShipProps> = ({ requirements, onBack 
 
     resultData.dependencies.forEach((dep: any) => {
       const source = dep.dependent_graph;
+      const sourceMeta = requirements.find((r) => r.id === source);
       const target = dep.depended_graph;
+      const targetMeta = requirements.find((r) => r.id === target);
 
       if (!nodesMap.has(source)) {
+        const nodeName = sourceMeta?.name;
+        const style = getNodeStyle(sourceMeta?.type);
         nodesMap.set(source, {
           id: source,
-          name: source.substring(0, 8), // Show short hash as identifier
+          name: nodeName?.substring(0, 8) || source.substring(0, 8),
           symbol: 'circle',
-          symbolSize: 70,
+          symbolSize: style.symbolSize,
           itemStyle: {
-            color: '#fff',
-            borderType: 'dashed',
-            borderColor: '#1890ff',
-            borderWidth: 2,
+            color: style.backgroundColor,
+            borderType: style.borderType,
+            borderColor: style.borderColor,
+            borderWidth: style.borderWidth,
           },
           label: {
             show: true,
             formatter: '{b}',
-            color: '#333'
+            color: style.labelColor,
           },
           tooltip: {
-            formatter: `需求: ${source}`
-          }
+            formatter: `需求: ${nodeName || source}<br/>层级: ${sourceMeta?.type || '未分类'}`,
+          },
         });
       }
 
       if (!nodesMap.has(target)) {
+        const nodeName = targetMeta?.name;
+        const style = getNodeStyle(targetMeta?.type);
         nodesMap.set(target, {
           id: target,
-          name: target.substring(0, 8),
+          name: nodeName?.substring(0, 8) || target.substring(0, 8),
           symbol: 'circle',
-          symbolSize: 70,
+          symbolSize: style.symbolSize,
           itemStyle: {
-            color: '#fff',
-            borderType: 'dashed',
-            borderColor: '#1890ff',
-            borderWidth: 2,
+            color: style.backgroundColor,
+            borderType: style.borderType,
+            borderColor: style.borderColor,
+            borderWidth: style.borderWidth,
           },
           label: {
             show: true,
             formatter: '{b}',
-            color: '#333'
+            color: style.labelColor,
           },
           tooltip: {
-            formatter: `Graph ID: ${target}`
-          }
+            formatter: `需求: ${nodeName || target}<br/>层级: ${targetMeta?.type || '未分类'}`,
+          },
         });
       }
 
@@ -224,7 +276,7 @@ const ReqRelationShip: React.FC<ReqRelationShipProps> = ({ requirements, onBack 
           width: 2,
         },
         tooltip: {
-          formatter: `依赖数据: ${dep.data_name}<br />Dependent: ${source}<br />Depended: ${target}`
+          formatter: `依赖数据: ${dep.data_name}<br />Dependent: ${sourceMeta?.name}<br />Depended: ${targetMeta?.name}`
         }
       });
     });

@@ -19,4 +19,6 @@ export interface Requirement {
   created_at: string
   updated_at: string
   type?: string
+  subtype?: string
+  description?: string
 }

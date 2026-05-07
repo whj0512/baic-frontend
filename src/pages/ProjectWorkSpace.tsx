@@ -336,6 +336,7 @@ function ProjectWorkSpace() {
   const [createFormData, setCreateFormData] = useState({
     name: '',
     nl_text: '',
+    type: '',
     relationships: [] as any[],
     // Store graph data for each section
     sectionData: {} as Record<string, any>,
@@ -370,6 +371,7 @@ function ProjectWorkSpace() {
     project_id: projectKey || '',
     name: createFormData.name,
     nl_text: createFormData.nl_text,
+    type: createFormData.type,
     created_by: 'CurrentUser',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -387,55 +389,96 @@ function ProjectWorkSpace() {
     dsl_SC: createFormData.sectionDslData.internalConstraints,
   } as Requirement // Cast as we might be missing some required fields but sufficient for editor
 
-  // 按类型对需求进行分组
-  const groupedRequirements = requirements.reduce((acc, req) => {
-    let type = req.type || '默认'
+  // 类型显示名称映射
+  const typeDisplayName = (type: string) => {
     switch (type) {
-      case 'component':
-        type = '部件需求'
-        break
-      case 'system':
-        type = '系统需求'
-        break
+      case 'component': return '部件需求'
+      case 'system': return '系统需求'
+      default: return type || '默认'
     }
-    if (!acc[type]) acc[type] = []
-    acc[type].push(req)
-    return acc
-  }, {} as Record<string, Requirement[]>)
+  }
 
-  const collapseItems: CollapseProps['items'] = Object.entries(groupedRequirements).map(([type, reqs]) => ({
-    key: type,
-    label: `${type} (${reqs.length})`,
-    children: (
-      <div className="requirement-type-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {reqs.map((req) => (
-          <div
-            key={req.id}
-            className={`requirement-item ${selectedRequirement === req.id && !deleteMode ? 'selected' : ''} ${deleteMode ? 'delete-mode-item' : ''}`}
-            onClick={() => deleteMode ? handleDeleteRequirement(req) : handleRequirementSelect(req.id)}
-            style={{ marginBottom: 0 }}
-          >
-            <div className="requirement-item-header">
-              <span className="requirement-date">{formatDate(req.updated_at)}</span>
-              {deleteMode && (
-                <DeleteOutlined style={{ color: '#ff4d4f', fontSize: 13 }} />
-              )}
-            </div>
-            <div className="requirement-item-content">
-              {truncateText(req.name, 50)}
-            </div>
-          </div>
-        ))}
-        <Button
-          type='default'
-          icon={<PartitionOutlined />}
-          block
-        >
-          测试用例
-        </Button>
+  // 按 type → subtype 构建两级分组结构
+  const groupedRequirements = requirements.reduce((acc, req) => {
+    const type = typeDisplayName(req.type || '')
+    const subtype = req.subtype || ''
+    if (!acc[type]) acc[type] = {}
+    if (!acc[type][subtype]) acc[type][subtype] = []
+    acc[type][subtype].push(req)
+    return acc
+  }, {} as Record<string, Record<string, Requirement[]>>)
+
+  // 渲染单个需求项
+  const renderReqItem = (req: Requirement) => (
+    <div
+      key={req.id}
+      className={`requirement-item ${selectedRequirement === req.id && !deleteMode ? 'selected' : ''} ${deleteMode ? 'delete-mode-item' : ''}`}
+      onClick={() => deleteMode ? handleDeleteRequirement(req) : handleRequirementSelect(req.id)}
+      style={{ marginBottom: 0 }}
+    >
+      <div className="requirement-item-header">
+        <span className="requirement-date">{formatDate(req.updated_at)}</span>
+        {deleteMode && (
+          <DeleteOutlined style={{ color: '#ff4d4f', fontSize: 13 }} />
+        )}
       </div>
-    )
-  }))
+      <div className="requirement-item-content">
+        {truncateText(req.name, 50)}
+      </div>
+    </div>
+  )
+
+  // 构建外层（type）Collapse items
+  const collapseItems: CollapseProps['items'] = Object.entries(groupedRequirements).map(([type, subtypeMap]) => {
+    const totalCount = Object.values(subtypeMap).reduce((s, arr) => s + arr.length, 0)
+
+    // 判断是否存在非空 subtype
+    const hasSubtype = Object.keys(subtypeMap).some(k => k !== '')
+
+    // 内层 subtype Collapse items（仅含有 subtype 的分组）
+    const innerItems: CollapseProps['items'] = Object.entries(subtypeMap)
+      .filter(([subtype]) => subtype !== '')
+      .map(([subtype, reqs]) => ({
+        key: subtype,
+        label: `${subtype} (${reqs.length})`,
+        children: (
+          <div className="requirement-type-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {reqs.map(renderReqItem)}
+          </div>
+        )
+      }))
+
+    // 无 subtype 的需求直接列在顶部
+    const noSubtypeReqs = subtypeMap[''] || []
+
+    return {
+      key: type,
+      label: `${type} (${totalCount})`,
+      children: (
+        <div className="requirement-type-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {/* 无 subtype 的需求直接渲染 */}
+          {noSubtypeReqs.map(renderReqItem)}
+          {/* 有 subtype 的需求，嵌套一层 Collapse */}
+          {hasSubtype && (
+            <Collapse
+              ghost
+              size="small"
+              items={innerItems}
+              defaultActiveKey={innerItems.map(i => i.key as string)}
+              className="subtype-collapse"
+            />
+          )}
+          <Button
+            type='default'
+            icon={<PartitionOutlined />}
+            block
+          >
+            测试用例
+          </Button>
+        </div>
+      )
+    }
+  })
 
   return (
     <div className="workspace-container">
@@ -452,7 +495,7 @@ function ProjectWorkSpace() {
               title="返回上页"
             />
             <h3>
-              需求列表
+              {project?.name || ''} 需求列表
               <Badge status={isConnected ? 'success' : 'error'} style={{ marginLeft: 8 }} title={isConnected ? '实时同步已连接' : '实时同步已断开'} />
             </h3>
           </div>
