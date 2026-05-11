@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button, message, Spin, Badge, Modal, Collapse } from 'antd'
 import type { CollapseProps } from 'antd'
-import { ShareAltOutlined, ArrowLeftOutlined, DeleteOutlined, CloseOutlined, FileTextOutlined, PartitionOutlined } from '@ant-design/icons'
+import { ShareAltOutlined, ArrowLeftOutlined, DeleteOutlined, CloseOutlined, FileTextOutlined, PartitionOutlined, ExperimentOutlined } from '@ant-design/icons'
 import './ProjectWorkSpace.css'
 import type { Requirement } from '../models/Requirement'
 import type { RequirementVersion } from '../models/RequirementVersion'
@@ -10,11 +10,12 @@ import RequirementOverview, { type SectionKey } from '../components/RequirementO
 import DimensionEditor from '../components/DimensionEditor'
 import RequirementCreator from '../components/RequirementCreator/RequirementCreator'
 import ReqRelationShip from '../components/ReqRelationShip'
+import TestCaseOverview from '../components/TestCaseOverview'
 import { API_ENDPOINTS } from '../config/api'
 import { useProjectSync } from '../hooks/useProjectSync'
 
 // 中间区域视图类型
-type CenterView = 'overview' | 'editor' | 'create' | 'create-editor' | 'relationship'
+type CenterView = 'overview' | 'editor' | 'create' | 'create-editor' | 'relationship' | 'test-case'
 
 function ProjectWorkSpace() {
   const { projectKey } = useParams<{ projectKey: string }>()
@@ -40,10 +41,13 @@ function ProjectWorkSpace() {
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const tabBarRef = useRef<HTMLDivElement>(null)
 
-  // 进入 relationship 视图前保存上一个视图状态，以便返回
+  // 进入 relationship / test-case 视图前保存上一个视图状态，以便返回
   const prevViewStateRef = useRef<{ view: CenterView; reqId: string | null; section: SectionKey | null }>({
     view: 'overview', reqId: null, section: null
   })
+
+  // 测试用例视图：当前展示的需求列表
+  const [testCaseRequirements, setTestCaseRequirements] = useState<Requirement[]>([])
 
   // 保存当前活跃 tab 的视图快照
   const saveCurrentTabState = () => {
@@ -470,8 +474,20 @@ function ProjectWorkSpace() {
           )}
           <Button
             type='default'
-            icon={<PartitionOutlined />}
+            icon={<ExperimentOutlined />}
             block
+            onClick={() => {
+              // 收集当前 type 下所有 subtype 的需求
+              const allReqs = Object.values(subtypeMap).flat()
+              setTestCaseRequirements(allReqs)
+              prevViewStateRef.current = {
+                view: centerView,
+                reqId: activeTabId,
+                section: editingSection
+              }
+              setSelectedRequirement(null)
+              setCenterView('test-case')
+            }}
           >
             测试用例
           </Button>
@@ -556,7 +572,7 @@ function ProjectWorkSpace() {
       {/* Center Panel */}
       <div className="workspace-center">
         {/* IDE 风格 Tab 栏：仅在需求 tab 场景下显示 */}
-        {!['create', 'create-editor', 'relationship'].includes(centerView) && openTabs.length > 0 && (
+        {!['create', 'create-editor', 'relationship', 'test-case'].includes(centerView) && openTabs.length > 0 && (
           <div className="center-tab-bar" ref={tabBarRef}>
             {openTabs.map(tab => (
               <div
@@ -640,11 +656,29 @@ function ProjectWorkSpace() {
               }}
             />
           )}
+
+          {centerView === 'test-case' && (
+            <TestCaseOverview
+              requirements={testCaseRequirements}
+              onBack={() => {
+                const prev = prevViewStateRef.current
+                if (prev.reqId) {
+                  setActiveTabId(prev.reqId)
+                  setSelectedRequirement(prev.reqId)
+                  setCenterView(prev.view)
+                  setEditingSection(prev.section)
+                } else {
+                  setCenterView('overview')
+                  setEditingSection(null)
+                }
+              }}
+            />
+          )}
         </div>
       </div>
 
       {/* Right Panel */}
-      {!['create', 'create-editor', 'relationship'].includes(centerView) && (
+      {!['create', 'create-editor', 'relationship', 'test-case'].includes(centerView) && (
         <div className={`workspace-right${rightCollapsed ? ' workspace-right-collapsed' : ''}`}>
           {/* 折叠/展开触发区 */}
           <div className="right-collapse-bar" onClick={() => setRightCollapsed(prev => !prev)} title={rightCollapsed ? '展开面板' : '收起面板'}>
