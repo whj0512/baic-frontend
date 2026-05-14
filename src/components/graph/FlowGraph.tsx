@@ -1,5 +1,6 @@
 import { useEffect, useRef, useMemo, useState, forwardRef, useImperativeHandle, useCallback } from 'react'
-import { Graph, Snapline, Stencil, Edge, Cell, Transform, Keyboard, Clipboard, Selection } from '@antv/x6'
+import { Graph, Snapline, Stencil, Transform, Keyboard, Clipboard, Selection } from '@antv/x6'
+import type { Cell, Edge } from '@antv/x6'
 import { register } from '@antv/x6-react-shape'
 import { Dropdown } from 'antd'
 import type { MenuProps } from 'antd'
@@ -7,7 +8,15 @@ import { CloseCircleOutlined, DeleteOutlined, LeftOutlined, RightOutlined } from
 import NodeWrapper from '../nodes/internalConstraints/NodeWrapper'
 import { getStrategy } from './strategies'
 import FormPanelContainer from '../form-panel'
-import AddEdgePanel from './AddEdgePanel'
+import {
+  ensureGraphConnectionPorts,
+  ensureNodeConnectionPorts,
+  finalizeNewEdgeConnection,
+  isSequenceEdgeMode,
+  setNodeConnectionHotAreaVisible,
+  toSerializableGraphJSON,
+  validateNodeConnection,
+} from './edgeConnection'
 import './FlowGraph.css'
 
 // Register common components
@@ -88,6 +97,7 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
       }
 
       if (!containerRef.current) return
+      const sequenceEdgeMode = isSequenceEdgeMode(strategy)
 
       const graphInnerContainer = document.createElement('div')
       graphInnerContainer.style.width = '100%'
@@ -114,16 +124,16 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
         background: { color: '#f8f9fa' },
         // 连线配置
         connecting: {
-          // 允许边悬空（因为时序图等坐标级别的线必须在未指定特定节点的情况下放置且可拖拉）
-          allowBlank: true,
+          // 时序图已有坐标边需要保留端点拖拉能力，普通节点连线必须落到目标节点上
+          allowBlank: sequenceEdgeMode,
           // 允许多条边连接到同一个节点
           allowMulti: true,
-          // 不允许从节点直接拖出边（使用添加连线按钮）
-          allowNode: false,
+          // 允许从节点边缘 port 拖出连线并落到目标节点
+          allowNode: true,
           // 不允许边连接到边
           allowEdge: false,
-          // 不允许创建循环连接
-          allowLoop: false,
+          // 普通图不允许自连线；时序图保留原有自连线能力
+          allowLoop: sequenceEdgeMode,
           // 高亮可连接的目标
           highlight: true,
           // 吸附到节点
@@ -132,7 +142,8 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
           },
           // 边的默认样式
           createEdge() {
-            return new Edge({
+            return graph.createEdge({
+              shape: 'edge',
               attrs: {
                 line: {
                   stroke: '#1890ff',
@@ -155,12 +166,16 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
             })
           },
           // 验证连接是否合法
-          validateConnection({ sourceCell, targetCell }) {
-            // 不允许连接到自身
-            if (sourceCell && targetCell && sourceCell === targetCell) {
-              return false
-            }
-            return true
+          validateConnection(args: any) {
+            return validateNodeConnection(args, strategy)
+          },
+          validateEdge({ edge }: { edge: Edge }) {
+            const sourceCellId = edge.getSourceCellId()
+            const targetCellId = edge.getTargetCellId()
+            if (sourceCellId && targetCellId) return true
+
+            // 坐标边没有 cell 端点，属于时序图的合法既有边；半悬空的新边无效
+            return sequenceEdgeMode && !sourceCellId && !targetCellId
           },
         },
       })
@@ -212,6 +227,7 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
 
       if (data && Object.keys(data).length > 0) {
         graph.fromJSON(data)
+        ensureGraphConnectionPorts(graph, strategy)
         // Ensure existing condition properties are displayed as labels when graph loads
         graph.getEdges().forEach((edge) => {
           const edgeData = edge.getData() || {}
@@ -223,13 +239,18 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
         })
       }
 
+      ensureGraphConnectionPorts(graph, strategy)
+
       if (onChange && !readOnly) {
-        const updateData = () => onChange(graph.toJSON())
+        const updateData = () => onChange(toSerializableGraphJSON(graph))
         graph.on('node:change:position', updateData)
         graph.on('node:added', updateData)
         graph.on('node:removed', updateData)
         graph.on('edge:added', updateData)
         graph.on('edge:removed', updateData)
+        graph.on('edge:change:source', updateData)
+        graph.on('edge:change:target', updateData)
+        graph.on('edge:change:vertices', updateData)
         graph.on('cell:change:data', updateData)
       }
 
@@ -286,6 +307,31 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
 
       // 边删除时清理对应的 port
       if (!readOnly) {
+        graph.on('node:added', ({ node }) => {
+          ensureNodeConnectionPorts(node, strategy)
+        })
+
+        graph.on('node:mouseenter', ({ node }) => {
+          ensureNodeConnectionPorts(node, strategy)
+          setNodeConnectionHotAreaVisible(node, true)
+        })
+
+        graph.on('node:mouseleave', ({ node }) => {
+          setNodeConnectionHotAreaVisible(node, false)
+        })
+
+        graph.on('edge:connected', ({ edge, isNew }: { edge: Edge; isNew: boolean }) => {
+          if (!isNew) return
+
+          const keepEdge = finalizeNewEdgeConnection(graph, strategy, edge)
+          if (!keepEdge) {
+            graph.removeEdge(edge)
+            return
+          }
+
+          onChange?.(toSerializableGraphJSON(graph))
+        })
+
         graph.on('edge:removed', ({ edge }) => {
           const src = edge.getSource() as { cell?: string; port?: string }
           const tgt = edge.getTarget() as { cell?: string; port?: string }
@@ -320,6 +366,14 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
 
           cleanupPort(src?.cell, src?.port)
           cleanupPort(tgt?.cell, tgt?.port)
+
+            ;[src?.cell, tgt?.cell].forEach((cellId) => {
+              if (!cellId) return
+              const node = graph.getCellById(cellId)
+              if (node?.isNode?.()) {
+                ensureNodeConnectionPorts(node, strategy)
+              }
+            })
         })
       }
 
@@ -479,15 +533,6 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
         )}
         <div className="graph-content-wrapper">
           <div ref={containerRef} className="x6-graph-container" />
-          {!readOnly && graphReady && graphRef.current && (
-            <AddEdgePanel
-              graph={graphRef.current}
-              edgeRules={strategy.edgeRules}
-              edgeMode={strategy.edgeMode}
-              defaultSourceMarker={strategy.defaultSourceMarker}
-              defaultEdgeMarker={strategy.defaultEdgeMarker}
-            />
-          )}
           {!readOnly && <div className="graph-help-text">Ctrl + 滚轮缩放 | 拖拽空白处平移</div>}
         </div>
         {/* 右侧表单面板 */}
