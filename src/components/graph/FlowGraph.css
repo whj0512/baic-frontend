@@ -173,7 +173,7 @@
   opacity: 1;
 }
 
-/* 底部工具栏已迁移至 AddEdgePanel 自行管理定位 */
+/* 节点连线由 X6 port 拖拽处理，无需额外底部工具栏 */
 
 /* 右侧表单面板 wrapper */
 .form-panel-wrapper {

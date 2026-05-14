@@ -1,0 +1,547 @@
+import type { Edge, Graph, Node } from '@antv/x6'
+import type { GraphStrategy } from './strategies/types'
+
+type Terminal = {
+  cell?: string
+  port?: string
+  x?: number
+  y?: number
+}
+
+type HotPortSide = 'top' | 'right' | 'bottom' | 'left'
+
+const HOT_PORT_PREFIX = 'connection-hot-'
+const HOT_EDGE_THICKNESS = 10
+
+const hotPortGroups = {
+  'connection-hot-top': {
+    position: 'top',
+    markup: [{ tagName: 'rect', selector: 'rect' }],
+    attrs: {
+      rect: {
+        x: -28,
+        y: -4,
+        width: 56,
+        height: 8,
+        rx: 0,
+        ry: 0,
+        magnet: true,
+        stroke: '#BBFFFF',
+        fill: '#e6f7ff',
+        strokeWidth: 1,
+        opacity: 0,
+        cursor: 'crosshair',
+        'pointer-events': 'all',
+      },
+    },
+  },
+  'connection-hot-right': {
+    position: 'right',
+    markup: [{ tagName: 'rect', selector: 'rect' }],
+    attrs: {
+      rect: {
+        x: -4,
+        y: -28,
+        width: 8,
+        height: 56,
+        rx: 0,
+        ry: 0,
+        magnet: true,
+        stroke: '#BBFFFF',
+        fill: '#e6f7ff',
+        strokeWidth: 1,
+        opacity: 0,
+        cursor: 'crosshair',
+        'pointer-events': 'all',
+      },
+    },
+  },
+  'connection-hot-bottom': {
+    position: 'bottom',
+    markup: [{ tagName: 'rect', selector: 'rect' }],
+    attrs: {
+      rect: {
+        x: -28,
+        y: -4,
+        width: 56,
+        height: 8,
+        rx: 0,
+        ry: 0,
+        magnet: true,
+        stroke: '#BBFFFF',
+        fill: '#e6f7ff',
+        strokeWidth: 1,
+        opacity: 0,
+        cursor: 'crosshair',
+        'pointer-events': 'all',
+      },
+    },
+  },
+  'connection-hot-left': {
+    position: 'left',
+    markup: [{ tagName: 'rect', selector: 'rect' }],
+    attrs: {
+      rect: {
+        x: -4,
+        y: -28,
+        width: 8,
+        height: 56,
+        rx: 0,
+        ry: 0,
+        magnet: true,
+        stroke: '#BBFFFF',
+        fill: '#e6f7ff',
+        strokeWidth: 1,
+        opacity: 0,
+        cursor: 'crosshair',
+        'pointer-events': 'all',
+      },
+    },
+  },
+}
+
+const hotPorts = [
+  { id: 'connection-hot-top', group: 'connection-hot-top', data: { connectionHotPort: true } },
+  { id: 'connection-hot-right', group: 'connection-hot-right', data: { connectionHotPort: true } },
+  { id: 'connection-hot-bottom', group: 'connection-hot-bottom', data: { connectionHotPort: true } },
+  { id: 'connection-hot-left', group: 'connection-hot-left', data: { connectionHotPort: true } },
+]
+
+export const isSequenceEdgeMode = (strategy: GraphStrategy) => {
+  return !strategy.edgeRules && strategy.edgeMode === 'sequence'
+}
+
+const getPortGroup = (node: Node, portId?: string | null) => {
+  if (!portId) return undefined
+  return node.getPorts().find((port) => port.id === portId)?.group
+}
+
+const getPortsByGroup = (node: Node, group: string) => {
+  return node.getPorts().filter((port) => port.group === group)
+}
+
+const isHotPortGroup = (group?: string | null) => {
+  return Boolean(group?.startsWith(HOT_PORT_PREFIX))
+}
+
+const isHotPortId = (portId?: string | null) => {
+  return Boolean(portId?.startsWith(HOT_PORT_PREFIX))
+}
+
+const getHotPortSide = (portId?: string | null): HotPortSide | null => {
+  if (!isHotPortId(portId)) return null
+  return portId?.replace(HOT_PORT_PREFIX, '') as HotPortSide
+}
+
+const getHotPortRectAttrs = (node: Node, portId: string, visible: boolean) => {
+  const { width, height } = node.getSize()
+  const side = getHotPortSide(portId)
+  const horizontal = side === 'top' || side === 'bottom'
+
+  return {
+    x: horizontal ? -width / 2 : -HOT_EDGE_THICKNESS / 2,
+    y: horizontal ? -HOT_EDGE_THICKNESS / 2 : -height / 2,
+    width: horizontal ? width : HOT_EDGE_THICKNESS,
+    height: horizontal ? HOT_EDGE_THICKNESS : height,
+    rx: 0,
+    ry: 0,
+    stroke: '#00BFFF',
+    fill: '#00BFFF',
+    strokeWidth: 0,
+    opacity: visible ? 0.95 : 0,
+    magnet: true,
+    cursor: 'crosshair',
+    'pointer-events': 'all',
+  }
+}
+
+const addPortIfMissing = (node: Node, port: Record<string, any>) => {
+  if (node.getPorts().some((item) => item.id === port.id)) return
+  node.addPort(port)
+}
+
+const mergePortGroups = (node: Node, groups: Record<string, any>) => {
+  const existingGroups = (node.prop('ports/groups') || {}) as Record<string, any>
+  node.prop('ports/groups', {
+    ...existingGroups,
+    ...groups,
+  })
+}
+
+const normalizeRulePortGroups = (groups: Record<string, any>) => {
+  return Object.fromEntries(
+    Object.entries(groups).map(([groupName, groupConfig]) => {
+      const attrs = groupConfig.attrs || {}
+      const selector = attrs.circle ? 'circle' : attrs.rect ? 'rect' : null
+      if (!selector) return [groupName, groupConfig]
+
+      return [
+        groupName,
+        {
+          ...groupConfig,
+          attrs: {
+            ...attrs,
+            [selector]: {
+              ...attrs[selector],
+              magnet: groupName === 'in' ? 'passive' : true,
+            },
+          },
+        },
+      ]
+    })
+  )
+}
+
+const ensureRulePortGroups = (node: Node, strategy: GraphStrategy) => {
+  const portGroups = strategy.edgeRules?.getPortGroups?.(node.shape)
+  if (!portGroups) return
+  mergePortGroups(node, normalizeRulePortGroups(portGroups))
+}
+
+const ensureRuleInitialPorts = (node: Node, strategy: GraphStrategy) => {
+  const initialPorts = strategy.edgeRules?.getInitialPorts?.(node.shape) || []
+  initialPorts.forEach((port) => addPortIfMissing(node, port))
+}
+
+const showPreviouslyHiddenDynamicPorts = (node: Node) => {
+  node.getPorts().forEach((port) => {
+    if (!port.id || (port.group !== 'in' && port.group !== 'out')) return
+
+    const data = (node.getPortProp(port.id, 'data') || {}) as Record<string, any>
+    if (!data.autoHiddenPort) return
+
+    node.setPortProp(port.id, 'attrs', {})
+    node.setPortProp(port.id, 'data', {
+      ...data,
+      autoHiddenPort: false,
+      dynamicPort: true,
+    })
+  })
+}
+
+const ensureHotPorts = (node: Node) => {
+  mergePortGroups(node, hotPortGroups)
+  hotPorts.forEach((port) => addPortIfMissing(node, port))
+  setNodeConnectionHotAreaVisible(node, false)
+}
+
+export const ensureNodeConnectionPorts = (node: Node, strategy: GraphStrategy) => {
+  if (strategy.edgeRules) {
+    ensureRulePortGroups(node, strategy)
+    ensureRuleInitialPorts(node, strategy)
+    showPreviouslyHiddenDynamicPorts(node)
+    ensureHotPorts(node)
+    return
+  }
+
+  ensureHotPorts(node)
+}
+
+export const ensureGraphConnectionPorts = (graph: Graph, strategy: GraphStrategy) => {
+  graph.getNodes().forEach((node) => ensureNodeConnectionPorts(node, strategy))
+}
+
+export const toSerializableGraphJSON = (graph: Graph) => {
+  const json = graph.toJSON() as any
+
+  return {
+    ...json,
+    cells: json.cells?.map((cell: any) => {
+      if (!cell.ports) return cell
+
+      const groups = Object.fromEntries(
+        Object.entries(cell.ports.groups || {}).filter(([groupName]) => !isHotPortGroup(groupName))
+      )
+      const items = (cell.ports.items || []).filter((port: any) => !isHotPortId(port.id) && !isHotPortGroup(port.group))
+
+      return {
+        ...cell,
+        ports: {
+          ...cell.ports,
+          groups,
+          items,
+        },
+      }
+    }),
+  }
+}
+
+export const setNodeConnectionHotAreaVisible = (node: Node, visible: boolean) => {
+  hotPorts.forEach((port) => {
+    if (!port.id || !node.getPorts().some((item) => item.id === port.id)) return
+    const existingAttrs = (node.getPortProp(port.id, 'attrs/rect') || {}) as Record<string, any>
+    node.setPortProp(port.id, 'attrs/rect', {
+      ...existingAttrs,
+      ...getHotPortRectAttrs(node, port.id, visible),
+    })
+  })
+}
+
+const canUseNodeAsSource = (node: Node, strategy: GraphStrategy) => {
+  if (!strategy.edgeRules) return true
+  ensureNodeConnectionPorts(node, strategy)
+  const supportsMultiple = strategy.edgeRules.supportsMultiplePorts?.(node.shape) ?? false
+  if (supportsMultiple) return true
+
+  return node.getPorts().some((port) => {
+    const group = port.group || ''
+    return group === 'out' || group.startsWith('out-')
+  })
+}
+
+const canUseNodeAsTarget = (node: Node, strategy: GraphStrategy) => {
+  if (!strategy.edgeRules) return true
+  ensureNodeConnectionPorts(node, strategy)
+  const supportsMultiple = strategy.edgeRules.supportsMultiplePorts?.(node.shape) ?? false
+  if (supportsMultiple) return true
+
+  return node.getPorts().some((port) => port.group === 'in')
+}
+
+export const validateNodeConnection = (args: any, strategy: GraphStrategy) => {
+  const sourceNode = args.sourceCell as Node | null | undefined
+  const targetNode = args.targetCell as Node | null | undefined
+
+  if (isSequenceEdgeMode(strategy) && (!sourceNode || !targetNode)) return true
+  if (!sourceNode?.isNode?.() || !targetNode?.isNode?.()) return false
+  if (sourceNode === targetNode && !isSequenceEdgeMode(strategy)) return false
+  if (!canUseNodeAsSource(sourceNode, strategy)) return false
+  if (!canUseNodeAsTarget(targetNode, strategy)) return false
+
+  if (strategy.edgeRules) {
+    const sourcePortId = args.sourcePort || args.sourceMagnet?.getAttribute?.('port')
+    const sourcePortGroup = getPortGroup(sourceNode, sourcePortId)
+    if (sourcePortGroup === 'in') return false
+    if (sourcePortGroup && !isHotPortGroup(sourcePortGroup) && sourcePortGroup !== 'out' && !sourcePortGroup.startsWith('out-')) {
+      return false
+    }
+  }
+
+  return true
+}
+
+const getUsedPortIds = (graph: Graph, node: Node, nodeId: string, direction: 'source' | 'target', excludingEdgeId?: string) => {
+  return new Set(
+    graph
+      .getConnectedEdges(node)
+      .filter((edge) => edge.id !== excludingEdgeId)
+      .map((edge) => {
+        const terminal = (direction === 'source' ? edge.getSource() : edge.getTarget()) as Terminal
+        return terminal?.cell === nodeId ? terminal.port : undefined
+      })
+      .filter((portId): portId is string => Boolean(portId))
+  )
+}
+
+const nextPortId = (ports: Array<{ id?: string | null }>, prefix: string) => {
+  let index = ports.length
+  let portId = `${prefix}-${index}`
+  const existingIds = new Set(ports.map((port) => port.id))
+  while (existingIds.has(portId)) {
+    index += 1
+    portId = `${prefix}-${index}`
+  }
+  return portId
+}
+
+const createDynamicPort = (id: string, group: 'in' | 'out') => ({
+  id,
+  group,
+  data: {
+    dynamicPort: true,
+  },
+})
+
+const getBusinessPortsByGroup = (node: Node, group: 'in' | 'out') => {
+  return getPortsByGroup(node, group)
+}
+
+const findOrCreateOutputPort = (graph: Graph, strategy: GraphStrategy, node: Node, nodeId: string, currentPortId?: string | null, excludingEdgeId?: string) => {
+  const nodeShape = node.shape
+  const currentGroup = getPortGroup(node, currentPortId)
+
+  if (nodeShape === 'condition-node') {
+    const hotSide = getHotPortSide(currentPortId)
+    if (hotSide === 'left') return 'out-yes'
+    if (hotSide === 'right') return 'out-no'
+    return currentGroup?.startsWith('out-') ? currentPortId || null : 'out-yes'
+  }
+
+  const supportsMultiple = strategy.edgeRules?.supportsMultiplePorts?.(nodeShape) ?? false
+  let outPorts = getBusinessPortsByGroup(node, 'out')
+
+  if (outPorts.length === 0 && supportsMultiple) {
+    const newPortId = 'out-0'
+    node.addPort(createDynamicPort(newPortId, 'out'))
+    return newPortId
+  }
+
+  if (outPorts.length === 0) return null
+
+  if (!supportsMultiple) return outPorts[0]?.id || null
+
+  const usedOutputPortIds = getUsedPortIds(graph, node, nodeId, 'source', excludingEdgeId)
+  if (currentPortId && currentGroup === 'out' && !usedOutputPortIds.has(currentPortId)) {
+    return currentPortId
+  }
+
+  const freePort = outPorts.find((port) => port.id && !usedOutputPortIds.has(port.id))
+  if (freePort?.id) return freePort.id
+
+  outPorts = getBusinessPortsByGroup(node, 'out')
+  const newPortId = nextPortId(outPorts, 'out')
+  node.addPort(createDynamicPort(newPortId, 'out'))
+  return newPortId
+}
+
+const findOrCreateInputPort = (graph: Graph, strategy: GraphStrategy, node: Node, nodeId: string, excludingEdgeId?: string) => {
+  const supportsMultiple = strategy.edgeRules?.supportsMultiplePorts?.(node.shape) ?? false
+  let inPorts = getBusinessPortsByGroup(node, 'in')
+
+  if (inPorts.length === 0 && supportsMultiple) {
+    const newPortId = 'in-0'
+    node.addPort(createDynamicPort(newPortId, 'in'))
+    return newPortId
+  }
+
+  if (inPorts.length === 0) return null
+
+  if (!supportsMultiple) return inPorts[0]?.id || null
+
+  const usedInputPortIds = getUsedPortIds(graph, node, nodeId, 'target', excludingEdgeId)
+  const freePort = inPorts.find((port) => port.id && !usedInputPortIds.has(port.id))
+  if (freePort?.id) return freePort.id
+
+  inPorts = getBusinessPortsByGroup(node, 'in')
+  const newPortId = nextPortId(inPorts, 'in')
+  node.addPort(createDynamicPort(newPortId, 'in'))
+  return newPortId
+}
+
+const applyConditionLabel = (edge: Edge, sourcePortId: string | null) => {
+  if (sourcePortId !== 'out-yes' && sourcePortId !== 'out-no') return
+
+  const conditionText = sourcePortId === 'out-yes' ? '[Yes]' : '[No]'
+  edge.setData({
+    ...edge.getData(),
+    condition: conditionText,
+    sourceOutput: sourcePortId,
+  })
+  edge.setLabels([{ attrs: { text: { text: conditionText } } }])
+}
+
+const formatSequenceLabel = (data: Record<string, any>) => {
+  const parts = []
+  if (data.stereotype && data.stereotype !== 'base') {
+    parts.push(`<<${data.stereotype}>>`)
+  }
+  const msg = data.message || ''
+  const prm = data.params ? data.params.map((item: any) => `${item.name}: ${item.type}`).join(', ') : ''
+  const ret = data.returnType ? `: ${data.returnType}` : ''
+  const mainPart = `${msg}(${prm})${ret}`
+  if (mainPart !== '()') {
+    parts.push(mainPart)
+  }
+  return parts.join('\n')
+}
+
+const countSequenceEdgesBetween = (graph: Graph, edge: Edge, sourceId: string, targetId: string) => {
+  return graph.getEdges().filter((item) => {
+    if (item.id === edge.id) return false
+
+    const source = item.getSource() as Terminal
+    const target = item.getTarget() as Terminal
+    const data = item.getData() || {}
+    const itemSourceId = source?.cell || data.sourceId
+    const itemTargetId = target?.cell || data.targetId
+
+    return (itemSourceId === sourceId && itemTargetId === targetId) ||
+      (itemSourceId === targetId && itemTargetId === sourceId)
+  }).length
+}
+
+const finalizeRuleEdge = (graph: Graph, strategy: GraphStrategy, edge: Edge, sourceNode: Node, targetNode: Node) => {
+  ensureNodeConnectionPorts(sourceNode, strategy)
+  ensureNodeConnectionPorts(targetNode, strategy)
+
+  const sourcePortId = findOrCreateOutputPort(graph, strategy, sourceNode, sourceNode.id, edge.getSourcePortId(), edge.id)
+  const targetPortId = findOrCreateInputPort(graph, strategy, targetNode, targetNode.id, edge.id)
+  if (!sourcePortId || !targetPortId) return false
+
+  edge.setSource({ cell: sourceNode.id, port: sourcePortId })
+  edge.setTarget({ cell: targetNode.id, port: targetPortId })
+  edge.setData({
+    ...edge.getData(),
+    sourceOutput: sourcePortId,
+  })
+  applyConditionLabel(edge, sourcePortId)
+
+  return true
+}
+
+const finalizeSequenceEdge = (graph: Graph, edge: Edge, sourceNode: Node, targetNode: Node) => {
+  const sourceId = sourceNode.id
+  const targetId = targetNode.id
+  const offsetY = countSequenceEdgesBetween(graph, edge, sourceId, targetId) * 40
+  const edgeData = {
+    ...edge.getData(),
+    sourceId,
+    targetId,
+  }
+
+  edge.setData(edgeData)
+
+  if (sourceId === targetId) {
+    const bbox = sourceNode.getBBox()
+    const rightX = bbox.x + bbox.width
+    const centerY = bbox.center.y + offsetY
+    const loopOffset = 40
+
+    edge.setSource({ x: rightX, y: centerY })
+    edge.setTarget({ x: rightX, y: centerY + 20 })
+    edge.setVertices([
+      { x: rightX + loopOffset, y: centerY },
+      { x: rightX + loopOffset, y: centerY + 20 },
+    ])
+    edge.prop('router', null)
+  } else {
+    const sourceCenter = sourceNode.getBBox().center
+    const targetCenter = targetNode.getBBox().center
+
+    edge.setSource({
+      x: sourceCenter.x,
+      y: sourceCenter.y + offsetY,
+    })
+    edge.setTarget({
+      x: targetCenter.x,
+      y: targetCenter.y + offsetY,
+    })
+  }
+
+  const labelText = formatSequenceLabel(edgeData)
+  if (labelText) {
+    const displayLabel = labelText.length > 25 ? `${labelText.substring(0, 25)}...` : labelText
+    edge.setLabels([{ attrs: { text: { text: displayLabel } } }])
+  }
+
+  return true
+}
+
+export const finalizeNewEdgeConnection = (graph: Graph, strategy: GraphStrategy, edge: Edge) => {
+  const sourceNode = edge.getSourceCell() as Node | null
+  const targetNode = edge.getTargetCell() as Node | null
+
+  if (!sourceNode?.isNode?.() || !targetNode?.isNode?.()) return false
+
+  if (strategy.edgeRules) {
+    return finalizeRuleEdge(graph, strategy, edge, sourceNode, targetNode)
+  }
+
+  if (isSequenceEdgeMode(strategy)) {
+    return finalizeSequenceEdge(graph, edge, sourceNode, targetNode)
+  }
+
+  edge.setSource(sourceNode.id)
+  edge.setTarget(targetNode.id)
+  return true
+}
