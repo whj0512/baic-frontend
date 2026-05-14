@@ -1,0 +1,625 @@
+{
+    "id": "2e724658-7257-4128-8dcd-2dbdf45ed957",
+    "desc": "",
+    "graph_type": "ESD",
+    "interactions": [
+        {
+            "id": "198314c1-f2ac-45d7-8157-e0c428186adf",
+            "name": "create create(a:string,b:string):void",
+            "message": {
+                "message": "create",
+                "params": [
+                    {
+                        "name": "a",
+                        "type": "string"
+                    },
+                    {
+                        "name": "b",
+                        "type": "string"
+                    }
+                ],
+                "stereotype": "create",
+                "returnType": "void",
+                "msgType": "sync",
+                "isReturn": false
+            },
+            "sender": {
+                "id": "a3f13abf-0220-4fdf-8625-60dd784204f0",
+                "name": "设备",
+                "type": "unknown",
+                "width": 120,
+                "height": 740,
+                "x": 500,
+                "y": 100
+            },
+            "receiver": {
+                "id": "b375a824-7970-40bd-8e05-e09f9d0ada1e",
+                "name": "机器",
+                "type": "unknown",
+                "width": 120,
+                "height": 740,
+                "x": 300,
+                "y": 100
+            },
+            "source": {
+                "x": 560,
+                "y": 180
+            },
+            "target": {
+                "x": 300,
+                "y": 180
+            }
+        },
+        {
+            "id": "786388f4-4f4e-46fc-be1a-69fe7c422a5f",
+            "name": "reply get(a:int,b:string):void",
+            "message": {
+                "message": "get",
+                "params": [
+                    {
+                        "name": "a",
+                        "type": "int"
+                    },
+                    {
+                        "name": "b",
+                        "type": "string"
+                    }
+                ],
+                "stereotype": "reply",
+                "returnType": "void",
+                "msgType": "sync",
+                "isReturn": false
+            },
+            "sender": {
+                "id": "b375a824-7970-40bd-8e05-e09f9d0ada1e",
+                "name": "机器",
+                "type": "unknown",
+                "width": 120,
+                "height": 740,
+                "x": 300,
+                "y": 100
+            },
+            "receiver": {
+                "id": "b7ddd4ae-7f3f-479c-87db-0de06e326588",
+                "name": "人类",
+                "type": "unknown",
+                "width": 120,
+                "height": 740,
+                "x": 100,
+                "y": 100
+            },
+            "source": {
+                "x": 360,
+                "y": 260
+            },
+            "target": {
+                "x": 100,
+                "y": 260
+            }
+        },
+        {
+            "id": "9eabd831-219d-4a0a-b81d-1fcef624211a",
+            "name": "return",
+            "message": {
+                "message": "",
+                "params": [],
+                "stereotype": "base",
+                "returnType": "",
+                "msgType": "sync",
+                "isReturn": true
+            },
+            "sender": {
+                "id": "b7ddd4ae-7f3f-479c-87db-0de06e326588",
+                "name": "人类",
+                "type": "unknown",
+                "width": 120,
+                "height": 740,
+                "x": 100,
+                "y": 100
+            },
+            "receiver": {
+                "id": "a3f13abf-0220-4fdf-8625-60dd784204f0",
+                "name": "设备",
+                "type": "unknown",
+                "width": 120,
+                "height": 740,
+                "x": 500,
+                "y": 100
+            },
+            "source": {
+                "x": 160,
+                "y": 340
+            },
+            "target": {
+                "x": 500,
+                "y": 340
+            }
+        },
+        {
+            "id": "da49bac9-4e70-4eb8-a7c0-12a60bec5b7c",
+            "name": "reply getPerson(a:string,b:int):void",
+            "message": {
+                "message": "getPerson",
+                "params": [
+                    {
+                        "name": "a",
+                        "type": "string"
+                    },
+                    {
+                        "name": "b",
+                        "type": "int"
+                    }
+                ],
+                "stereotype": "reply",
+                "returnType": "void",
+                "msgType": "sync",
+                "isReturn": false
+            },
+            "sender": {
+                "id": "a3f13abf-0220-4fdf-8625-60dd784204f0",
+                "name": "设备",
+                "type": "unknown",
+                "width": 120,
+                "height": 740,
+                "x": 500,
+                "y": 100
+            },
+            "receiver": {
+                "id": "b7ddd4ae-7f3f-479c-87db-0de06e326588",
+                "name": "人类",
+                "type": "unknown",
+                "width": 120,
+                "height": 740,
+                "x": 100,
+                "y": 100
+            },
+            "source": {
+                "x": 560,
+                "y": 420
+            },
+            "target": {
+                "x": 100,
+                "y": 420
+            }
+        },
+        {
+            "id": "e6ebd3cd-2c82-4e97-b696-5e3a3c9659cc",
+            "name": "destroy 消息(a:string,b:string):void",
+            "message": {
+                "message": "消息",
+                "params": [
+                    {
+                        "name": "a",
+                        "type": "string"
+                    },
+                    {
+                        "name": "b",
+                        "type": "string"
+                    }
+                ],
+                "stereotype": "destroy",
+                "returnType": "void",
+                "msgType": "sync",
+                "isReturn": false
+            },
+            "sender": {
+                "id": "b375a824-7970-40bd-8e05-e09f9d0ada1e",
+                "name": "机器",
+                "type": "unknown",
+                "width": 120,
+                "height": 740,
+                "x": 300,
+                "y": 100
+            },
+            "receiver": {
+                "id": "a3f13abf-0220-4fdf-8625-60dd784204f0",
+                "name": "设备",
+                "type": "unknown",
+                "width": 120,
+                "height": 740,
+                "x": 500,
+                "y": 100
+            },
+            "source": {
+                "x": 360,
+                "y": 500
+            },
+            "target": {
+                "x": 500,
+                "y": 500
+            }
+        },
+        {
+            "id": "b47af40f-e925-4e24-924b-dcfe785b37ab",
+            "name": "getPerson():void",
+            "message": {
+                "message": "getPerson",
+                "params": [],
+                "stereotype": "base",
+                "returnType": "void",
+                "msgType": "sync",
+                "isReturn": false
+            },
+            "sender": {
+                "id": "a3f13abf-0220-4fdf-8625-60dd784204f0",
+                "name": "设备",
+                "type": "unknown",
+                "width": 120,
+                "height": 740,
+                "x": 500,
+                "y": 100
+            },
+            "receiver": {
+                "id": "b7ddd4ae-7f3f-479c-87db-0de06e326588",
+                "name": "人类",
+                "type": "unknown",
+                "width": 120,
+                "height": 740,
+                "x": 100,
+                "y": 100
+            },
+            "source": {
+                "x": 560,
+                "y": 580
+            },
+            "target": {
+                "x": 100,
+                "y": 580
+            }
+        },
+        {
+            "id": "b20f2248-3e9e-4eb9-a575-cf0eba144a5d",
+            "name": "消息1():void",
+            "message": {
+                "message": "消息1",
+                "params": [],
+                "stereotype": "base",
+                "returnType": "void",
+                "msgType": "sync",
+                "isReturn": false
+            },
+            "sender": {
+                "id": "b375a824-7970-40bd-8e05-e09f9d0ada1e",
+                "name": "机器",
+                "type": "unknown",
+                "width": 120,
+                "height": 740,
+                "x": 300,
+                "y": 100
+            },
+            "receiver": {
+                "id": "b7ddd4ae-7f3f-479c-87db-0de06e326588",
+                "name": "人类",
+                "type": "unknown",
+                "width": 120,
+                "height": 740,
+                "x": 100,
+                "y": 100
+            },
+            "source": {
+                "x": 360,
+                "y": 660
+            },
+            "target": {
+                "x": 100,
+                "y": 660
+            }
+        },
+        {
+            "id": "a8e28029-8c83-4864-8b7c-277800768430",
+            "name": "消息2():void",
+            "message": {
+                "message": "消息2",
+                "params": [],
+                "stereotype": "base",
+                "returnType": "void",
+                "msgType": "sync",
+                "isReturn": false
+            },
+            "sender": {
+                "id": "b7ddd4ae-7f3f-479c-87db-0de06e326588",
+                "name": "人类",
+                "type": "unknown",
+                "width": 120,
+                "height": 740,
+                "x": 100,
+                "y": 100
+            },
+            "receiver": {
+                "id": "a3f13abf-0220-4fdf-8625-60dd784204f0",
+                "name": "设备",
+                "type": "unknown",
+                "width": 120,
+                "height": 740,
+                "x": 500,
+                "y": 100
+            },
+            "source": {
+                "x": 160,
+                "y": 740
+            },
+            "target": {
+                "x": 500,
+                "y": 740
+            }
+        }
+    ],
+    "interactionRelations": [
+        {
+            "id": "300497d5-776f-4cb1-8db3-fc2958162ce2",
+            "type": "alt",
+            "scope": [
+                {
+                    "condition": "a>2",
+                    "interactions": [
+                        {
+                            "id": "da49bac9-4e70-4eb8-a7c0-12a60bec5b7c",
+                            "name": "reply getPerson(a:string,b:int):void",
+                            "message": {
+                                "message": "getPerson",
+                                "params": [
+                                    {
+                                        "name": "a",
+                                        "type": "string"
+                                    },
+                                    {
+                                        "name": "b",
+                                        "type": "int"
+                                    }
+                                ],
+                                "stereotype": "reply",
+                                "returnType": "void",
+                                "msgType": "sync",
+                                "isReturn": false
+                            },
+                            "sender": {
+                                "id": "a3f13abf-0220-4fdf-8625-60dd784204f0",
+                                "name": "设备",
+                                "type": "unknown",
+                                "width": 120,
+                                "height": 740,
+                                "x": 500,
+                                "y": 100
+                            },
+                            "receiver": {
+                                "id": "b7ddd4ae-7f3f-479c-87db-0de06e326588",
+                                "name": "人类",
+                                "type": "unknown",
+                                "width": 120,
+                                "height": 740,
+                                "x": 100,
+                                "y": 100
+                            },
+                            "source": {
+                                "x": 560,
+                                "y": 420
+                            },
+                            "target": {
+                                "x": 100,
+                                "y": 420
+                            }
+                        }
+                    ]
+                },
+                {
+                    "condition": "b<4",
+                    "interactions": [
+                        {
+                            "id": "e6ebd3cd-2c82-4e97-b696-5e3a3c9659cc",
+                            "name": "destroy 消息(a:string,b:string):void",
+                            "message": {
+                                "message": "消息",
+                                "params": [
+                                    {
+                                        "name": "a",
+                                        "type": "string"
+                                    },
+                                    {
+                                        "name": "b",
+                                        "type": "string"
+                                    }
+                                ],
+                                "stereotype": "destroy",
+                                "returnType": "void",
+                                "msgType": "sync",
+                                "isReturn": false
+                            },
+                            "sender": {
+                                "id": "b375a824-7970-40bd-8e05-e09f9d0ada1e",
+                                "name": "机器",
+                                "type": "unknown",
+                                "width": 120,
+                                "height": 740,
+                                "x": 300,
+                                "y": 100
+                            },
+                            "receiver": {
+                                "id": "a3f13abf-0220-4fdf-8625-60dd784204f0",
+                                "name": "设备",
+                                "type": "unknown",
+                                "width": 120,
+                                "height": 740,
+                                "x": 500,
+                                "y": 100
+                            },
+                            "source": {
+                                "x": 360,
+                                "y": 500
+                            },
+                            "target": {
+                                "x": 500,
+                                "y": 500
+                            }
+                        }
+                    ]
+                },
+                {
+                    "condition": null,
+                    "interactions": [
+                        {
+                            "id": "b47af40f-e925-4e24-924b-dcfe785b37ab",
+                            "name": "getPerson():void",
+                            "message": {
+                                "message": "getPerson",
+                                "params": [],
+                                "stereotype": "base",
+                                "returnType": "void",
+                                "msgType": "sync",
+                                "isReturn": false
+                            },
+                            "sender": {
+                                "id": "a3f13abf-0220-4fdf-8625-60dd784204f0",
+                                "name": "设备",
+                                "type": "unknown",
+                                "width": 120,
+                                "height": 740,
+                                "x": 500,
+                                "y": 100
+                            },
+                            "receiver": {
+                                "id": "b7ddd4ae-7f3f-479c-87db-0de06e326588",
+                                "name": "人类",
+                                "type": "unknown",
+                                "width": 120,
+                                "height": 740,
+                                "x": 100,
+                                "y": 100
+                            },
+                            "source": {
+                                "x": 560,
+                                "y": 580
+                            },
+                            "target": {
+                                "x": 100,
+                                "y": 580
+                            }
+                        }
+                    ]
+                }
+            ],
+            "x": 0,
+            "y": 0,
+            "width": 200,
+            "height": 120
+        },
+        {
+            "id": "9736ba43-4550-4610-b6c5-c942a849a051",
+            "type": "par",
+            "scope": [
+                [
+                    {
+                        "id": "b20f2248-3e9e-4eb9-a575-cf0eba144a5d",
+                        "name": "消息1():void",
+                        "message": {
+                            "message": "消息1",
+                            "params": [],
+                            "stereotype": "base",
+                            "returnType": "void",
+                            "msgType": "sync",
+                            "isReturn": false
+                        },
+                        "sender": {
+                            "id": "b375a824-7970-40bd-8e05-e09f9d0ada1e",
+                            "name": "机器",
+                            "type": "unknown",
+                            "width": 120,
+                            "height": 740,
+                            "x": 300,
+                            "y": 100
+                        },
+                        "receiver": {
+                            "id": "b7ddd4ae-7f3f-479c-87db-0de06e326588",
+                            "name": "人类",
+                            "type": "unknown",
+                            "width": 120,
+                            "height": 740,
+                            "x": 100,
+                            "y": 100
+                        },
+                        "source": {
+                            "x": 360,
+                            "y": 660
+                        },
+                        "target": {
+                            "x": 100,
+                            "y": 660
+                        }
+                    }
+                ],
+                [
+                    {
+                        "id": "a8e28029-8c83-4864-8b7c-277800768430",
+                        "name": "消息2():void",
+                        "message": {
+                            "message": "消息2",
+                            "params": [],
+                            "stereotype": "base",
+                            "returnType": "void",
+                            "msgType": "sync",
+                            "isReturn": false
+                        },
+                        "sender": {
+                            "id": "b7ddd4ae-7f3f-479c-87db-0de06e326588",
+                            "name": "人类",
+                            "type": "unknown",
+                            "width": 120,
+                            "height": 740,
+                            "x": 100,
+                            "y": 100
+                        },
+                        "receiver": {
+                            "id": "a3f13abf-0220-4fdf-8625-60dd784204f0",
+                            "name": "设备",
+                            "type": "unknown",
+                            "width": 120,
+                            "height": 740,
+                            "x": 500,
+                            "y": 100
+                        },
+                        "source": {
+                            "x": 160,
+                            "y": 740
+                        },
+                        "target": {
+                            "x": 500,
+                            "y": 740
+                        }
+                    }
+                ]
+            ],
+            "x": 0,
+            "y": 0,
+            "width": 200,
+            "height": 120
+        }
+    ],
+    "components": [
+        {
+            "id": "a3f13abf-0220-4fdf-8625-60dd784204f0",
+            "name": "设备",
+            "type": "unknown",
+            "width": 120,
+            "height": 740,
+            "x": 500,
+            "y": 100
+        },
+        {
+            "id": "b375a824-7970-40bd-8e05-e09f9d0ada1e",
+            "name": "机器",
+            "type": "unknown",
+            "width": 120,
+            "height": 740,
+            "x": 300,
+            "y": 100
+        },
+        {
+            "id": "b7ddd4ae-7f3f-479c-87db-0de06e326588",
+            "name": "人类",
+            "type": "unknown",
+            "width": 120,
+            "height": 740,
+            "x": 100,
+            "y": 100
+        }
+    ]
+}

@@ -45,6 +45,7 @@ export interface FormTab {
 // 表单 Schema
 export interface FormSchema {
   tabs: FormTab[]
+  controlMap?: Record<string, React.FC<any>>
 }
 
 // 节点表单配置
@@ -64,10 +65,43 @@ export interface FormConfig {
   nodes: Record<string, NodeFormConfig>
 }
 
+// 边规则配置（基于 Port）
+export interface EdgeRules {
+  // 获取节点的 port group 配置
+  getPortGroups?: (nodeShape: string) => Record<string, any>
+  // 获取节点的初始 ports
+  getInitialPorts?: (nodeShape: string) => any[]
+  // 节点是否支持动态添加多个 port
+  supportsMultiplePorts?: (nodeShape: string) => boolean
+  // 判断起始节点是否有多个命名输出（如 condition 的 yes/no）
+  hasMultipleOutputs?: (nodeId: string, nodeShape: string) => boolean
+  // 获取命名输出选项
+  getOutputOptions?: (nodeId: string, nodeShape: string) => Array<{ value: string; label: string }>
+}
+
+// 连线模式
+// 'sequence': 时序图模式，按坐标连线，支持 offsetY 防重叠、自动 label 等
+// 'direct'  : 直连节点模式，使用普通 source/target cell 连线，支持 orth router
+export type EdgeMode = 'sequence' | 'direct'
+
 // 扩展后的策略类型
 export interface GraphStrategy {
   sidebarItems: SidebarItem[]
   registerNodes?: () => void
   // 表单配置
   formConfig?: FormConfig
+  // 边规则配置（基于 Port 的连线，优先级最高）
+  edgeRules?: EdgeRules
+  // 无 edgeRules 时的连线模式，默认 'direct'
+  // 'sequence' 专用于时序图的坐标连线逻辑
+  edgeMode?: EdgeMode
+  // 边默认起点箭头类型
+  defaultSourceMarker?: string | Record<string, any> | null
+  // 边默认箭头类型
+  defaultEdgeMarker?: string | Record<string, any> | null
+  // 拖拽面板布局配置
+  stencilLayoutOptions?: any
+  stencilGraphWidth?: number
+  stencilGraphHeight?: number
+  stencilGraphPadding?: number
 }

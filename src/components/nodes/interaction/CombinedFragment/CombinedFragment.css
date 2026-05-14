@@ -1,0 +1,72 @@
+/* ============================================
+   Sequence Diagram — Combined Fragment
+   ============================================ */
+
+.seq-fragment {
+    position: relative;
+    box-sizing: border-box;
+    border: 2px solid #666;
+    background-color: rgba(245, 245, 245, 0.5);
+    user-select: none;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+        'Helvetica Neue', Arial, sans-serif;
+}
+
+/* 左上角操作符标签 */
+.seq-fragment__tag {
+    position: absolute;
+    top: 0;
+    left: 0;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: lowercase;
+    border-right: 2px solid #666;
+    border-bottom: 2px solid #666;
+    background-color: rgba(255, 255, 255, 0.85);
+    line-height: 1.4;
+}
+
+/* 条件区 */
+.seq-fragment__condition {
+    position: absolute;
+    top: 30px;
+    left: 10px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+/* 主体内容区 */
+.seq-fragment__body {
+    position: absolute;
+    top: 28px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* 虚线分隔组（包含虚线 + 条件标签） */
+.seq-fragment__divider-group {
+    position: absolute;
+    left: 0;
+    right: 0;
+}
+
+/* 虚线分隔线 */
+.seq-fragment__divider {
+    width: 100%;
+    border-top: 2px dashed #666;
+}
+
+/* 虚线下方的条件标签 */
+.seq-fragment__divider-label {
+    display: inline-block;
+    margin-left: 10px;
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: nowrap;
+}

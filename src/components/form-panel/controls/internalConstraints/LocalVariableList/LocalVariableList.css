@@ -1,0 +1,77 @@
+.local-var-control {
+  width: 100%;
+}
+
+.local-var-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.local-var-add-btn {
+  font-size: 16px;
+  color: #1890ff;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.local-var-add-btn:hover {
+  color: #40a9ff;
+}
+
+.local-var-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.local-var-item {
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  padding: 8px;
+  background-color: #fafafa;
+}
+
+.local-var-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 4px;
+}
+
+.local-var-type {
+  font-size: 12px;
+  color: #8c8c8c;
+  font-weight: bold;
+}
+
+.local-var-delete-btn {
+  color: #ff4d4f;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.local-var-delete-btn:hover {
+  color: #ff7875;
+}
+
+.local-var-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.local-var-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.local-var-label {
+  width: 50px;
+  font-size: 12px;
+  color: #595959;
+  flex-shrink: 0;
+}

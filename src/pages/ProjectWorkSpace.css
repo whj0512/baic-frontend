@@ -1,6 +1,7 @@
 /* ProjectWorkSpace 整体布局 */
 .workspace-container {
   display: flex;
+  align-items: flex-start;
   height: calc(100vh - 60px);
   gap: 1px;
   background-color: #e5e7eb;
@@ -11,6 +12,7 @@
   width: 280px;
   min-width: 200px;
   max-width: 400px;
+  height: calc(100vh - 60px);
   background-color: #ffffff;
   display: flex;
   flex-direction: column;
@@ -20,10 +22,135 @@
 /* 中间：多维编辑器 */
 .workspace-center {
   flex: 1;
+  height: calc(100vh - 60px);
   background-color: #ffffff;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* ====== IDE 风格 Tab 栏 ====== */
+.center-tab-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  height: 36px;
+  min-height: 36px;
+  background-color: #f0f2f5;
+  border-bottom: 1px solid #d9d9d9;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-shrink: 0;
+  /* 隐藏滚动条但保留功能 */
+  scrollbar-width: none;
+}
+
+.center-tab-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.center-tab {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px 0 12px;
+  min-width: 100px;
+  max-width: 200px;
+  height: 100%;
+  font-size: 0.8rem;
+  color: #6b7280;
+  background-color: #e9ecef;
+  border-right: 1px solid #d9d9d9;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  position: relative;
+  transition: background-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.center-tab:hover {
+  background-color: #dde2e8;
+  color: #374151;
+}
+
+.center-tab-active {
+  background-color: #ffffff;
+  color: #1d4ed8;
+  border-bottom: 2px solid #3b82f6;
+  /* 用负 margin 覆盖底部边框线 */
+  margin-bottom: -1px;
+}
+
+.center-tab-active:hover {
+  background-color: #ffffff;
+  color: #1d4ed8;
+}
+
+.center-tab-file-icon {
+  font-size: 0.78rem;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.center-tab-active .center-tab-file-icon {
+  color: #3b82f6;
+  opacity: 1;
+}
+
+.center-tab-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+}
+
+.center-tab-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  flex-shrink: 0;
+  color: #9ca3af;
+  transition: background-color 0.15s, color 0.15s;
+  margin-left: 2px;
+}
+
+.center-tab-close:hover {
+  background-color: rgba(0, 0, 0, 0.12);
+  color: #374151;
+}
+
+.center-tab-active .center-tab-close:hover {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #1d4ed8;
+}
+
+/* 内容容器（tab 栏之下） */
+.center-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* 修复 Spin 包裹层导致 RequirementOverview 高度不正确的 bug */
+.overview-spin-wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.overview-spin-wrapper .ant-spin-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 /* 右侧：版本与协作 */
@@ -31,10 +158,58 @@
   width: 280px;
   min-width: 200px;
   max-width: 400px;
+  height: calc(100vh - 60px);
   background-color: #ffffff;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  transition: width 0.25s ease;
+  flex-shrink: 0;
+}
+
+/* 右侧面板折叠态 */
+.workspace-right-collapsed {
+  width: 28px;
+  min-width: 28px;
+}
+
+/* 折叠触发柱（左侧细条） */
+.right-collapse-bar {
+  width: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12px;
+  cursor: pointer;
+  background-color: #f9fafb;
+  border-left: 1px solid #e5e7eb;
+  transition: background-color 0.15s;
+  user-select: none;
+}
+
+.right-collapse-bar:hover {
+  background-color: #eff6ff;
+}
+
+.right-collapse-icon {
+  font-size: 1.1rem;
+  color: #6b7280;
+  line-height: 1;
+  font-style: normal;
+}
+
+.right-collapse-bar:hover .right-collapse-icon {
+  color: #3b82f6;
+}
+
+/* 面板内容区 */
+.workspace-right-content {
+  flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
 }
 
 /* 面板头部 */
@@ -45,6 +220,15 @@
   padding: 0.75rem 1rem;
   border-bottom: 1px solid #e5e7eb;
   background-color: #f9fafb;
+}
+
+.panel-footer {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .panel-header h3 {
@@ -71,6 +255,41 @@
 
 .btn-icon:hover {
   background-color: #2563eb;
+}
+
+.btn-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-icon.btn-icon-active {
+  background-color: #ef4444;
+}
+
+.btn-icon.btn-icon-active:hover {
+  background-color: #dc2626;
+}
+
+.requirement-item.delete-mode-item:hover {
+  border-color: #ef4444;
+  background-color: #fff5f5;
+}
+
+/* subtype 内层折叠：左侧缩进线区分层级 */
+.subtype-collapse {
+  border-left: 2px solid #e5e7eb;
+  margin-left: 4px;
+  padding-left: 4px;
+}
+
+.subtype-collapse .ant-collapse-header {
+  font-size: 0.8rem !important;
+  color: #6b7280 !important;
+  padding: 4px 8px !important;
+}
+
+.subtype-collapse .ant-collapse-content-box {
+  padding: 4px 0 !important;
 }
 
 /* 需求树 */
@@ -488,6 +707,7 @@
 
 /* 响应式设计 */
 @media (max-width: 1200px) {
+
   .workspace-left,
   .workspace-right {
     width: 240px;
@@ -523,6 +743,43 @@
   .workspace-center,
   .workspace-right {
     background-color: #1f2937;
+  }
+
+  /* 暗色模式：Tab 栏 */
+  .center-tab-bar {
+    background-color: #0f172a;
+    border-bottom-color: #374151;
+  }
+
+  .center-tab {
+    background-color: #1e293b;
+    color: #94a3b8;
+    border-right-color: #374151;
+  }
+
+  .center-tab:hover {
+    background-color: #273548;
+    color: #e2e8f0;
+  }
+
+  .center-tab-active {
+    background-color: #1f2937;
+    color: #60a5fa;
+    border-bottom-color: #3b82f6;
+  }
+
+  .center-tab-active:hover {
+    background-color: #1f2937;
+    color: #60a5fa;
+  }
+
+  .center-tab-active .center-tab-file-icon {
+    color: #60a5fa;
+  }
+
+  .center-tab-close:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #e2e8f0;
   }
 
   .panel-header {
@@ -684,5 +941,52 @@
 
   .version-empty {
     color: #6b7280;
+  }
+
+  /* 暗色模式：折叠触发条 */
+  .right-collapse-bar {
+    background-color: #111827;
+    border-left-color: #374151;
+  }
+
+  .right-collapse-bar:hover {
+    background-color: #1e3a8a;
+  }
+
+  .right-collapse-icon {
+    color: #9ca3af;
+  }
+
+  .right-collapse-bar:hover .right-collapse-icon {
+    color: #60a5fa;
+  }
+}
+
+/* 自定义滚动条样式 */
+.workspace-container ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.workspace-container ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.workspace-container ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.workspace-container ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@media (prefers-color-scheme: dark) {
+  .workspace-container ::-webkit-scrollbar-thumb {
+    background: #4b5563;
+  }
+
+  .workspace-container ::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
   }
 }

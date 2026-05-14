@@ -1,7 +1,4 @@
 // 将 dsl-to-rbg API 返回的 JSON 转换为 X6 图数据格式
-
-import type { NodeTypeName } from './exportTypes'
-
 // API 返回的节点渲染配置
 interface RenderConfig {
   x: number
@@ -12,12 +9,23 @@ interface RenderConfig {
   visible?: boolean
 }
 
+// API 返回的 port 数据
+interface ApiPortItem {
+  id: string
+  group: string // 后端使用 'top' | 'bottom' | 'left' | 'right'
+}
+
+interface ApiPorts {
+  items: ApiPortItem[]
+}
+
 // API 返回的节点数据
 interface ApiNode {
   id: string
   type_name: string
   desc?: string
   render_config: RenderConfig
+  ports?: ApiPorts
   // State 节点属性
   pre_think_time?: number
   post_think_time?: number
@@ -70,6 +78,13 @@ interface ApiGraphData {
   id: string
   desc?: string
   graph_type?: string
+  // 画布属性（对应 formConfig.canvas 的字段）
+  local_variable_list?: any[]
+  variable_action_list?: any[]
+  test_coverage?: any
+  h_function?: string
+  entry_action_list?: any[]
+  exit_action_list?: any[]
   nodes: ApiNode[]
   transitions: ApiTransition[]
 }
@@ -111,6 +126,53 @@ const defaultNodeStyle: Record<string, { stroke: string; fill: string }> = {
   'graph-node': { stroke: '#1890ff', fill: '#e6f7ff' },
   'truth-node': { stroke: '#1890ff', fill: '#e6f7ff' },
   'goto-node': { stroke: '#333', fill: '#fff' },
+}
+
+// 后端 port group 名称 → X6 port group 名称 的映射
+const portGroupMapping: Record<string, string> = {
+  'top': 'in',
+  'bottom': 'out',
+  'left': 'out-yes',
+  'right': 'out-no',
+}
+
+// Port 基础样式
+const basePortStyle = {
+  r: 4,
+  magnet: true,
+  stroke: '#1890ff',
+  fill: '#fff',
+  strokeWidth: 1,
+}
+
+// 根据 shape 获取 port groups 配置（与 edgeRules.getPortGroups 保持一致）
+const getPortGroupsForShape = (shape: string): Record<string, any> => {
+  if (shape === 'condition-node') {
+    return {
+      in: {
+        position: 'top',
+        attrs: { circle: { ...basePortStyle } },
+      },
+      'out-yes': {
+        position: 'left',
+        attrs: { circle: { ...basePortStyle, stroke: '#52c41a' } },
+      },
+      'out-no': {
+        position: 'right',
+        attrs: { circle: { ...basePortStyle, stroke: '#ff4d4f' } },
+      },
+    }
+  }
+  return {
+    in: {
+      position: 'top',
+      attrs: { circle: { ...basePortStyle } },
+    },
+    out: {
+      position: 'bottom',
+      attrs: { circle: { ...basePortStyle } },
+    },
+  }
 }
 
 /**
@@ -173,14 +235,51 @@ const convertNode = (apiNode: ApiNode): any => {
       break
   }
 
+  // 解析 ports
+  const portGroups = getPortGroupsForShape(shape)
+  const portItems: any[] = []
+
+  if (apiNode.ports?.items) {
+    apiNode.ports.items.forEach(item => {
+      let x6Group = portGroupMapping[item.group] || item.group
+      let portId = item.id
+
+      // 针对 condition 节点的特殊处理，后端返回 group 为 condition，通过 id 区分 yes/no
+      if (shape === 'condition-node' && item.group === 'condition') {
+        if (item.id === 'yes') {
+          x6Group = 'out-yes'
+        } else if (item.id === 'no') {
+          x6Group = 'out-no'
+        }
+      }
+
+      // 处理 top_1 和 top1 不一致的问题
+      if (portId === 'top_1') {
+        portId = 'top1'
+      }
+
+      // 仅添加 port groups 中存在的 group
+      if (portGroups[x6Group]) {
+        portItems.push({
+          id: portId,
+          group: x6Group,
+        })
+      }
+    })
+  }
+
   return {
     id: apiNode.id,
     shape,
-    x: apiNode.render_config?.x ?? 100,
-    y: apiNode.render_config?.y ?? 100,
+    x: apiNode.render_config?.x,
+    y: apiNode.render_config?.y,
     width: defaultSize.width,
     height: defaultSize.height,
     data: nodeData,
+    ports: {
+      groups: portGroups,
+      items: portItems,
+    },
   }
 }
 
@@ -199,11 +298,20 @@ const convertEdge = (apiTransition: ApiTransition): any => {
     test_coverage: apiTransition.test_coverage,
   }
 
+  // 构建 source / target（带 port 连接）
+  const source: any = apiTransition.sourcePort
+    ? { cell: apiTransition.source_node, port: apiTransition.sourcePort }
+    : apiTransition.source_node
+
+  const target: any = apiTransition.targetPort
+    ? { cell: apiTransition.target_node, port: apiTransition.targetPort }
+    : apiTransition.target_node
+
   return {
     id: apiTransition.id,
     shape: 'edge',
-    source: apiTransition.source_node,
-    target: apiTransition.target_node,
+    source,
+    target,
     attrs: {
       line: {
         stroke: '#1890ff',
@@ -216,7 +324,7 @@ const convertEdge = (apiTransition: ApiTransition): any => {
       },
     },
     router: {
-      name: 'orth',
+      name: 'manhattan',
     },
     connector: {
       name: 'rounded',
@@ -250,7 +358,18 @@ export const importGraphFromJSON = (jsonString: string): any => {
     })
   }
 
-  return { cells }
+  // 提取画布属性（对应 formConfig.canvas 的字段）
+  const canvasData: Record<string, any> = {
+    desc: apiData.desc || '',
+    local_variable_list: apiData.local_variable_list ?? [],
+    variable_action_list: apiData.variable_action_list ?? [],
+    test_coverage: apiData.test_coverage,
+    h_function: apiData.h_function || 'none',
+    entry_action_list: apiData.entry_action_list ?? [],
+    exit_action_list: apiData.exit_action_list ?? [],
+  }
+
+  return { cells, canvasData }
 }
 
 export default importGraphFromJSON

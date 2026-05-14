@@ -1,0 +1,51 @@
+.edge-connect-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 交互卡片 */
+.edge-connect-card {
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #fafafa;
+}
+
+.edge-connect-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: #f0f0f0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.edge-connect-card-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  flex: 1;
+}
+
+/* 卡片展开内容 */
+.edge-connect-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+
+.edge-connect-row {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.edge-connect-row label {
+  font-size: 12px;
+  color: #666;
+  white-space: nowrap;
+}

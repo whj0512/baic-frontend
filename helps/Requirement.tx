@@ -1,0 +1,154 @@
+Graph:
+    "Graph" name=ID
+    ("type" graphType=GraphType)
+    ("desc" description=STRING)?
+    (nodes+=Node | transitions+=Transition)*
+;
+
+GraphType:
+    request='request' | testcase='testcase'
+;
+
+Node:
+    StateNode
+    | ConditionNode
+    | CallNode
+    | GraphRefNode
+    | CommentNode
+    | StartNode
+    | ThenNode
+    | TruthTableNode
+    | GotoNode
+;
+
+
+ParamList:
+    "[" (params+=Param ("," params+=Param)*)* "]";
+
+Param:
+    "{" ("label" ":" label=STRING) ("value" ":" value=INT) "}";
+
+StringList:
+    "[" (strings+=STRING ("," strings+=STRING)*)* "]";
+
+BooleanList:
+    "[" (boolean+=BOOLEAN ("," boolean+=BOOLEAN)*)* "]";
+
+TableRow:
+    '{'
+        "targetNode" ':' targetNode=[Node]
+        "list" ':' booleanList=BooleanList
+    '}'
+;
+
+ActionItemList:
+    "[" (actions+=ActionItem ("," actions+=ActionItem)*)* "]";
+
+ActionItem:
+    "{"
+        ("pre_think" ":" preThink=INT)
+        ("post_think" ":" postThink=INT)
+        ("express" ":" express=STRING)
+        ("type" ":" type=STRING)
+    "}";
+
+
+
+Transition:
+    "Transition" name=ID
+    ("desc" description=STRING)?
+    ("loop" loopTimes=INT)?
+    ("tolerance_type" ":" toleranceType=STRING)?
+    ("tolerance_value" ":" toleranceValue=INT)?
+    ("condition" ":" condition=STRING)?
+    ("from" ":" source=[Node])
+    ("to" ":" target=[Node])
+;
+
+BOOLEAN:
+    "true" | "false"
+;
+
+StateNode:
+    'State' name=ID
+    ("desc" description=STRING)?
+    ("forward_propagation" ":" forwardPropagation=BOOLEAN)?
+    ("tolerance_type" ":" toleranceType=STRING)?
+    ("tolerance_value" ":" toleranceValue=INT)?
+    ("pre_think_time" ":" preThink=INT)?
+    ("post_think_time" ":" postThink=INT)?
+    ("during_actions" ":" duringActions=ActionItemList)?
+    ("normal_test_actions" ":" normalTestActions=ActionItemList)?
+    ("dynamic_test_actions" ":" dynamicTestActions=ActionItemList)?
+;
+
+ConditionNode:
+    'Condition' name=ID
+    ("desc" description=STRING)?
+    ("tolerance_type" ":" toleranceType=STRING)?
+    ("tolerance_value" ":" toleranceValue=INT)?
+    ("condition" ":" condition=STRING)
+    ("yes" ":" branchYes=[Transition])?
+    ("no" ":" branchNo=[Transition])?
+
+;
+
+CallNode:
+    'Call' name=ID
+    ("desc" description=STRING)?
+    ("params" ":" params=ParamList)?
+    ("in" ":" inList=StringList)?
+    ("out" ":" outList=StringList)?
+    ("script" ":" script=STRING)?
+    ("enable_inverse" ":" enableInverse=BOOLEAN)?
+    ("inverse_script" ":" inverseScript=STRING)?
+    ("tolerance_type" ":" toleranceType=STRING)?
+    ("tolerance_value" ":" toleranceValue=INT)?
+    ("time_related_step" ":" timeRelatedStep=FLOAT)?
+    ("time_related_duration" ":" timeRelatedDuration=FLOAT)?
+;
+
+Number:
+    INT | FLOAT
+;
+
+
+CommentNode:
+    'Comment' name=ID
+    ("desc" description=STRING)?
+    ("comment" ":" comment=STRING)?
+;
+
+GraphRefNode:
+    'GraphRef' name=ID
+    ("desc" description=STRING)?
+    ("graph_id" ":" graphId=STRING)?
+    ("params" ":" params=ParamList)?
+    ("return_value" ":" returnVal=STRING)?
+    ("has_return_value" ":" hasReturnVal=BOOLEAN)?
+;
+
+StartNode:
+    'Start' name=ID
+    ("desc" description=STRING)?
+;
+
+ThenNode:
+    'Then' name=ID
+    ("desc" description=STRING)?
+;
+
+GotoNode:
+    'Goto' name=ID
+    ("desc" description=STRING)?
+    "friendNode" ":" friendNode=[Node]
+;
+
+TruthTableNode:
+    'TruthTable' name=ID
+    ("desc" description=STRING)?
+    ("header" ':' tableHeader=StringList)?
+    ("body" ':' tableBody+=TableRow*)?
+;
+
+ID: /[a-zA-Z0-9_][a-zA-Z0-9_\-()]*/;

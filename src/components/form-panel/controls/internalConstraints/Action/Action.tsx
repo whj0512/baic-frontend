@@ -5,24 +5,27 @@ import './Action.css'
 
 // 生成唯一 ID
 const generateId = () => {
-  return `action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  return `action_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
 }
 
 export interface ActionValue {
-  id: string
-  name: string
-  symbol: string
-  value: string
-  isStandard: boolean
+  id?: string
+  express: string
+  pre_think_time: number
+  post_think_time: number
+  type: string
+  name?: string
+  symbol?: string
+  value?: string
 }
 
 export const createDefaultAction = (v: Partial<ActionValue> = {}): ActionValue => {
   return {
     id: generateId(),
-    name: '',
-    symbol: '',
-    value: '',
-    isStandard: true,
+    express: '',
+    pre_think_time: 0,
+    post_think_time: 0,
+    type: 'action',
     ...v,
   }
 }
@@ -36,37 +39,49 @@ interface ActionProps {
 const Action: React.FC<ActionProps> = ({ value = [], onChange, controlSchema }) => {
   const [newActionIndex, setNewActionIndex] = useState(-1)
 
-  // 确保每个 action 都有 id
-  const formItemValue = value.map((v) => {
-    if (!v.id) {
-      return { ...v, id: generateId() }
+  // 1. 标准化数据源，支持旧数据的平滑迁徙
+  const formItemValue: ActionValue[] = (value || []).map((v: any) => {
+    // 兼容旧格式，向新格式靠拢：如果包含旧的 name/symbol/value
+    let finalExpress = v.express || ''
+    if (!v.express && v.name !== undefined) {
+      if (v.symbol === '()') {
+        finalExpress = `${v.name}(${v.value})`
+      } else {
+        finalExpress = `${v.name || ''}${v.symbol || ''}${v.value || ''}`
+      }
     }
-    return v
+
+    return {
+      ...v,
+      id: v.id || generateId(),
+      express: finalExpress,
+      pre_think_time: v.pre_think_time ?? 0,
+      post_think_time: v.post_think_time ?? 0,
+      type: v.type || 'action'
+    }
   })
 
-  const handleUpdate = () => {
-    // 过滤掉没有 id 的项（已删除的项）
-    const filteredValue = formItemValue.filter((v) => !!v.id)
-    onChange?.(filteredValue)
+  const triggerChange = (newValues: ActionValue[]) => {
+    onChange?.(newValues)
   }
 
   const handleAddAction = () => {
     const item = createDefaultAction()
     const newValue = [...formItemValue, item]
     setNewActionIndex(newValue.length - 1)
-    onChange?.(newValue)
+    triggerChange(newValue)
   }
 
   const handleRemove = (index: number) => {
     const newValue = formItemValue.filter((_, i) => i !== index)
-    onChange?.(newValue)
+    triggerChange(newValue)
     setNewActionIndex(-1)
   }
 
   const handleItemUpdate = (index: number, updatedItem: ActionValue) => {
     const newValue = [...formItemValue]
     newValue[index] = updatedItem
-    onChange?.(newValue)
+    triggerChange(newValue)
   }
 
   return (
@@ -77,7 +92,7 @@ const Action: React.FC<ActionProps> = ({ value = [], onChange, controlSchema }) 
       <div className="action-list">
         {formItemValue.map((item, index) => (
           <ActionItem
-            key={item.id}
+            key={item.id!}
             value={item}
             index={index}
             editableMode={index === newActionIndex}

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { message } from 'antd'
-import type { Project } from '../models/Project'
+import { API_ENDPOINTS } from '../config/api'
 import './CreateProject.css'
 
 function CreateProject() {
@@ -11,6 +11,7 @@ function CreateProject() {
     name: '',
     description: '',
   })
+  const [submitting, setSubmitting] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -20,25 +21,38 @@ function CreateProject() {
     }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // 创建完整的 Project 对象
-    const newProject: Project = {
-      id: crypto.randomUUID(),
-      key: formData.key,
-      name: formData.name,
-      description: formData.description,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    setSubmitting(true)
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(API_ENDPOINTS.projects, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          key: formData.key || null,
+          name: formData.name || null,
+          description: formData.description || null,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || '创建失败')
+      }
+
+      message.success('项目创建成功')
+      navigate('/')
+    } catch (error: any) {
+      console.error('Create project error:', error)
+      message.error(error.message || '创建项目失败，请稍后重试')
+    } finally {
+      setSubmitting(false)
     }
-
-    // TODO: Implement actual project creation logic here
-    console.log('Creating project:', newProject)
-    message.success('项目创建成功')
-
-    // 导航回首页
-    navigate('/')
   }
 
   const handleCancel = () => {
@@ -97,11 +111,11 @@ function CreateProject() {
         </div>
 
         <div className="form-actions">
-          <button type="button" className="cancel-btn" onClick={handleCancel}>
+          <button type="button" className="cancel-btn" onClick={handleCancel} disabled={submitting}>
             取消
           </button>
-          <button type="submit" className="submit-btn">
-            创建
+          <button type="submit" className="submit-btn" disabled={submitting}>
+            {submitting ? '创建中...' : '创建'}
           </button>
         </div>
       </form>

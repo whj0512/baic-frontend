@@ -1,6 +1,11 @@
-// internalConstraints 策略模块索引
-
+import type { ModelStrategy } from '../types'
+import { exportGraphToJSON } from './exportGraph'
+import importGraphFromJSON from './importGraph'
 export * from './exportTypes'
-export * from './defaultData'
-export { exportGraphToJSON } from './exportGraph'
-export { importGraphFromJSON } from './importGraph'
+
+const internalConstraintsStrategy: ModelStrategy = {
+    exportGraphToJSON: exportGraphToJSON,
+    importGraphFromJSON: importGraphFromJSON
+}
+
+export default internalConstraintsStrategy

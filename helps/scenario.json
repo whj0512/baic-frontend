@@ -1,0 +1,169 @@
+{
+    "id": "cc244f33-3c7a-456c-bafd-2f71bef96eeb",
+    "desc": "",
+    "graph_type": "ESD",
+    "interactions": [
+        {
+            "id": "00a3eb22-7f9c-49c8-bfbb-ecaa4678be7e",
+            "name": "create create(a:string,b:string):void",
+            "message": {
+                "message": "create",
+                "params": [
+                    {
+                        "name": "a",
+                        "type": "string"
+                    },
+                    {
+                        "name": "b",
+                        "type": "string"
+                    }
+                ],
+                "stereotype": "create",
+                "returnType": "void",
+                "msgType": "sync",
+                "isReturn": false
+            },
+            "sender": {
+                "id": "a83212af-eb24-423e-8f40-aab6b182e88a",
+                "name": "设备",
+                "type": "unknown",
+                "width": 120,
+                "height": 340,
+                "x": 500,
+                "y": 100
+            },
+            "receiver": {
+                "id": "0d2e30ee-ba2d-4276-9bb0-aeacc1990f2e",
+                "name": "机器",
+                "type": "unknown",
+                "width": 120,
+                "height": 340,
+                "x": 300,
+                "y": 100
+            },
+            "source": {
+                "x": 560,
+                "y": 180
+            },
+            "target": {
+                "x": 300,
+                "y": 180
+            }
+        },
+        {
+            "id": "557f682a-c8cb-4f93-be08-02c00029c71d",
+            "name": "reply get(a:int,b:string):void",
+            "message": {
+                "message": "get",
+                "params": [
+                    {
+                        "name": "a",
+                        "type": "int"
+                    },
+                    {
+                        "name": "b",
+                        "type": "string"
+                    }
+                ],
+                "stereotype": "reply",
+                "returnType": "void",
+                "msgType": "sync",
+                "isReturn": false
+            },
+            "sender": {
+                "id": "0d2e30ee-ba2d-4276-9bb0-aeacc1990f2e",
+                "name": "机器",
+                "type": "unknown",
+                "width": 120,
+                "height": 340,
+                "x": 300,
+                "y": 100
+            },
+            "receiver": {
+                "id": "5fa7d2a8-67ce-40a9-a559-e5491a2eb99b",
+                "name": "人类",
+                "type": "unknown",
+                "width": 120,
+                "height": 340,
+                "x": 100,
+                "y": 100
+            },
+            "source": {
+                "x": 360,
+                "y": 260
+            },
+            "target": {
+                "x": 100,
+                "y": 260
+            }
+        },
+        {
+            "id": "01a4c93b-1d79-4dab-922e-546d3128d1fe",
+            "name": "return",
+            "message": {
+                "message": "",
+                "params": [],
+                "stereotype": "base",
+                "returnType": "",
+                "msgType": "sync",
+                "isReturn": true
+            },
+            "sender": {
+                "id": "5fa7d2a8-67ce-40a9-a559-e5491a2eb99b",
+                "name": "人类",
+                "type": "unknown",
+                "width": 120,
+                "height": 340,
+                "x": 100,
+                "y": 100
+            },
+            "receiver": {
+                "id": "a83212af-eb24-423e-8f40-aab6b182e88a",
+                "name": "设备",
+                "type": "unknown",
+                "width": 120,
+                "height": 340,
+                "x": 500,
+                "y": 100
+            },
+            "source": {
+                "x": 160,
+                "y": 340
+            },
+            "target": {
+                "x": 500,
+                "y": 340
+            }
+        }
+    ],
+    "interactionRelations": [],
+    "components": [
+        {
+            "id": "a83212af-eb24-423e-8f40-aab6b182e88a",
+            "name": "设备",
+            "type": "unknown",
+            "width": 120,
+            "height": 340,
+            "x": 500,
+            "y": 100
+        },
+        {
+            "id": "0d2e30ee-ba2d-4276-9bb0-aeacc1990f2e",
+            "name": "机器",
+            "type": "unknown",
+            "width": 120,
+            "height": 340,
+            "x": 300,
+            "y": 100
+        },
+        {
+            "id": "5fa7d2a8-67ce-40a9-a559-e5491a2eb99b",
+            "name": "人类",
+            "type": "unknown",
+            "width": 120,
+            "height": 340,
+            "x": 100,
+            "y": 100
+        }
+    ]
+}

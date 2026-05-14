@@ -1,4 +1,4 @@
-import NodeWrapper from '../../common/NodeWrapper';
+import NodeWrapper from '../NodeWrapper';
 import './Comment.css'
 
 const Comment = (props: any) => {

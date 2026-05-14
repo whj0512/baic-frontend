@@ -64,3 +64,65 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* Inline error banner — sits above the editor, does not replace it */
+.dsl-editor-error-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background-color: #fff2f0;
+  border: 1px solid #ffccc7;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  flex-shrink: 0;
+}
+
+.dsl-editor-error-banner-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dsl-editor-error-banner-icon {
+  color: #ff4d4f;
+  font-size: 16px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.dsl-editor-error-banner-body {
+  min-width: 0;
+}
+
+.dsl-editor-error-banner-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #ff4d4f;
+  margin-bottom: 2px;
+}
+
+.dsl-editor-error-banner-message {
+  font-size: 12px;
+  color: #666;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.dsl-editor-error-banner-btn {
+  flex-shrink: 0;
+}
+
+/* When banner is present, make the editor fill the remaining height */
+.dsl-editor {
+  display: flex;
+  flex-direction: column;
+}
+
+.dsl-editor > .monaco-editor-container,
+.dsl-editor > div[class*="monaco"] {
+  flex: 1;
+  min-height: 0;
+}

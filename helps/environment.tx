@@ -1,0 +1,37 @@
+EnvironmentView:
+    (elements+=Element)*
+;
+
+Element: Component | Connector ;
+
+Component :type=ComponentType name=ID ';' ;
+
+Connector:
+    'Connect' 'from' source=ID 'to' target=ID
+    '{'
+        interactions+=Interaction
+    '}'
+    ';'
+;
+
+ComponentType:
+    Machine="Machine"
+  | Human="Human"
+  | Device="Device"
+  | Controller="Controller"
+  | ControlUnit="ControlUnit"
+  | FunctionalModule="FunctionalModule"
+;
+
+Interaction:
+    'Interaction' name=ID '{' data=ID '}' ';'
+;
+
+PortDirection: "In" | "Out" ;
+
+ID: /[\u4e00-\u9fa5a-zA-Z0-9_\/][\u4e00-\u9fa5a-zA-Z0-9_\-()\/]*/;
+
+Comment:
+    /\/\/.*$/
+    | /\/\*[\s\S]*?\*\//
+;

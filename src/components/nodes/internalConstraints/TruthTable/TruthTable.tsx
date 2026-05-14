@@ -1,5 +1,5 @@
 import React from 'react'
-import NodeWrapper from '../../common/NodeWrapper'
+import NodeWrapper from '../NodeWrapper'
 
 const TruthTable = (props: any) => (
   <NodeWrapper {...props} defaultContent="tf" nodeType="truthTable" />

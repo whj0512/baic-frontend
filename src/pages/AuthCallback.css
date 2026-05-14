@@ -1,0 +1,25 @@
+.auth-callback-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
+  background-color: #f0f2f5;
+}
+
+.auth-callback-content {
+  text-align: center;
+  padding: 40px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.auth-callback-content h2 {
+  margin-bottom: 16px;
+  color: #1890ff; 
+}
+
+.auth-callback-content p {
+  color: #595959;
+}

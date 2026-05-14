@@ -12,12 +12,12 @@ interface RequirementOverviewProps {
   onSectionClick?: (sectionKey: SectionKey, sectionLabel: string) => void
 }
 
-const SECTIONS: { key: SectionKey; dimensionCode: string; label: string; description: string; graphField: keyof Requirement }[] = [
-  { key: 'environment', dimensionCode: 'IBD', label: '所处环境', description: '内部块图 - 系统所处的环境', graphField: 'graph_IBD' },
-  { key: 'interaction', dimensionCode: 'ESD', label: '与环境交互', description: '外部顺序图 - 与环境的交互', graphField: 'graph_ESD' },
-  { key: 'internalComposition', dimensionCode: 'BDD', label: '内部组成', description: '块定义图 - 内部组成', graphField: 'graph_BDD' },
-  { key: 'moduleResponses', dimensionCode: 'ISD', label: '组成模块间的响应', description: '内部顺序图 - 组成模块的响应', graphField: 'graph_ISD' },
-  { key: 'internalConstraints', dimensionCode: 'SC', label: '内部约束', description: '状态图 - 内部约束', graphField: 'graph_SC' },
+const SECTIONS: { key: SectionKey; dimensionCode: string; label: string; description: string; graphField: keyof Requirement; dslField: keyof Requirement }[] = [
+  { key: 'environment', dimensionCode: 'IBD', label: '所处环境', description: '内部块图 - 系统所处的环境', graphField: 'graph_IBD', dslField: 'dsl_IBD' },
+  { key: 'interaction', dimensionCode: 'ESD', label: '与环境交互', description: '外部顺序图 - 与环境的交互', graphField: 'graph_ESD', dslField: 'dsl_ESD' },
+  { key: 'internalComposition', dimensionCode: 'BDD', label: '内部组成', description: '块定义图 - 内部组成', graphField: 'graph_BDD', dslField: 'dsl_BDD' },
+  { key: 'moduleResponses', dimensionCode: 'ISD', label: '组成模块间的响应', description: '内部顺序图 - 组成模块的响应', graphField: 'graph_ISD', dslField: 'dsl_ISD' },
+  { key: 'internalConstraints', dimensionCode: 'SC', label: '内部约束', description: '状态图 - 内部约束', graphField: 'graph_SC', dslField: 'dsl_SC' },
 ]
 
 function RequirementOverview({ requirement, versions, projectKey, onSectionClick }: RequirementOverviewProps) {
@@ -88,6 +88,14 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
               <span className="info-value">{requirement.id}</span>
             </div>
             <div className="info-item">
+              <label>需求名称</label>
+              <span className="info-value">{requirement.name || '-'}</span>
+            </div>
+            <div className="info-item">
+              <label>需求类型</label>
+              <span className="info-value">{requirement.type || '-'}</span>
+            </div>
+            <div className="info-item">
               <label>创建者</label>
               <span className="info-value">{requirement.created_by}</span>
             </div>
@@ -112,16 +120,6 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
           </div>
         </div>
 
-        {/* DSL 文本 */}
-        <div className="overview-section">
-          <div className="section-header">
-            <span className="section-title">DSL 表示</span>
-          </div>
-          <div className="text-content dsl-content">
-            {requirement.dsl_text || <span className="text-placeholder">暂无 DSL 定义</span>}
-          </div>
-        </div>
-
         {/* 五维模型列表 */}
         <div className="overview-section">
           <div className="section-header">
@@ -139,7 +137,7 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
                   <span className="dimension-label">{section.label}</span>
                 </div>
                 <div className="dimension-item-right">
-                  {hasSectionData(section.graphField) ? (
+                  {hasSectionData(section.dslField || section.graphField) ? (
                     <span className="dimension-status has-data">已定义</span>
                   ) : (
                     <span className="dimension-status no-data">未定义</span>

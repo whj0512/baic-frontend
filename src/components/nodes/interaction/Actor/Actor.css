@@ -1,0 +1,25 @@
+/* ============================================
+   Sequence Diagram — Actor Node
+   ============================================ */
+
+/* 角色图标区 */
+.seq-actor__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.seq-actor__icon svg {
+    display: block;
+}
+
+/* 名称标签 */
+.seq-actor__label {
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+    word-break: break-word;
+    line-height: 1.3;
+    padding: 2px 4px;
+    color: #4a90d9;
+}
