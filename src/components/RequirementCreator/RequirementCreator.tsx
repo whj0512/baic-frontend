@@ -17,7 +17,7 @@ interface RequirementCreatorProps {
     projectKey?: string
     formData?: {
         name: string
-        type: string
+        req_type: string
         nl_text: string
         relationships: RelationItem[]
         sectionData: Record<string, any>
@@ -73,7 +73,7 @@ function RequirementCreator({
     // Local state fallback if not provided via props (for standalone usage safety)
     const [localFormData, setLocalFormData] = useState({
         name: '',
-        type: '',
+        req_type: '',
         nl_text: '',
         relationships: [] as RelationItem[],
         sectionData: {} as Record<string, any>,
@@ -168,13 +168,8 @@ function RequirementCreator({
                 body: JSON.stringify({
                     project_key: projectKey,
                     name: currentFormData.name,
-                    type: currentFormData.type || undefined,
+                    req_type: currentFormData.req_type || undefined,
                     nl_text: currentFormData.nl_text,
-                    // TODO: Map other fields like relationships or graph data if available
-                    // For now, based on RequirementSaveRequest, we send what we have.
-                    // relationships are not in the standard RequirementSaveRequest yet, or maybe part of DSL?
-                    // The API doc says: graph_IBD, graph_ESD, etc.
-                    // createFormData.sectionData maps to these.
                     graph_IBD: currentFormData.sectionData.environment,
                     graph_ESD: currentFormData.sectionData.interaction,
                     graph_BDD: currentFormData.sectionData.internalComposition,
@@ -249,10 +244,10 @@ function RequirementCreator({
                     <div className="form-group">
                         <input
                             type="text"
-                            name="type"
+                            name="req_type"
                             className="form-input"
                             placeholder="请输入需求类型"
-                            value={currentFormData.type}
+                            value={currentFormData.req_type}
                             onChange={handleChange}
                         />
                     </div>

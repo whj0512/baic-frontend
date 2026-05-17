@@ -1,0 +1,28 @@
+.testcase-action-item {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 18px;
+  gap: 8px;
+  align-items: center;
+}
+
+.testcase-action-item--dragging {
+  opacity: 0.5;
+}
+
+.testcase-action-item__handle,
+.testcase-action-item__remove {
+  cursor: pointer;
+  color: #8c8c8c;
+}
+
+.testcase-action-item__handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  user-select: none;
+}
+
+.testcase-action-item__handle:active {
+  cursor: grabbing;
+}

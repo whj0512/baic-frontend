@@ -1,0 +1,29 @@
+.testcase-action-editor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.testcase-action-editor .ant-select,
+.testcase-action-editor .ant-select-selector {
+  min-width: 60px;
+}
+
+.testcase-action-editor__func-args {
+  min-width: 120px;
+}
+
+.testcase-action-editor__help {
+  color: #8c8c8c;
+}
+
+.testcase-action-editor__warn-tips {
+  margin-top: 4px;
+  font-size: 10px;
+}
+
+.testcase-action-editor__fixup {
+  margin-left: 6px;
+  cursor: pointer;
+  text-decoration: underline;
+}

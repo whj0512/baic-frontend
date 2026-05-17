@@ -145,7 +145,7 @@
   overflow: hidden;
 }
 
-.tc-table-row:hover > td {
+.tc-table-row:hover>td {
   background-color: #e6f7ff !important;
 }
 
@@ -177,4 +177,39 @@
 .tc-empty {
   margin: auto;
   padding: 60px 0;
+}
+
+/* ===== Test case graph viewer ===== */
+.tc-testcase-viewer {
+  flex-shrink: 0;
+  padding: 0 24px 24px;
+  background-color: var(--workspace-bg, #f5f5f5);
+}
+
+.tc-testcase-viewer-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 12px;
+  border-top: 1px solid #e8e8e8;
+}
+
+.tc-testcase-viewer-open {
+  height: 720px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tc-testcase-graph-wrap {
+  flex: 1;
+  min-height: 0;
+  margin-top: 12px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.tc-testcase-graph-wrap .flow-graph-container {
+  height: 100%;
+  min-height: unset;
 }

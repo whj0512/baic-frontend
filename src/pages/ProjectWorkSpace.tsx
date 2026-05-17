@@ -17,6 +17,15 @@ import { useProjectSync } from '../hooks/useProjectSync'
 // 中间区域视图类型
 type CenterView = 'overview' | 'editor' | 'create' | 'create-editor' | 'relationship' | 'test-case'
 
+const createEmptyRequirementFormData = () => ({
+  name: '',
+  nl_text: '',
+  req_type: '',
+  relationships: [] as any[],
+  sectionData: {} as Record<string, any>,
+  sectionDslData: {} as Record<string, string>
+})
+
 function ProjectWorkSpace() {
   const { projectKey } = useParams<{ projectKey: string }>()
   const navigate = useNavigate()
@@ -326,27 +335,22 @@ function ProjectWorkSpace() {
   }
 
 
+  // 新建需求表单状态
+  const [createFormData, setCreateFormData] = useState(createEmptyRequirementFormData)
+
   const handleCreateRequirement = () => {
     setSelectedRequirement(null)
+    setEditingSection(null)
+    setCreateFormData(createEmptyRequirementFormData())
     setCenterView('create')
   }
 
   // 处理新建完成或取消
   const handleCreateFinish = () => {
+    setCreateFormData(createEmptyRequirementFormData())
+    setEditingSection(null)
     setCenterView('overview')
   }
-
-  // 新建需求表单状态
-  const [createFormData, setCreateFormData] = useState({
-    name: '',
-    nl_text: '',
-    type: '',
-    relationships: [] as any[],
-    // Store graph data for each section
-    sectionData: {} as Record<string, any>,
-    // Store DSL text for each section
-    sectionDslData: {} as Record<string, string>
-  })
 
   // 处理新建时的 Section 点击
   const handleCreateSectionClick = (sectionKey: SectionKey) => {
@@ -375,7 +379,7 @@ function ProjectWorkSpace() {
     project_id: projectKey || '',
     name: createFormData.name,
     nl_text: createFormData.nl_text,
-    type: createFormData.type,
+    req_type: createFormData.req_type,
     created_by: 'CurrentUser',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),

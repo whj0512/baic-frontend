@@ -4,6 +4,7 @@ import interactionStrategy from './interaction'
 import internalCompositionStrategy from './internalComposition'
 import moduleResponsesStrategy from './moduleResponses'
 import internalConstraintsStrategy from './internalConstraints'
+import testcaseViewStrategy from './testcaseView'
 
 const strategies: Record<string, GraphStrategy> = {
   environment: environmentStrategy,
@@ -11,14 +12,14 @@ const strategies: Record<string, GraphStrategy> = {
   internalComposition: internalCompositionStrategy,
   moduleResponses: moduleResponsesStrategy,
   internalConstraints: internalConstraintsStrategy,
+  testcaseView: testcaseViewStrategy,
 }
 
 // Default fallback (can be empty or environment)
 const defaultStrategy: GraphStrategy = {
-    sidebarItems: []
+  sidebarItems: []
 }
 
 export const getStrategy = (key: string): GraphStrategy => {
   return strategies[key] || defaultStrategy
 }
-

@@ -1,0 +1,42 @@
+.testcase-observe-control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.testcase-observe-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.testcase-observe-add {
+  cursor: pointer;
+  color: var(--vscode-menu-foreground, #1677ff);
+}
+
+.testcase-observe-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.testcase-observe-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.testcase-observe-switch {
+  min-width: 0;
+}
+
+.testcase-observe-remove {
+  flex: 0 0 auto;
+  color: #8c8c8c;
+  cursor: pointer;
+  visibility: hidden;
+}
+
+.testcase-observe-item:hover .testcase-observe-remove {
+  visibility: visible;
+}

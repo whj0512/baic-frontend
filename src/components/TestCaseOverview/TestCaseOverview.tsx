@@ -1,8 +1,13 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Button, Badge } from 'antd'
-import { ArrowLeftOutlined, ExperimentOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, ExperimentOutlined, EyeOutlined } from '@ant-design/icons'
 import ReactECharts from 'echarts-for-react'
 import type { Requirement } from '../../models/Requirement'
+import FlowGraph from '../graph'
+import {
+  TEST_CASE_OVERVIEW_CATEGORIES,
+  TEST_CASE_OVERVIEW_NODE_STYLES
+} from '../echartsNodeStyles'
 import './TestCaseOverview.css'
 
 interface TestCaseOverviewProps {
@@ -18,7 +23,29 @@ interface StackItem {
   id?: string
 }
 
+const getNodeAppearance = (style: typeof TEST_CASE_OVERVIEW_NODE_STYLES[keyof typeof TEST_CASE_OVERVIEW_NODE_STYLES]) => ({
+  symbol: style.category === 0 ? 'circle' : style.category === 1 ? 'diamond' : 'rect',
+  symbolSize: style.symbolSize,
+  itemStyle: {
+    color: style.backgroundColor,
+    borderType: style.borderType,
+    borderColor: style.borderColor,
+    borderWidth: style.borderWidth
+  },
+  label: {
+    show: true,
+    formatter: '{b}',
+    position: 'inside',
+    width: style.symbolSize - 16,
+    overflow: 'truncate',
+    align: 'center',
+    color: style.labelColor
+  }
+})
+
 const TestCaseOverview: React.FC<TestCaseOverviewProps> = ({ requirements, onBack }) => {
+  const [showTestCaseGraph, setShowTestCaseGraph] = useState(false)
+
   // 测试场景
   const scenarioTxt = `
 c23e3fed-7a54-4909-86fe-ad367bbff0b9_path_0 (path)
@@ -155,11 +182,12 @@ FrntEsc_bEscIncActv == 1, READY_LAMP==1, STRATEGY_SHIFT_POSITION==3, MCU_F_CrtMo
 
     // 1. 填入现有的需求节点
     requirements.forEach(req => {
+      const style = TEST_CASE_OVERVIEW_NODE_STYLES.requirement
       nodesMap.set(req.id, {
         id: req.id,
-        name: req.name || req.id.substring(0, 8),
-        category: 0,
-        symbolSize: 50,
+        name: req.name.substring(0, 8) || req.id.substring(0, 8),
+        category: style.category,
+        ...getNodeAppearance(style),
         tooltip: {
           formatter: `需求: ${req.name || req.id}`
         }
@@ -190,11 +218,12 @@ FrntEsc_bEscIncActv == 1, READY_LAMP==1, STRATEGY_SHIFT_POSITION==3, MCU_F_CrtMo
       tooltipHtml += `</div>`
 
       // 添加场景节点
+      const scenarioStyle = TEST_CASE_OVERVIEW_NODE_STYLES.scenario
       nodesMap.set(scenarioId, {
         id: scenarioId,
         name: `场景 ${index + 1}`,
-        category: 1,
-        symbolSize: 40,
+        category: scenarioStyle.category,
+        ...getNodeAppearance(scenarioStyle),
         tooltip: {
           formatter: tooltipHtml
         }
@@ -212,14 +241,12 @@ FrntEsc_bEscIncActv == 1, READY_LAMP==1, STRATEGY_SHIFT_POSITION==3, MCU_F_CrtMo
 
             // 如果需求不在已有列表中，为了能连线，也将其加入节点图
             if (!nodesMap.has(reqId)) {
+              const style = TEST_CASE_OVERVIEW_NODE_STYLES.requirement
               nodesMap.set(reqId, {
                 id: reqId,
                 name: reqId.substring(0, 8),
-                category: 0,
-                symbolSize: 50,
-                itemStyle: {
-                  borderType: 'dashed'
-                },
+                category: style.category,
+                ...getNodeAppearance(style),
                 tooltip: {
                   formatter: `需求 (未在当前列表): ${reqId}`
                 }
@@ -249,11 +276,12 @@ FrntEsc_bEscIncActv == 1, READY_LAMP==1, STRATEGY_SHIFT_POSITION==3, MCU_F_CrtMo
 
 
       // 添加测试用例节点
+      const testCaseStyle = TEST_CASE_OVERVIEW_NODE_STYLES.testCase
       nodesMap.set(testCaseId, {
         id: testCaseId,
         name: `测试用例 ${index + 1}`,
-        category: 2,
-        symbolSize: 40,
+        category: testCaseStyle.category,
+        ...getNodeAppearance(testCaseStyle),
         tooltip: {
           formatter: tooltipContent
         }
@@ -307,15 +335,10 @@ FrntEsc_bEscIncActv == 1, READY_LAMP==1, STRATEGY_SHIFT_POSITION==3, MCU_F_CrtMo
           layout: 'none', // 使用 none 才能使手动指定的 x,y 生效
           data: finalNodes,
           links: links,
-          categories: [
-            { name: '需求', itemStyle: { color: '#1890ff' } },
-            { name: '测试场景', itemStyle: { color: '#52c41a' } },
-            { name: '测试用例', itemStyle: { color: '#fa8c16' } }
-          ],
+          categories: TEST_CASE_OVERVIEW_CATEGORIES,
           roam: true,
           label: {
             show: true,
-            position: 'right',
             formatter: '{b}'
           },
           lineStyle: {
@@ -346,15 +369,33 @@ FrntEsc_bEscIncActv == 1, READY_LAMP==1, STRATEGY_SHIFT_POSITION==3, MCU_F_CrtMo
         <Badge count={requirements.length} className="tc-total-badge" overflowCount={999} />
       </div>
 
-      <div style={{ flex: 1, padding: '24px', overflow: 'hidden' }}>
-        <div style={{ background: '#fff', height: '100%', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-          <ReactECharts
-            option={echartsOption}
-            style={{ height: '100%', width: '100%' }}
-            notMerge={true}
-            lazyUpdate={true}
-          />
+      {!showTestCaseGraph && (
+        <div style={{ flex: 1, padding: '24px', overflow: 'hidden' }}>
+          <div style={{ background: '#fff', height: '100%', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <ReactECharts
+              option={echartsOption}
+              style={{ height: '100%', width: '100%' }}
+              notMerge={true}
+              lazyUpdate={true}
+            />
+          </div>
         </div>
+      )}
+      <div className={`tc-testcase-viewer${showTestCaseGraph ? ' tc-testcase-viewer-open' : ''}`}>
+        <div className="tc-testcase-viewer-toolbar">
+          <Button
+            type={showTestCaseGraph ? 'default' : 'primary'}
+            icon={<EyeOutlined />}
+            onClick={() => setShowTestCaseGraph(prev => !prev)}
+          >
+            {showTestCaseGraph ? '返回关系图' : '查看测试用例'}
+          </Button>
+        </div>
+        {showTestCaseGraph && (
+          <div className="tc-testcase-graph-wrap">
+            <FlowGraph sectionKey="testcaseView" />
+          </div>
+        )}
       </div>
     </div>
   )

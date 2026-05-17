@@ -1,0 +1,21 @@
+.testcase-action-control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.testcase-action-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.testcase-action-add {
+  cursor: pointer;
+  color: var(--vscode-menu-foreground, #1677ff);
+}
+
+.testcase-action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
