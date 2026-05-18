@@ -1,0 +1,63 @@
+{
+  "name": "@baic/extension",
+  "displayName": "BAIC Requirements Management",
+  "description": "BAIC requirements management inside VS Code.",
+  "version": "0.0.1",
+  "publisher": "baic",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:baic.openRequirementsManager"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "baic.openRequirementsManager",
+        "title": "BAIC: Open Requirements Manager"
+      }
+    ],
+    "configuration": {
+      "title": "BAIC Requirements Management",
+      "properties": {
+        "baic.apiBaseUrl": {
+          "type": "string",
+          "default": "http://localhost:8000",
+          "description": "Base URL for REST API requests."
+        },
+        "baic.projectWsBaseUrl": {
+          "type": "string",
+          "default": "ws://localhost:8000",
+          "description": "Base WebSocket URL for project synchronization."
+        },
+        "baic.lspWs.internalConstraints": {
+          "type": "string",
+          "default": "ws://127.0.0.1:3000",
+          "description": "WebSocket URL for the internal constraints language server."
+        },
+        "baic.lspWs.environment": {
+          "type": "string",
+          "default": "ws://127.0.0.1:3001",
+          "description": "WebSocket URL for the environment language server."
+        },
+        "baic.lspWs.interaction": {
+          "type": "string",
+          "default": "ws://127.0.0.1:3002",
+          "description": "WebSocket URL for the interaction language server."
+        },
+        "baic.lspWs.internalComposition": {
+          "type": "string",
+          "default": "ws://127.0.0.1:3003",
+          "description": "WebSocket URL for the internal composition language server."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node ./scripts/copy-webview-assets.mjs"
+  }
+}

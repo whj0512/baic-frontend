@@ -1,4 +1,29 @@
-# React + TypeScript + Vite
+# BAIC Requirements Management
+
+## Workspace Layout
+
+- `packages/webview`: the original React application, still runnable on its own in a browser
+- `packages/extension`: the VS Code extension host that loads the built webview bundle
+
+## Development
+
+- `npm run dev`: start the standalone browser version of the webview
+- `npm run build:webview`: build the webview bundle
+- `npm run build:extension`: copy the built webview assets into the extension package
+- `npm run build`: build the webview and prepare the extension assets
+
+## VS Code Extension Configuration
+
+The extension reads backend endpoints from VS Code settings:
+
+- `baic.apiBaseUrl`
+- `baic.projectWsBaseUrl`
+- `baic.lspWs.internalConstraints`
+- `baic.lspWs.environment`
+- `baic.lspWs.interaction`
+- `baic.lspWs.internalComposition`
+
+The browser version keeps using `packages/webview/.env.*` as its fallback config source.
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

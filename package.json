@@ -1,43 +1,16 @@
 {
-  "name": "baic-requirements-management",
+  "name": "baic-requirements-management-workspace",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@ant-design/icons": "^6.1.0",
-    "@antv/x6": "^3.1.4",
-    "@antv/x6-react-shape": "^3.0.1",
-    "@monaco-editor/react": "^4.7.0",
-    "antd": "^6.2.0",
-    "echarts": "^6.0.0",
-    "echarts-for-react": "^3.0.6",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-draggable": "^4.5.0",
-    "react-router-dom": "^7.12.0",
-    "tslib": "^2.8.1",
-    "vscode-jsonrpc": "^8.2.1",
-    "vscode-languageserver-protocol": "^3.17.5",
-    "vscode-ws-jsonrpc": "^3.5.0"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@types/node": "^24.10.1",
-    "@types/react": "^19.2.5",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.1",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0",
-    "typescript": "~5.9.3",
-    "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "dev": "npm run dev --workspace @baic/webview",
+    "build": "npm run build:webview && npm run build:extension",
+    "build:webview": "npm run build --workspace @baic/webview",
+    "build:extension": "npm run build --workspace @baic/extension",
+    "lint": "npm run lint --workspace @baic/webview",
+    "preview": "npm run preview --workspace @baic/webview"
   }
 }
