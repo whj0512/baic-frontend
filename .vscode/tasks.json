@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "compile:extension",
+      "type": "shell",
+      "command": "npm run compile --workspace @baic/extension",
+      "group": "build",
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "build:extension",
+      "type": "shell",
+      "command": "npm run build:extension",
+      "group": "build",
+      "problemMatcher": "$tsc"
+    }
+  ]
+}

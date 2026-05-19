@@ -10,10 +10,7 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onCommand:baic.openRequirementsManager"
-  ],
-  "main": "./src/extension.js",
+  "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
@@ -58,6 +55,12 @@
     }
   },
   "scripts": {
-    "build": "node ./scripts/copy-webview-assets.mjs"
+    "compile": "tsc -p ./tsconfig.json",
+    "build": "npm run compile && node ./scripts/copy-webview-assets.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/vscode": "1.90.0",
+    "typescript": "~5.9.3"
   }
 }

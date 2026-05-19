@@ -27,7 +27,16 @@ function MainLayout() {
   // 若尚未鉴权，优先跳转至 /auth-callback 进行鉴权逻辑处理
   // 这里将 search 参数保留，以防外部系统直接携带 token 访问了内置的页面链接
   if (!authed) {
-    return <Navigate to={`/auth-callback?${location.search}`} replace />
+    const authSearch = location.search || window.location.search
+    return (
+      <Navigate
+        to={{
+          pathname: '/auth-callback',
+          search: authSearch,
+        }}
+        replace
+      />
+    )
   }
 
   return (

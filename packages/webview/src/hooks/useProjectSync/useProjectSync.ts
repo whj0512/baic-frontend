@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import type { Requirement } from '../../models/Requirement'
-import { WS_ENDPOINTS } from '../../config/api'
+import { clearAuth, isTokenExpired, WS_ENDPOINTS } from '../../config/api'
 
 interface WebSocketMessage {
     event: 'initial_state' | 'requirement_created' | 'requirement_updated'
@@ -59,13 +59,23 @@ export function useProjectSync(projectId: string | undefined) {
 
         function connect() {
             const token = localStorage.getItem('token') || ''
-            const url = `${WS_ENDPOINTS.projectSync(projectId!)}${token ? `?token=${token}` : ''}`
+
+            if (token && isTokenExpired(token)) {
+                console.error('鉂?[WS] 本地 token 已过期，停止连接并重新进入鉴权流程')
+                clearAuth()
+                window.location.hash = '/auth-callback'
+                return
+            }
+
+            const url = `${WS_ENDPOINTS.projectSync(projectId!)}${token ? `?token=${encodeURIComponent(token)}` : ''}`
+            let hasOpened = false
             console.log(`🔗 [WS] 正在连接: ${url}`)
             console.log(`🔗 [WS] projectId=${projectId}, token=${token ? token.substring(0, 20) + '...' : '(空)'}`)
             const ws = new WebSocket(url)
             wsRef.current = ws
 
             ws.onopen = () => {
+                hasOpened = true
                 console.log(`✅ [WS] 连接已建立, readyState=${ws.readyState}, protocol='${ws.protocol}'`)
                 setIsConnected(true)
                 retryCountRef.current = 0
@@ -133,6 +143,16 @@ export function useProjectSync(projectId: string | undefined) {
                 if (heartbeatTimerRef.current) {
                     clearInterval(heartbeatTimerRef.current)
                     heartbeatTimerRef.current = null
+                }
+
+                if (token && !hasOpened) {
+                    console.error('鉂?[WS] 握手阶段失败，当前 token 可能已失效或过期')
+                }
+
+                if (event.code === 1008) {
+                    clearAuth()
+                    window.location.hash = '/auth-callback'
+                    return
                 }
 
                 // 断线重连（指数退避）

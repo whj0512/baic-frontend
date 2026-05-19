@@ -1,6 +1,19 @@
-const vscode = require('vscode')
+import * as vscode from 'vscode'
 
-function activate(context) {
+interface LspWsConfig {
+  internalConstraints: string
+  environment: string
+  interaction: string
+  internalComposition: string
+}
+
+interface RuntimeConfig {
+  apiBaseUrl: string
+  projectWsBaseUrl: string
+  lspWs: LspWsConfig
+}
+
+export function activate(context: vscode.ExtensionContext): void {
   const disposable = vscode.commands.registerCommand(
     'baic.openRequirementsManager',
     () => {
@@ -24,7 +37,10 @@ function activate(context) {
   context.subscriptions.push(disposable)
 }
 
-function getWebviewHtml(webview, extensionUri) {
+function getWebviewHtml(
+  webview: vscode.Webview,
+  extensionUri: vscode.Uri,
+): string {
   const nonce = createNonce()
   const webviewRoot = vscode.Uri.joinPath(extensionUri, 'media', 'webview')
   const scriptUri = webview.asWebviewUri(
@@ -63,22 +79,37 @@ function getWebviewHtml(webview, extensionUri) {
 </html>`
 }
 
-function getRuntimeConfig() {
+function getRuntimeConfig(): RuntimeConfig {
   const config = vscode.workspace.getConfiguration('baic')
 
   return {
-    apiBaseUrl: config.get('apiBaseUrl'),
-    projectWsBaseUrl: config.get('projectWsBaseUrl'),
+    apiBaseUrl: config.get<string>('apiBaseUrl', 'http://localhost:8000'),
+    projectWsBaseUrl: config.get<string>(
+      'projectWsBaseUrl',
+      'ws://localhost:8000',
+    ),
     lspWs: {
-      internalConstraints: config.get('lspWs.internalConstraints'),
-      environment: config.get('lspWs.environment'),
-      interaction: config.get('lspWs.interaction'),
-      internalComposition: config.get('lspWs.internalComposition'),
+      internalConstraints: config.get<string>(
+        'lspWs.internalConstraints',
+        'ws://127.0.0.1:3000',
+      ),
+      environment: config.get<string>(
+        'lspWs.environment',
+        'ws://127.0.0.1:3001',
+      ),
+      interaction: config.get<string>(
+        'lspWs.interaction',
+        'ws://127.0.0.1:3002',
+      ),
+      internalComposition: config.get<string>(
+        'lspWs.internalComposition',
+        'ws://127.0.0.1:3003',
+      ),
     },
   }
 }
 
-function getOrigin(value) {
+function getOrigin(value: string): string {
   try {
     return new URL(value).origin
   } catch {
@@ -86,7 +117,7 @@ function getOrigin(value) {
   }
 }
 
-function createNonce() {
+function createNonce(): string {
   const alphabet =
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
   let result = ''
@@ -98,9 +129,4 @@ function createNonce() {
   return result
 }
 
-function deactivate() {}
-
-module.exports = {
-  activate,
-  deactivate,
-}
+export function deactivate(): void { }

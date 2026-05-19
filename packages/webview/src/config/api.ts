@@ -61,6 +61,21 @@ export function getToken(): string | null {
   return localStorage.getItem('token')
 }
 
+export function isTokenExpired(token: string): boolean {
+  try {
+    const payloadBase64 = token.split('.')[1]
+    if (!payloadBase64) return false
+
+    const normalized = payloadBase64.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
+    const payload = JSON.parse(atob(padded))
+
+    return typeof payload.exp === 'number' && payload.exp * 1000 <= Date.now()
+  } catch {
+    return false
+  }
+}
+
 /**
  * 构建带有 Authorization: Bearer <token> 的请求头对象。
  * 若 token 不存在则返回空对象（不附加 Authorization）。
@@ -81,10 +96,18 @@ export function clearAuth(): void {
 }
 
 /**
- * 判断当前是否已认证（仅检查 token 是否存在；不校验有效期）。
+ * 判断当前是否已认证；过期 token 会被清理并视为未登录。
  */
 export function isAuthenticated(): boolean {
-  return !!getToken()
+  const token = getToken()
+  if (!token) return false
+
+  if (isTokenExpired(token)) {
+    clearAuth()
+    return false
+  }
+
+  return true
 }
 
 /**

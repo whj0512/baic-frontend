@@ -10,7 +10,8 @@ function AuthCallback() {
 
   useEffect(() => {
     const handleAuthAction = async () => {
-      const token = searchParams.get('token');
+      const outerSearchParams = new URLSearchParams(window.location.search);
+      const token = searchParams.get('token') ?? outerSearchParams.get('token');
 
       if (!token) {
         navigate('/auth-failure', { replace: true });
