@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { API_ENDPOINTS } from '../config/api'
+import { saveBrowserAuth } from '../config/authClient'
 import { message } from 'antd'
 import './Login.css'
 
@@ -30,9 +31,11 @@ function Login() {
       }
 
       // 存储 token 和 user_id
-      localStorage.setItem('token', data.token)
-      localStorage.setItem('user_id', data.user_id)
-      localStorage.setItem('username', username)
+      saveBrowserAuth({
+        token: data.token,
+        userId: data.user_id,
+        username,
+      })
 
       message.success('登录成功')
       // 登录成功后跳转到首页

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { message } from 'antd'
-import { API_ENDPOINTS } from '../config/api'
+import { API_ENDPOINTS, authFetch } from '../config/api'
 import './CreateProject.css'
 
 function CreateProject() {
@@ -26,12 +26,10 @@ function CreateProject() {
 
     setSubmitting(true)
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(API_ENDPOINTS.projects, {
+      const response = await authFetch(API_ENDPOINTS.projects, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           key: formData.key || null,

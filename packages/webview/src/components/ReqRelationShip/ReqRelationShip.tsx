@@ -5,7 +5,7 @@ import ReactECharts from 'echarts-for-react';
 import { Graph } from '@antv/x6';
 import { exportGraphToRBG } from '../../models/strategies/internalConstraints/exportGraph';
 import type { Requirement } from '../../models/Requirement';
-import { API_ENDPOINTS } from '../../config/api';
+import { API_ENDPOINTS, authFetch } from '../../config/api';
 import { getRequirementRelationNodeStyle } from '../echartsNodeStyles';
 
 // Ensures shapes are registered
@@ -105,12 +105,10 @@ const ReqRelationShip: React.FC<ReqRelationShipProps> = ({ requirements, onBack 
       console.log('Sending dependencies Request Body:', requestBody);
 
       const dependencyUrl = API_ENDPOINTS.dependency;
-      const token = localStorage.getItem('token');
-      const response = await fetch(dependencyUrl, {
+      const response = await authFetch(dependencyUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify(requestBody),
       });

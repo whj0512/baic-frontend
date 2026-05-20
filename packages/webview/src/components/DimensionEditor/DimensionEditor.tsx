@@ -5,7 +5,7 @@ import type { Requirement } from '../../models/Requirement'
 import FlowGraph, { type FlowGraphRef } from '../graph'
 import DslEditor from '../dsl-editor'
 import { getModelStrategy } from '../../models/strategies'
-import { API_ENDPOINTS, getDslToRbgEndpoint, getRbgToDslEndpoint } from '../../config/api'
+import { API_ENDPOINTS, authFetch, getDslToRbgEndpoint, getRbgToDslEndpoint } from '../../config/api'
 import { exportGraphToRBG } from '../../models/strategies/internalConstraints/exportGraph'
 import './DimensionEditor.css'
 
@@ -261,19 +261,16 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
     // If it's an existing requirement, call API
     setSaving(true)
     try {
-      const token = localStorage.getItem('token')
-
       const payload = {
         [config.graphField]: graphDataRef.current,
         [config.dslField]: dslContent,
         nl_text: content
       }
 
-      const response = await fetch(`${API_ENDPOINTS.requirements}/${requirement.id}`, {
+      const response = await authFetch(`${API_ENDPOINTS.requirements}/${requirement.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
         },
         body: JSON.stringify(payload)
       })

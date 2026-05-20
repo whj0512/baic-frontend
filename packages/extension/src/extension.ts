@@ -13,8 +13,118 @@ interface RuntimeConfig {
   lspWs: LspWsConfig
 }
 
+type AuthStatus = 'checking' | 'authenticated' | 'unauthenticated'
+
+interface AuthSnapshot {
+  status: AuthStatus
+  token?: string
+  user?: {
+    id: string
+    email: string
+  }
+  expiresAt?: number
+}
+
+type WebviewToExtensionMessage =
+  | { type: 'auth:get' }
+  | { type: 'auth:login'; payload: { email: string } }
+  | { type: 'auth:logout' }
+
+type ExtensionToWebviewMessage =
+  | { type: 'auth:state'; payload: AuthSnapshot }
+  | { type: 'auth:error'; payload: { message: string } }
+
+const SECRET_TOKEN = 'baic.auth.token'
+const SECRET_USER_ID = 'baic.auth.userId'
+const SECRET_USERNAME = 'baic.auth.username'
+const SECRET_EXPIRES_AT = 'baic.auth.expiresAt'
+
+class AuthService {
+  constructor(private readonly secrets: vscode.SecretStorage) {}
+
+  async getSnapshot(): Promise<AuthSnapshot> {
+    const token = await this.secrets.get(SECRET_TOKEN)
+    if (!token) {
+      return { status: 'unauthenticated' }
+    }
+
+    const storedExpiresAt = Number(await this.secrets.get(SECRET_EXPIRES_AT))
+    const expiresAt = Number.isFinite(storedExpiresAt)
+      ? storedExpiresAt
+      : getTokenExpiresAt(token)
+
+    if ((expiresAt && expiresAt <= Date.now()) || isTokenExpired(token)) {
+      await this.clear()
+      return { status: 'unauthenticated' }
+    }
+
+    const userId = await this.secrets.get(SECRET_USER_ID)
+    const username = await this.secrets.get(SECRET_USERNAME)
+
+    return {
+      status: 'authenticated',
+      token,
+      user: userId && username ? { id: userId, email: username } : undefined,
+      expiresAt,
+    }
+  }
+
+  async login(email: string, config: RuntimeConfig): Promise<AuthSnapshot> {
+    const response = await fetch(`${config.apiBaseUrl}/auth/email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    })
+
+    const data = await readJsonObject(response)
+    if (!response.ok) {
+      throw new Error(getString(data.detail) || `Auth request failed: ${response.status}`)
+    }
+
+    if (data.matched !== true || typeof data.token !== 'string') {
+      throw new Error('Authentication failed')
+    }
+
+    const userId = getString(data.user_id) || getString(data.id) || ''
+    const username = getString(data.email) || email
+    const expiresAt = getTokenExpiresAt(data.token)
+
+    await this.secrets.store(SECRET_TOKEN, data.token)
+    await this.secrets.store(SECRET_USER_ID, userId)
+    await this.secrets.store(SECRET_USERNAME, username)
+    if (expiresAt) {
+      await this.secrets.store(SECRET_EXPIRES_AT, String(expiresAt))
+    } else {
+      await this.secrets.delete(SECRET_EXPIRES_AT)
+    }
+
+    return this.getSnapshot()
+  }
+
+  async clear(): Promise<void> {
+    await Promise.all([
+      this.secrets.delete(SECRET_TOKEN),
+      this.secrets.delete(SECRET_USER_ID),
+      this.secrets.delete(SECRET_USERNAME),
+      this.secrets.delete(SECRET_EXPIRES_AT),
+    ])
+  }
+}
+
 export function activate(context: vscode.ExtensionContext): void {
-  const disposable = vscode.commands.registerCommand(
+  const authService = new AuthService(context.secrets)
+  const panels = new Set<vscode.WebviewPanel>()
+
+  const broadcastAuthState = async () => {
+    const snapshot = await authService.getSnapshot()
+    panels.forEach(panel => {
+      postToWebview(panel.webview, { type: 'auth:state', payload: snapshot })
+    })
+  }
+
+  const openDisposable = vscode.commands.registerCommand(
     'baic.openRequirementsManager',
     () => {
       const panel = vscode.window.createWebviewPanel(
@@ -30,11 +140,87 @@ export function activate(context: vscode.ExtensionContext): void {
         },
       )
 
+      panels.add(panel)
+      panel.onDidDispose(() => panels.delete(panel))
+
+      panel.webview.onDidReceiveMessage((message: WebviewToExtensionMessage) => {
+        void handleWebviewMessage(message, panel.webview, authService)
+      })
+
       panel.webview.html = getWebviewHtml(panel.webview, context.extensionUri)
     },
   )
 
-  context.subscriptions.push(disposable)
+  const loginDisposable = vscode.commands.registerCommand('baic.login', async () => {
+    const email = await vscode.window.showInputBox({
+      title: 'BAIC Login',
+      prompt: 'Enter the email or identity token recognized by the backend.',
+      ignoreFocusOut: true,
+      validateInput: value => value.trim() ? undefined : 'Email is required',
+    })
+
+    if (!email) return
+
+    try {
+      await authService.login(email.trim(), getRuntimeConfig())
+      await vscode.window.showInformationMessage('BAIC login succeeded')
+      await broadcastAuthState()
+    } catch (error) {
+      await vscode.window.showErrorMessage(getErrorMessage(error))
+    }
+  })
+
+  const logoutDisposable = vscode.commands.registerCommand('baic.logout', async () => {
+    await authService.clear()
+    await vscode.window.showInformationMessage('BAIC login state cleared')
+    await broadcastAuthState()
+  })
+
+  context.subscriptions.push(openDisposable, loginDisposable, logoutDisposable)
+}
+
+async function handleWebviewMessage(
+  message: WebviewToExtensionMessage,
+  webview: vscode.Webview,
+  authService: AuthService,
+): Promise<void> {
+  try {
+    switch (message.type) {
+      case 'auth:get':
+        postToWebview(webview, {
+          type: 'auth:state',
+          payload: await authService.getSnapshot(),
+        })
+        return
+
+      case 'auth:login':
+        postToWebview(webview, {
+          type: 'auth:state',
+          payload: await authService.login(message.payload.email, getRuntimeConfig()),
+        })
+        return
+
+      case 'auth:logout':
+        await authService.clear()
+        postToWebview(webview, {
+          type: 'auth:state',
+          payload: { status: 'unauthenticated' },
+        })
+        return
+    }
+  } catch (error) {
+    postToWebview(webview, {
+      type: 'auth:error',
+      payload: { message: getErrorMessage(error) },
+    })
+  }
+}
+
+function postToWebview(
+  webview: vscode.Webview,
+  message: ExtensionToWebviewMessage,
+): void {
+  void webview.postMessage(message)
 }
 
 function getWebviewHtml(
@@ -109,6 +295,42 @@ function getRuntimeConfig(): RuntimeConfig {
   }
 }
 
+async function readJsonObject(response: Response): Promise<Record<string, unknown>> {
+  try {
+    const data = await response.json()
+    return typeof data === 'object' && data !== null
+      ? data as Record<string, unknown>
+      : {}
+  } catch {
+    return {}
+  }
+}
+
+function getString(value: unknown): string {
+  return typeof value === 'string' ? value : ''
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Unknown error'
+}
+
+function isTokenExpired(token: string): boolean {
+  const expiresAt = getTokenExpiresAt(token)
+  return Boolean(expiresAt && expiresAt <= Date.now())
+}
+
+function getTokenExpiresAt(token: string): number | undefined {
+  try {
+    const payloadBase64 = token.split('.')[1]
+    if (!payloadBase64) return undefined
+
+    const payload = JSON.parse(Buffer.from(payloadBase64, 'base64url').toString('utf8'))
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : undefined
+  } catch {
+    return undefined
+  }
+}
+
 function getOrigin(value: string): string {
   try {
     return new URL(value).origin
@@ -129,4 +351,4 @@ function createNonce(): string {
   return result
 }
 
-export function deactivate(): void { }
+export function deactivate(): void {}

@@ -1,5 +1,12 @@
 // API 配置
 
+import {
+  clearAuth as clearClientAuth,
+  getToken as getClientToken,
+  isAuthenticated as isClientAuthenticated,
+  isExtensionAuthMode,
+  isTokenExpired as isClientTokenExpired,
+} from './authClient'
 import { getRuntimeConfig } from './runtime'
 
 const runtimeConfig = getRuntimeConfig()
@@ -57,31 +64,18 @@ export const EXISTING_SYSTEM_LOGIN_URL = 'www.baidu.com';
 /**
  * 从 localStorage 获取当前 JWT token。
  */
-export function getToken(): string | null {
-  return localStorage.getItem('token')
+export function getToken(): Promise<string | null> {
+  return getClientToken()
 }
 
-export function isTokenExpired(token: string): boolean {
-  try {
-    const payloadBase64 = token.split('.')[1]
-    if (!payloadBase64) return false
-
-    const normalized = payloadBase64.replace(/-/g, '+').replace(/_/g, '/')
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
-    const payload = JSON.parse(atob(padded))
-
-    return typeof payload.exp === 'number' && payload.exp * 1000 <= Date.now()
-  } catch {
-    return false
-  }
-}
+export const isTokenExpired = isClientTokenExpired
 
 /**
  * 构建带有 Authorization: Bearer <token> 的请求头对象。
  * 若 token 不存在则返回空对象（不附加 Authorization）。
  */
-export function getAuthHeaders(): Record<string, string> {
-  const token = getToken()
+export async function getAuthHeaders(): Promise<Record<string, string>> {
+  const token = await getToken()
   if (!token) return {}
   return { Authorization: `Bearer ${token}` }
 }
@@ -90,24 +84,14 @@ export function getAuthHeaders(): Record<string, string> {
  * 清除 localStorage 中的认证信息（token / user_id / username）。
  */
 export function clearAuth(): void {
-  localStorage.removeItem('token')
-  localStorage.removeItem('user_id')
-  localStorage.removeItem('username')
+  clearClientAuth()
 }
 
 /**
  * 判断当前是否已认证；过期 token 会被清理并视为未登录。
  */
-export function isAuthenticated(): boolean {
-  const token = getToken()
-  if (!token) return false
-
-  if (isTokenExpired(token)) {
-    clearAuth()
-    return false
-  }
-
-  return true
+export function isAuthenticated(): Promise<boolean> {
+  return isClientAuthenticated()
 }
 
 /**
@@ -129,7 +113,7 @@ export async function authFetch(
 
   // 注入 Authorization（仅当调用方未自行设置时）
   if (!headers.has('Authorization')) {
-    const token = getToken()
+    const token = await getToken()
     if (token) {
       headers.set('Authorization', `Bearer ${token}`)
     }
@@ -138,8 +122,13 @@ export async function authFetch(
   const response = await fetch(input, { ...init, headers })
 
   // 处理 401：token 缺失 / 无效 / 过期
-  if (response.status === 401) {
+  if (response.status === 401 || response.status === 403) {
     clearAuth()
+
+    if (isExtensionAuthMode()) {
+      return response
+    }
+
     // 避免在已经处于认证相关页面时重复跳转
     const authPages = ['/login', '/register', '/auth-callback', '/auth-failure']
     const currentPath = window.location.hash.replace(/^#/, '') || window.location.pathname

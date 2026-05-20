@@ -16,6 +16,14 @@
       {
         "command": "baic.openRequirementsManager",
         "title": "BAIC: Open Requirements Manager"
+      },
+      {
+        "command": "baic.login",
+        "title": "BAIC: Login"
+      },
+      {
+        "command": "baic.logout",
+        "title": "BAIC: Logout"
       }
     ],
     "configuration": {

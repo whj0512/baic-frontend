@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { message } from 'antd';
 import { API_ENDPOINTS, clearAuth } from '../config/api';
+import { isExtensionAuthMode, loginWithEmail, saveBrowserAuth } from '../config/authClient';
 import './AuthCallback.css';
 
 function AuthCallback() {
@@ -41,6 +42,17 @@ function AuthCallback() {
           return;
         }
 
+        if (isExtensionAuthMode()) {
+          const snapshot = await loginWithEmail(email);
+          if (snapshot.status === 'authenticated') {
+            message.success('登录成功');
+            navigate('/');
+          } else {
+            navigate('/auth-failure', { replace: true });
+          }
+          return;
+        }
+
         const response = await fetch(API_ENDPOINTS.auth, {
           method: 'POST',
           headers: {
@@ -54,9 +66,11 @@ function AuthCallback() {
         if (data.matched) {
           // 先清除旧的认证信息，再保存新的
           clearAuth();
-          localStorage.setItem('token', data.token);
-          localStorage.setItem('user_id', data.user_id);
-          localStorage.setItem('username', data.email);
+          saveBrowserAuth({
+            token: data.token,
+            userId: data.user_id,
+            username: data.email,
+          });
           message.success('登录成功');
           // 登录成功后跳转到首页
           navigate('/');

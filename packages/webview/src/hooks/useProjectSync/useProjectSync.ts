@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import type { Requirement } from '../../models/Requirement'
-import { clearAuth, isTokenExpired, WS_ENDPOINTS } from '../../config/api'
+import { clearAuth, getToken, isTokenExpired, WS_ENDPOINTS } from '../../config/api'
+import { isExtensionAuthMode } from '../../config/authClient'
 
 interface WebSocketMessage {
     event: 'initial_state' | 'requirement_created' | 'requirement_updated'
@@ -57,20 +58,22 @@ export function useProjectSync(projectId: string | undefined) {
             return
         }
 
-        function connect() {
-            const token = localStorage.getItem('token') || ''
+        async function connect() {
+            const token = await getToken() || ''
 
             if (token && isTokenExpired(token)) {
                 console.error('鉂?[WS] 本地 token 已过期，停止连接并重新进入鉴权流程')
                 clearAuth()
-                window.location.hash = '/auth-callback'
+                if (!isExtensionAuthMode()) {
+                    window.location.hash = '/auth-callback'
+                }
                 return
             }
 
             const url = `${WS_ENDPOINTS.projectSync(projectId!)}${token ? `?token=${encodeURIComponent(token)}` : ''}`
             let hasOpened = false
-            console.log(`🔗 [WS] 正在连接: ${url}`)
-            console.log(`🔗 [WS] projectId=${projectId}, token=${token ? token.substring(0, 20) + '...' : '(空)'}`)
+            console.log(`🔗 [WS] 正在连接: ${WS_ENDPOINTS.projectSync(projectId!)}`)
+            console.log(`🔗 [WS] projectId=${projectId}, token=${token ? '(present)' : '(empty)'}`)
             const ws = new WebSocket(url)
             wsRef.current = ws
 
@@ -151,7 +154,9 @@ export function useProjectSync(projectId: string | undefined) {
 
                 if (event.code === 1008) {
                     clearAuth()
-                    window.location.hash = '/auth-callback'
+                    if (!isExtensionAuthMode()) {
+                        window.location.hash = '/auth-callback'
+                    }
                     return
                 }
 
@@ -160,14 +165,16 @@ export function useProjectSync(projectId: string | undefined) {
                     retryCountRef.current++
                     const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 30000)
                     console.log(`🔄 [WS] ${delay}ms 后重连 (${retryCountRef.current}/${MAX_RETRIES})`)
-                    retryTimerRef.current = setTimeout(connect, delay)
+                    retryTimerRef.current = setTimeout(() => {
+                        void connect()
+                    }, delay)
                 } else {
                     console.error('❌ [WS] 达到最大重连次数，停止重连')
                 }
             }
         }
 
-        connect()
+        void connect()
 
         return cleanup
     }, [projectId, cleanup])

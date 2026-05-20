@@ -115,6 +115,11 @@
   height: 40px;
   border: 2px solid #e5e7eb;
   transition: border-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #374151;
+  background-color: #ffffff;
 }
 
 .user-avatar:hover {
@@ -125,6 +130,30 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.user-session {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.logout-button {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #4b5563;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logout-button:hover {
+  background-color: #f3f4f6;
+  color: #111827;
 }
 
 /* 响应式设计 */
@@ -163,9 +192,20 @@
 
   .user-avatar {
     border-color: #374151;
+    background-color: #111827;
+    color: #f9fafb;
   }
 
   .user-avatar:hover {
     border-color: #646cff;
+  }
+
+  .logout-button {
+    color: #d1d5db;
+  }
+
+  .logout-button:hover {
+    background-color: #374151;
+    color: #ffffff;
   }
 }

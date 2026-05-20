@@ -1,32 +1,37 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Outlet, Navigate, useLocation } from 'react-router-dom'
 import TopBar from '../components/TopBar'
-import { isAuthenticated } from '../config/api'
+import { isExtensionAuthMode, loginWithEmail } from '../config/authClient'
+import { useAuth } from '../hooks/useAuth'
 import './MainLayout.css'
 
 function MainLayout() {
   const location = useLocation()
-  const [authed, setAuthed] = useState(() => isAuthenticated())
+  const auth = useAuth()
+  const [email, setEmail] = useState('')
+  const [loggingIn, setLoggingIn] = useState(false)
+  const [loginError, setLoginError] = useState('')
 
-  useEffect(() => {
-    // 监听 storage 事件——当其它标签页清除 token 时同步本标签页的认证状态
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'token') {
-        setAuthed(isAuthenticated())
+  const handleExtensionLogin = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!email.trim()) return
+
+    setLoggingIn(true)
+    setLoginError('')
+
+    try {
+      const next = await loginWithEmail(email.trim())
+      if (next.status !== 'authenticated') {
+        setLoginError('鉴权失败，请确认账号信息')
       }
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : '鉴权失败')
+    } finally {
+      setLoggingIn(false)
     }
-    window.addEventListener('storage', handleStorageChange)
-    return () => window.removeEventListener('storage', handleStorageChange)
-  }, [])
+  }
 
-  // 每次路由变化时重新检查 token 是否仍然存在
-  useEffect(() => {
-    setAuthed(isAuthenticated())
-  }, [location])
-
-  // 若尚未鉴权，优先跳转至 /auth-callback 进行鉴权逻辑处理
-  // 这里将 search 参数保留，以防外部系统直接携带 token 访问了内置的页面链接
-  if (!authed) {
+  if (auth.status !== 'authenticated' && !isExtensionAuthMode()) {
     const authSearch = location.search || window.location.search
     return (
       <Navigate
@@ -36,6 +41,43 @@ function MainLayout() {
         }}
         replace
       />
+    )
+  }
+
+  if (auth.status === 'checking') {
+    return (
+      <div className="extension-auth-page">
+        <div className="extension-auth-panel">
+          <h2>正在检查登录状态</h2>
+        </div>
+      </div>
+    )
+  }
+
+  if (auth.status !== 'authenticated') {
+    return (
+      <div className="extension-auth-page">
+        <form className="extension-auth-panel" onSubmit={handleExtensionLogin}>
+          <h2>BAIC Requirements Manager</h2>
+          <p>请输入账号邮箱完成 VS Code 扩展鉴权。</p>
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="name@example.org"
+            className="extension-auth-input"
+            autoFocus
+          />
+          {loginError && <div className="extension-auth-error">{loginError}</div>}
+          <button
+            type="submit"
+            className="extension-auth-button"
+            disabled={loggingIn || !email.trim()}
+          >
+            {loggingIn ? '登录中...' : '登录'}
+          </button>
+        </form>
+      </div>
     )
   }
 
@@ -50,4 +92,3 @@ function MainLayout() {
 }
 
 export default MainLayout
-

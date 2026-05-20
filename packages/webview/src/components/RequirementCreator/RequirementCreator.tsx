@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { message, Tabs, Upload, Button } from 'antd'
 import { UploadOutlined, RobotOutlined, FormOutlined } from '@ant-design/icons'
-import { API_ENDPOINTS } from '../../config/api'
+import { API_ENDPOINTS, authFetch } from '../../config/api'
 import './RequirementCreator.css'
 
 // Types
@@ -158,12 +158,10 @@ function RequirementCreator({
         }
 
         try {
-            const token = localStorage.getItem('token')
-            const response = await fetch(API_ENDPOINTS.requirements, {
+            const response = await authFetch(API_ENDPOINTS.requirements, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': token ? `Bearer ${token}` : ''
                 },
                 body: JSON.stringify({
                     project_key: projectKey,

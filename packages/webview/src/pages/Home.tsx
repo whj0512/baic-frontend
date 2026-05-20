@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Modal, message, Spin } from 'antd'
-import { API_ENDPOINTS } from '../config/api'
+import { API_ENDPOINTS, authFetch } from '../config/api'
 import './Home.css'
 import type { Project } from '../models/Project'
 
@@ -19,7 +19,7 @@ function Home() {
   const fetchProjects = async () => {
     setLoading(true)
     try {
-      const response = await fetch(API_ENDPOINTS.projects)
+      const response = await authFetch(API_ENDPOINTS.projects)
       if (!response.ok) {
         throw new Error('Failed to fetch projects')
       }

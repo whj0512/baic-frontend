@@ -11,7 +11,7 @@ import DimensionEditor from '../components/DimensionEditor'
 import RequirementCreator from '../components/RequirementCreator/RequirementCreator'
 import ReqRelationShip from '../components/ReqRelationShip'
 import TestCaseOverview from '../components/TestCaseOverview'
-import { API_ENDPOINTS } from '../config/api'
+import { API_ENDPOINTS, authFetch } from '../config/api'
 import { useProjectSync } from '../hooks/useProjectSync'
 
 // 中间区域视图类型
@@ -85,7 +85,7 @@ function ProjectWorkSpace() {
       if (!projectKey) return
       setLoading(true)
       try {
-        const projRes = await fetch(API_ENDPOINTS.projects)
+        const projRes = await authFetch(API_ENDPOINTS.projects)
         if (!projRes.ok) throw new Error('获取项目列表失败')
         const projData = await projRes.json()
         const projects = Array.isArray(projData) ? projData : (projData.projects || [])
@@ -123,7 +123,7 @@ function ProjectWorkSpace() {
       setLoadingVersions(true)
       try {
         const url = `${API_ENDPOINTS.requirements}/${selectedRequirement}`
-        const res = await fetch(url)
+        const res = await authFetch(url)
         if (!res.ok) throw new Error('获取需求详情失败')
         const data = await res.json()
 
@@ -288,12 +288,8 @@ function ProjectWorkSpace() {
       onOk: async () => {
         setDeleting(true)
         try {
-          const token = localStorage.getItem('token')
-          const response = await fetch(API_ENDPOINTS.requirementById(req.id), {
+          const response = await authFetch(API_ENDPOINTS.requirementById(req.id), {
             method: 'DELETE',
-            headers: {
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
           })
           if (!response.ok) {
             const errorData = await response.json()

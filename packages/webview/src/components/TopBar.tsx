@@ -1,9 +1,12 @@
 import { useState } from 'react'
+import { InfoCircleOutlined, LogoutOutlined, MenuUnfoldOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons'
+import { clearAuth } from '../config/api'
+import { useAuth } from '../hooks/useAuth'
 import './TopBar.css'
-import { InfoCircleOutlined, MenuUnfoldOutlined, SearchOutlined } from '@ant-design/icons'
 
 function TopBar() {
   const [searchQuery, setSearchQuery] = useState('')
+  const auth = useAuth()
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -12,7 +15,6 @@ function TopBar() {
 
   return (
     <div className="topbar">
-      {/* 左侧 Icon */}
       <div className="topbar-left">
         <div className="topbar-logo">
           <span className="logo-icon">
@@ -21,9 +23,7 @@ function TopBar() {
         </div>
       </div>
 
-      {/* 右侧内容 */}
       <div className="topbar-right">
-        {/* 搜索框 */}
         <form className="search-box" onSubmit={handleSearch}>
           <input
             type="text"
@@ -37,7 +37,6 @@ function TopBar() {
           </button>
         </form>
 
-        {/* 通知提醒 */}
         <button className="notification-button">
           <span className="notification-icon">
             <InfoCircleOutlined />
@@ -45,13 +44,13 @@ function TopBar() {
           <span className="notification-badge">3</span>
         </button>
 
-        {/* 用户头像 */}
-        <div className="user-avatar">
-          <img
-            src="https://via.placeholder.com/40"
-            alt="User Avatar"
-            className="avatar-image"
-          />
+        <div className="user-session">
+          <div className="user-avatar" title={auth.user?.email || 'Current user'}>
+            <UserOutlined />
+          </div>
+          <button className="logout-button" onClick={() => clearAuth()} title="退出登录">
+            <LogoutOutlined />
+          </button>
         </div>
       </div>
     </div>
