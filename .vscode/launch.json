@@ -11,7 +11,7 @@
       "outFiles": [
         "${workspaceFolder}/packages/extension/dist/**/*.js"
       ],
-      "preLaunchTask": "compile:extension"
+      "preLaunchTask": "build:debug-extension"
     }
   ]
 }

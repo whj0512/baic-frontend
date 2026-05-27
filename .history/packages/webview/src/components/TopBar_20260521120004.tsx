@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { InfoCircleOutlined, LogoutOutlined, MenuUnfoldOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons'
 import { clearAuth } from '../config/api'
 import './TopBar.css'
-import { useAuth } from '../hooks/useAuth'
 
 function TopBar() {
   const [searchQuery, setSearchQuery] = useState('')

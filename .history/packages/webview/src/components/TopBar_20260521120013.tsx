@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth'
 
 function TopBar() {
   const [searchQuery, setSearchQuery] = useState('')
-  const auth = useAuth()
+  const auth = useAuth
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()

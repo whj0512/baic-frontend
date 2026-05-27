@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { Outlet, Navigate, useLocation } from 'react-router-dom'
 import TopBar from '../components/TopBar'
 import { isExtensionAuthMode, loginWithEmail } from '../config/authClient'
+import { useAuth } from '../hooks/useAuth/useAuth'
 import './MainLayout.css'
-import { useAuth } from '../hooks/useAuth'
 
 function MainLayout() {
   const location = useLocation()

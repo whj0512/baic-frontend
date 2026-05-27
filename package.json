@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "npm run dev --workspace @baic/webview",
     "build": "npm run build:webview && npm run build:extension",
+    "build:debug-extension": "npm run build:webview && npm run build:extension",
     "build:webview": "npm run build --workspace @baic/webview",
     "build:extension": "npm run build --workspace @baic/extension",
     "lint": "npm run lint --workspace @baic/webview",

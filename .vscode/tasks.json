@@ -14,6 +14,13 @@
       "command": "npm run build:extension",
       "group": "build",
       "problemMatcher": "$tsc"
+    },
+    {
+      "label": "build:debug-extension",
+      "type": "shell",
+      "command": "npm run build:debug-extension",
+      "group": "build",
+      "problemMatcher": "$tsc"
     }
   ]
 }
