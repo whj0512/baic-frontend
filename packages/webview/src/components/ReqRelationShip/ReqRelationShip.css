@@ -15,6 +15,7 @@
 }
 
 .req-relationship-header h2 {
+  order: 1;
   margin: 0;
   font-size: 18px;
   color: #333;
@@ -27,6 +28,11 @@
 
 .req-relationship-back-btn:hover {
   color: #1890ff;
+}
+
+.req-relationship-render-switch {
+  order: 2;
+  margin-left: auto;
 }
 
 .req-relationship-content {
@@ -49,6 +55,18 @@
   border-radius: 4px;
   overflow-x: auto;
   font-family: 'Courier New', Courier, monospace;
+}
+
+.nvl-graph-container {
+  height: 100%;
+  min-height: 600px;
+  width: 100%;
+}
+
+.nvl-graph-container > div {
+  height: 100%;
+  min-height: 600px;
+  width: 100%;
 }
 
 .empty-tip {

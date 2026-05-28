@@ -1,0 +1,234 @@
+import type { Requirement } from '../../models/Requirement'
+import { getRequirementRelationNodeStyle } from '../echartsNodeStyles'
+import type {
+  DependencyResponse,
+  NormalizedReqRelationship,
+  NvlGraphData,
+  NvlNode,
+  NvlRelationship,
+  RequirementMap,
+} from './types'
+
+export function createRequirementMap(requirements: Requirement[]): RequirementMap {
+  return new Map(requirements.map((req) => [req.id, req]))
+}
+
+export function buildRequirementTreeData(requirements: Requirement[]) {
+  const grouped = requirements.reduce((acc, req) => {
+    const type = req.type || '未分类'
+    if (!acc[type]) acc[type] = []
+    acc[type].push(req)
+    return acc
+  }, {} as Record<string, Requirement[]>)
+
+  return Object.entries(grouped).map(([type, reqs]) => ({
+    title: type,
+    value: `type:${type}`,
+    children: reqs.map(req => ({
+      title: req.name || req.id,
+      value: req.id,
+    })),
+  }))
+}
+
+export function normalizeRelationships(resultData: DependencyResponse | null): NormalizedReqRelationship[] {
+  if (!resultData) return []
+
+  if (Array.isArray(resultData.relationships)) {
+    return resultData.relationships.map((rel, index) => ({
+      id: rel.id || `relationship-${index}`,
+      sourceRequirementId: rel.from_requirement,
+      targetRequirementId: rel.to_requirement,
+      relationType: rel.rel_type || 'depends_on',
+      dataName: typeof rel.properties?.data_name === 'string' ? rel.properties.data_name : undefined,
+      dependentRange: typeof rel.properties?.dependent_range === 'string' ? rel.properties.dependent_range : undefined,
+      dependedRange: typeof rel.properties?.depended_range === 'string' ? rel.properties.depended_range : undefined,
+      properties: rel.properties,
+    }))
+  }
+
+  if (Array.isArray(resultData.dependencies)) {
+    return resultData.dependencies.map((dep, index) => ({
+      id: `dependency-${dep.dependent_graph}-${dep.depended_graph}-${dep.data_name || index}`,
+      sourceRequirementId: dep.dependent_graph,
+      targetRequirementId: dep.depended_graph,
+      relationType: 'depends_on',
+      dataName: dep.data_name,
+      dependentRange: dep.dependent_range,
+      dependedRange: dep.depended_range,
+      properties: dep,
+    }))
+  }
+
+  return []
+}
+
+export function buildEchartsOption(
+  relationships: NormalizedReqRelationship[],
+  requirementMap: RequirementMap,
+) {
+  if (relationships.length === 0) return {}
+
+  const nodesMap = new Map<string, any>()
+  const links: any[] = []
+  const pairEdgeCountMap = new Map<string, number>()
+
+  relationships.forEach((rel) => {
+    const source = rel.sourceRequirementId
+    const sourceMeta = requirementMap.get(source)
+    const target = rel.targetRequirementId
+    const targetMeta = requirementMap.get(target)
+
+    addEchartsNode(nodesMap, source, sourceMeta)
+    addEchartsNode(nodesMap, target, targetMeta)
+
+    const [first, second] = [source, target].sort()
+    const pairKey = `${first}||${second}`
+    const pairIndex = pairEdgeCountMap.get(pairKey) || 0
+    pairEdgeCountMap.set(pairKey, pairIndex + 1)
+
+    const curveStep = 0.2
+    const level = Math.floor(pairIndex / 2) + 1
+    const sign = pairIndex % 2 === 0 ? 1 : -1
+    const curveness = level * curveStep * sign
+
+    links.push({
+      source,
+      target,
+      symbol: ['none', 'arrow'],
+      symbolSize: [0, 10],
+      label: {
+        show: true,
+        formatter: `<<Depend>>\n${rel.dataName || ''}`,
+        fontSize: 10,
+        color: '#666',
+        backgroundColor: 'rgba(255, 255, 255, 0.85)',
+        padding: [2, 4],
+        borderRadius: 2,
+      },
+      lineStyle: {
+        curveness,
+        color: '#999',
+        width: 2,
+      },
+      tooltip: {
+        formatter: `依赖数据: ${rel.dataName || ''}<br />Dependent: ${sourceMeta?.name || source}<br />Depended: ${targetMeta?.name || target}`,
+      },
+    })
+  })
+
+  return {
+    tooltip: {
+      trigger: 'item',
+    },
+    animationDurationUpdate: 1500,
+    animationEasingUpdate: 'quinticInOut',
+    series: [
+      {
+        type: 'graph',
+        layout: 'circular',
+        roam: true,
+        draggable: true,
+        label: {
+          show: true,
+        },
+        edgeSymbol: ['none', 'arrow'],
+        edgeLabel: {
+          fontSize: 12,
+        },
+        data: Array.from(nodesMap.values()),
+        links,
+        lineStyle: {
+          opacity: 0.9,
+          width: 2,
+          curveness: 0,
+        },
+      },
+    ],
+  }
+}
+
+export function buildNvlGraphData(
+  relationships: NormalizedReqRelationship[],
+  requirementMap: RequirementMap,
+): NvlGraphData {
+  const nodesMap = new Map<string, NvlNode>()
+  const rels: NvlRelationship[] = []
+
+  relationships.forEach((rel) => {
+    const source = rel.sourceRequirementId
+    const target = rel.targetRequirementId
+    const sourceMeta = requirementMap.get(source)
+    const targetMeta = requirementMap.get(target)
+
+    addNvlNode(nodesMap, source, sourceMeta)
+    addNvlNode(nodesMap, target, targetMeta)
+
+    rels.push({
+      id: rel.id,
+      from: source,
+      to: target,
+      caption: rel.dataName || rel.relationType,
+      type: rel.relationType,
+      color: '#999',
+      width: 2,
+      properties: {
+        ...rel.properties,
+        dataName: rel.dataName,
+        dependentRange: rel.dependentRange,
+        dependedRange: rel.dependedRange,
+      },
+    })
+  })
+
+  return {
+    nodes: Array.from(nodesMap.values()),
+    rels,
+  }
+}
+
+function addEchartsNode(nodesMap: Map<string, any>, id: string, requirement?: Requirement) {
+  if (nodesMap.has(id)) return
+
+  const nodeName = requirement?.name
+  const style = getRequirementRelationNodeStyle(requirement?.type)
+
+  nodesMap.set(id, {
+    id,
+    name: nodeName?.substring(0, 8) || id.substring(0, 8),
+    symbol: 'circle',
+    symbolSize: style.symbolSize,
+    itemStyle: {
+      color: style.backgroundColor,
+      borderType: style.borderType,
+      borderColor: style.borderColor,
+      borderWidth: style.borderWidth,
+    },
+    label: {
+      show: true,
+      formatter: '{b}',
+      color: style.labelColor,
+    },
+    tooltip: {
+      formatter: `需求: ${nodeName || id}<br/>层级: ${requirement?.type || '未分类'}`,
+    },
+  })
+}
+
+function addNvlNode(nodesMap: Map<string, NvlNode>, id: string, requirement?: Requirement) {
+  if (nodesMap.has(id)) return
+
+  const style = getRequirementRelationNodeStyle(requirement?.type)
+
+  nodesMap.set(id, {
+    id,
+    caption: requirement?.name?.substring(0, 8) || id.substring(0, 8),
+    size: Math.max(24, style.symbolSize / 2),
+    color: style.backgroundColor,
+    properties: {
+      name: requirement?.name || id,
+      type: requirement?.type,
+      subtype: requirement?.subtype,
+    },
+  })
+}
