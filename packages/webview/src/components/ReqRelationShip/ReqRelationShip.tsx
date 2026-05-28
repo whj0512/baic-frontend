@@ -7,6 +7,7 @@ import { buildDependencyRequestBody } from './dependencyPayload'
 import RelationshipGraphView from './RelationshipGraphView'
 import {
   buildEchartsOption,
+  buildG6GraphData,
   buildNvlGraphData,
   buildRequirementTreeData,
   createRequirementMap,
@@ -24,6 +25,7 @@ interface ReqRelationShipProps {
 const renderModeOptions = [
   { label: 'ECharts', value: 'echarts' },
   { label: 'Neo4j NVL', value: 'nvl' },
+  { label: 'AntV G6', value: 'antv/g6' },
 ]
 
 const ReqRelationShip: React.FC<ReqRelationShipProps> = ({ requirements, onBack }) => {
@@ -41,6 +43,10 @@ const ReqRelationShip: React.FC<ReqRelationShipProps> = ({ requirements, onBack 
   )
   const nvlGraphData = useMemo(
     () => buildNvlGraphData(normalizedRelationships, requirementMap),
+    [normalizedRelationships, requirementMap],
+  )
+  const g6GraphData = useMemo(
+    () => buildG6GraphData(normalizedRelationships, requirementMap),
     [normalizedRelationships, requirementMap],
   )
 
@@ -115,6 +121,7 @@ const ReqRelationShip: React.FC<ReqRelationShipProps> = ({ requirements, onBack 
               renderMode={renderMode}
               echartsOption={echartsOption}
               nvlGraphData={nvlGraphData}
+              g6GraphData={g6GraphData}
             />
           ) : (
             !loading && <div className="empty-tip">没有计算结果或没有有效需求数据</div>

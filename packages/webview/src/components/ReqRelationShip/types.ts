@@ -1,7 +1,8 @@
 import type { ReqRelationship } from '../../models/ReqRelationship'
 import type { Requirement } from '../../models/Requirement'
+import type { GraphData } from '@antv/g6'
 
-export type RenderMode = 'echarts' | 'nvl'
+export type RenderMode = 'echarts' | 'nvl' | 'antv/g6'
 
 export type RequirementMap = Map<string, Requirement>
 
@@ -53,3 +54,5 @@ export interface NvlGraphData {
   nodes: NvlNode[]
   rels: NvlRelationship[]
 }
+
+export type G6GraphData = GraphData
