@@ -1,22 +1,16 @@
 import { useEffect, useRef } from 'react'
-import { renderToStaticMarkup } from 'react-dom/server'
 import { Graph } from '@antv/g6'
 import type { ElementDatum, GraphOptions, IElementEvent } from '@antv/g6'
 import type { G6GraphData } from '../types'
 
-const G6_LEGEND_PLUGIN_OPTIONS = {
-  type: 'legend',
-  key: 'req-relationship-legend',
-  nodeField: 'type',
-  edgeField: 'relationType',
-}
-
 const G6_GRAPH_OPTIONS: Omit<GraphOptions, 'container' | 'data'> = {
   autoResize: true,
+  autoFit: 'view',
   padding: 48,
+  zoomRange: [0.2, 4],
   animation: true,
   layout: {
-    type: 'd3-force',
+    type: 'force',
     preventOverlap: true,
     nodeSize: 64,
     linkDistance: 180,
@@ -25,6 +19,7 @@ const G6_GRAPH_OPTIONS: Omit<GraphOptions, 'container' | 'data'> = {
     { type: 'drag-canvas' },
     { type: 'zoom-canvas' },
     { type: 'drag-element' },
+    { type: 'hover-activate' },
   ],
   transforms: [
     {
@@ -36,15 +31,11 @@ const G6_GRAPH_OPTIONS: Omit<GraphOptions, 'container' | 'data'> = {
   plugins: [
     {
       type: 'tooltip',
-      trigger: 'click',
-      position: 'right',
+      trigger: 'hover',
       enable: canShowDataTooltip,
       getContent: getDataTooltipContent,
       enterable: true,
       onOpenChange: () => undefined,
-    },
-    {
-      ...G6_LEGEND_PLUGIN_OPTIONS,
     },
   ],
 }
@@ -64,15 +55,50 @@ async function getDataTooltipContent(event: IElementEvent, items: ElementDatum[]
     .filter(([key, value]) => !primaryKeys.includes(key) && hasDisplayValue(value))
   const rawEntries = !isRecord(data) && hasDisplayValue(data) ? [['value', data] as const] : []
 
-  return renderToStaticMarkup(
-    <DataTooltip
-      targetType={event.targetType}
-      title={getTooltipTitle(event.targetType, normalizedData)}
-      primaryEntries={primaryEntries}
-      detailEntries={detailEntries}
-      rawEntries={rawEntries}
-    />,
-  )
+  const content = document.createElement('div')
+  content.style.width = '320px'
+  content.style.maxHeight = '320px'
+  content.style.overflow = 'auto'
+  content.style.padding = '2px'
+  content.style.fontFamily = 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+
+  const header = document.createElement('div')
+  header.style.display = 'flex'
+  header.style.alignItems = 'center'
+  header.style.justifyContent = 'space-between'
+  header.style.gap = '10px'
+  header.style.marginBottom = '10px'
+
+  const title = document.createElement('div')
+  title.textContent = getTooltipTitle(event.targetType, normalizedData)
+  title.style.fontWeight = '600'
+  title.style.color = '#1f1f1f'
+  title.style.fontSize = '13px'
+  title.style.lineHeight = '1.4'
+  title.style.overflow = 'hidden'
+  title.style.textOverflow = 'ellipsis'
+  title.style.whiteSpace = 'nowrap'
+
+  header.append(title, createElementKindBadge(event.targetType))
+  content.append(header)
+
+  if (primaryEntries.length > 0) {
+    content.append(createTooltipSection('核心信息', primaryEntries))
+  }
+
+  if (detailEntries.length > 0) {
+    content.append(createTooltipSection('详细属性', detailEntries))
+  }
+
+  if (rawEntries.length > 0) {
+    content.append(createTooltipSection('原始值', rawEntries))
+  }
+
+  if (primaryEntries.length === 0 && detailEntries.length === 0 && rawEntries.length === 0) {
+    content.append(createEmptyTip())
+  }
+
+  return content
 }
 
 function getElementData(items: ElementDatum[]) {
@@ -117,68 +143,102 @@ function getTooltipTitle(targetType: IElementEvent['targetType'], data: Record<s
   return '数据'
 }
 
-type TooltipEntry = readonly [string, unknown]
-
-interface DataTooltipProps {
-  targetType: IElementEvent['targetType']
-  title: string
-  primaryEntries: TooltipEntry[]
-  detailEntries: TooltipEntry[]
-  rawEntries: TooltipEntry[]
+function createElementKindBadge(targetType: IElementEvent['targetType']) {
+  const badge = document.createElement('span')
+  badge.textContent = targetType === 'node' ? '节点' : targetType === 'edge' ? '关系' : String(targetType)
+  badge.style.flex = '0 0 auto'
+  badge.style.padding = '2px 8px'
+  badge.style.borderRadius = '999px'
+  badge.style.background = targetType === 'edge' ? '#fff7e6' : '#e6f4ff'
+  badge.style.color = targetType === 'edge' ? '#ad6800' : '#0958d9'
+  badge.style.fontSize = '12px'
+  badge.style.fontWeight = '500'
+  return badge
 }
 
-function DataTooltip({ targetType, title, primaryEntries, detailEntries, rawEntries }: DataTooltipProps) {
-  const hasEntries = primaryEntries.length > 0 || detailEntries.length > 0 || rawEntries.length > 0
+function createTooltipSection(title: string, entries: ReadonlyArray<readonly [string, unknown]>) {
+  const section = document.createElement('section')
+  section.style.marginTop = '10px'
 
-  return (
-    <div className="g6-data-tooltip">
-      <div className="g6-data-tooltip__header">
-        <div className="g6-data-tooltip__title" title={title}>
-          {title}
-        </div>
-        <span className={`g6-data-tooltip__badge g6-data-tooltip__badge--${targetType}`}>
-          {getTooltipKindLabel(targetType)}
-        </span>
-      </div>
+  const heading = document.createElement('div')
+  heading.textContent = title
+  heading.style.marginBottom = '6px'
+  heading.style.color = '#8c8c8c'
+  heading.style.fontSize = '12px'
+  heading.style.fontWeight = '600'
 
-      {primaryEntries.length > 0 && <TooltipSection title="核心信息" entries={primaryEntries} />}
-      {detailEntries.length > 0 && <TooltipSection title="详细属性" entries={detailEntries} />}
-      {rawEntries.length > 0 && <TooltipSection title="原始值" entries={rawEntries} />}
-      {!hasEntries && <div className="g6-data-tooltip__empty">暂无可展示数据</div>}
-    </div>
-  )
+  const list = document.createElement('div')
+  list.style.display = 'grid'
+  list.style.gap = '6px'
+
+  entries.forEach(([key, value]) => {
+    list.append(createInfoRow(key, value))
+  })
+
+  section.append(heading, list)
+  return section
 }
 
-function TooltipSection({ title, entries }: { title: string, entries: TooltipEntry[] }) {
-  return (
-    <section className="g6-data-tooltip__section">
-      <div className="g6-data-tooltip__section-title">{title}</div>
-      <div className="g6-data-tooltip__list">
-        {entries.map(([key, value]) => (
-          <div className="g6-data-tooltip__row" key={key}>
-            <div className="g6-data-tooltip__label">{formatTooltipKey(key)}</div>
-            <div className="g6-data-tooltip__value">
-              <TooltipValue value={value} />
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  )
+function createInfoRow(key: string, value: unknown) {
+  const row = document.createElement('div')
+  row.style.display = 'grid'
+  row.style.gridTemplateColumns = '88px minmax(0, 1fr)'
+  row.style.gap = '8px'
+  row.style.alignItems = 'start'
+  row.style.padding = '6px 8px'
+  row.style.border = '1px solid #f0f0f0'
+  row.style.borderRadius = '6px'
+  row.style.background = '#fafafa'
+
+  const label = document.createElement('div')
+  label.textContent = formatTooltipKey(key)
+  label.style.color = '#8c8c8c'
+  label.style.fontSize = '12px'
+  label.style.lineHeight = '1.5'
+
+  const valueBox = document.createElement('div')
+  valueBox.append(createValueNode(value))
+
+  row.append(label, valueBox)
+  return row
 }
 
-function TooltipValue({ value }: { value: unknown }) {
+function createValueNode(value: unknown) {
   if (isRecord(value) || Array.isArray(value)) {
-    return <pre className="g6-data-tooltip__code">{stringifyTooltipData(value)}</pre>
+    const code = document.createElement('pre')
+    code.textContent = stringifyTooltipData(value)
+    code.style.margin = '0'
+    code.style.padding = '6px'
+    code.style.maxHeight = '120px'
+    code.style.overflow = 'auto'
+    code.style.whiteSpace = 'pre-wrap'
+    code.style.wordBreak = 'break-word'
+    code.style.borderRadius = '4px'
+    code.style.background = '#f5f5f5'
+    code.style.color = '#333'
+    code.style.fontSize = '12px'
+    code.style.lineHeight = '1.5'
+    return code
   }
 
-  return <span className="g6-data-tooltip__text">{toDisplayText(value)}</span>
+  const text = document.createElement('span')
+  text.textContent = toDisplayText(value)
+  text.style.color = '#262626'
+  text.style.fontSize = '12px'
+  text.style.lineHeight = '1.5'
+  text.style.wordBreak = 'break-word'
+  return text
 }
 
-function getTooltipKindLabel(targetType: IElementEvent['targetType']) {
-  if (targetType === 'node') return '节点'
-  if (targetType === 'edge') return '关系'
-  return String(targetType)
+function createEmptyTip() {
+  const empty = document.createElement('div')
+  empty.textContent = '暂无可展示数据'
+  empty.style.padding = '10px'
+  empty.style.borderRadius = '6px'
+  empty.style.background = '#fafafa'
+  empty.style.color = '#8c8c8c'
+  empty.style.fontSize = '12px'
+  return empty
 }
 
 function formatTooltipKey(key: string) {
@@ -251,15 +311,9 @@ function AntvG6GraphRenderer({ graphData }: AntvG6GraphRendererProps) {
     if (!graph || graph.destroyed) return
 
     graph.setData(graphData)
-    graph.render()
-      .then(() => {
-        if (!graph.destroyed) {
-          graph.updatePlugin(G6_LEGEND_PLUGIN_OPTIONS)
-        }
-      })
-      .catch((error) => {
-        console.debug('[ReqRelationShip][G6 render error]', error)
-      })
+    graph.render().catch((error) => {
+      console.debug('[ReqRelationShip][G6 render error]', error)
+    })
   }, [graphData])
 
   return <div ref={containerRef} className="antv-g6-graph-container" />

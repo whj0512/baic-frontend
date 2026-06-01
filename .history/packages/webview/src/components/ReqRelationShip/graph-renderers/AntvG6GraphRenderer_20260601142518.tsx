@@ -36,7 +36,6 @@ const G6_GRAPH_OPTIONS: Omit<GraphOptions, 'container' | 'data'> = {
   plugins: [
     {
       type: 'tooltip',
-      trigger: 'click',
       position: 'right',
       enable: canShowDataTooltip,
       getContent: getDataTooltipContent,

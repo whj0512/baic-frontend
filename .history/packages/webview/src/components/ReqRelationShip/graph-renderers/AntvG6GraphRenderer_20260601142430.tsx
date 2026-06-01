@@ -13,6 +13,7 @@ const G6_LEGEND_PLUGIN_OPTIONS = {
 
 const G6_GRAPH_OPTIONS: Omit<GraphOptions, 'container' | 'data'> = {
   autoResize: true,
+  autoFit: 'view',
   padding: 48,
   animation: true,
   layout: {
@@ -36,7 +37,6 @@ const G6_GRAPH_OPTIONS: Omit<GraphOptions, 'container' | 'data'> = {
   plugins: [
     {
       type: 'tooltip',
-      trigger: 'click',
       position: 'right',
       enable: canShowDataTooltip,
       getContent: getDataTooltipContent,

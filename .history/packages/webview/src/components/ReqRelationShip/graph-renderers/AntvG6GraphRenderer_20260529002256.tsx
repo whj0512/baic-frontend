@@ -4,19 +4,14 @@ import { Graph } from '@antv/g6'
 import type { ElementDatum, GraphOptions, IElementEvent } from '@antv/g6'
 import type { G6GraphData } from '../types'
 
-const G6_LEGEND_PLUGIN_OPTIONS = {
-  type: 'legend',
-  key: 'req-relationship-legend',
-  nodeField: 'type',
-  edgeField: 'relationType',
-}
-
 const G6_GRAPH_OPTIONS: Omit<GraphOptions, 'container' | 'data'> = {
   autoResize: true,
+  autoFit: 'view',
   padding: 48,
+  zoomRange: [0.2, 4],
   animation: true,
   layout: {
-    type: 'd3-force',
+    type: 'force',
     preventOverlap: true,
     nodeSize: 64,
     linkDistance: 180,
@@ -25,6 +20,7 @@ const G6_GRAPH_OPTIONS: Omit<GraphOptions, 'container' | 'data'> = {
     { type: 'drag-canvas' },
     { type: 'zoom-canvas' },
     { type: 'drag-element' },
+    { type: 'hover-activate' },
   ],
   transforms: [
     {
@@ -36,15 +32,12 @@ const G6_GRAPH_OPTIONS: Omit<GraphOptions, 'container' | 'data'> = {
   plugins: [
     {
       type: 'tooltip',
-      trigger: 'click',
+      trigger: 'hover',
       position: 'right',
       enable: canShowDataTooltip,
       getContent: getDataTooltipContent,
       enterable: true,
       onOpenChange: () => undefined,
-    },
-    {
-      ...G6_LEGEND_PLUGIN_OPTIONS,
     },
   ],
 }
@@ -251,15 +244,9 @@ function AntvG6GraphRenderer({ graphData }: AntvG6GraphRendererProps) {
     if (!graph || graph.destroyed) return
 
     graph.setData(graphData)
-    graph.render()
-      .then(() => {
-        if (!graph.destroyed) {
-          graph.updatePlugin(G6_LEGEND_PLUGIN_OPTIONS)
-        }
-      })
-      .catch((error) => {
-        console.debug('[ReqRelationShip][G6 render error]', error)
-      })
+    graph.render().catch((error) => {
+      console.debug('[ReqRelationShip][G6 render error]', error)
+    })
   }, [graphData])
 
   return <div ref={containerRef} className="antv-g6-graph-container" />
