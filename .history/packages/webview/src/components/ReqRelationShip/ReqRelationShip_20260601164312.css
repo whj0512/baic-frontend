@@ -48,7 +48,7 @@
   min-height: 0;
   min-width: 0;
   overflow: hidden;
-  margin: 12px;
+  padding: 24px, 24px, 12px, 24px;
 }
 
 .req-relationship-card .ant-card-body {

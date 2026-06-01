@@ -48,6 +48,7 @@
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+  padding: 24px, 24px, 12px, 24px;
   margin: 12px;
 }
 

@@ -30,42 +30,50 @@
   color: #1890ff;
 }
 
+.req-relationship-render-switch {
+  order: 2;
+  margin-left: auto;
+}
+
 .req-relationship-content {
-  position: relative;
-  flex: 1 1 auto;
-  display: flex;
-  min-height: 0;
-  padding: 0;
-  overflow: hidden;
-  background-color: #f8fafc;
+  flex: 1;
+  padding: 24px 24px 12px 24px;
+  overflow-y: auto;
+  background-color: white;
 }
 
-.req-relationship-card {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
+.result-card {
   height: 100%;
-  min-height: 0;
-  min-width: 0;
-  overflow: hidden;
-  margin: 12px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.req-relationship-card .ant-card-body {
-  flex: 1 1 auto;
-  display: flex;
-  min-height: 0;
-  min-width: 0;
-  padding: 0;
+.result-card pre {
+  margin: 0;
+  background-color: #f8f9fa;
+  padding: 16px;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.nvl-graph-container {
+  height: 100%;
+  min-height: 600px;
+  width: 100%;
+}
+
+.nvl-graph-container > div {
+  height: 100%;
+  min-height: 600px;
+  width: 100%;
 }
 
 .antv-g6-graph-container {
-  flex: 1 1 auto;
-  min-height: 0;
-  min-width: 0;
+  height: 100%;
+  min-height: 600px;
   width: 100%;
-  overflow: hidden;
-  background: white;
 }
 
 .g6-data-tooltip {
@@ -175,18 +183,15 @@
 }
 
 .empty-tip {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   text-align: center;
   color: #888;
+  padding: 40px;
 }
 
 .req-relationship-operation {
   display: flex;
   align-items: center;
-  padding: 8px 24px;
+  padding: 12px 24px;
   background-color: white;
   border-top: 1px solid #e8e8e8;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);

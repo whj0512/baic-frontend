@@ -14,6 +14,7 @@ const G6_LEGEND_PLUGIN_OPTIONS = {
 const G6_GRAPH_OPTIONS: Omit<GraphOptions, 'container' | 'data'> = {
   autoResize: true,
   autoFit: 'center',
+  height: 600,
   padding: 48,
   animation: true,
   layout: {

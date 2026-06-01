@@ -31,39 +31,26 @@
 }
 
 .req-relationship-content {
-  position: relative;
-  flex: 1 1 auto;
-  display: flex;
+  flex: 1;
   min-height: 0;
   padding: 0;
   overflow: hidden;
   background-color: #f8fafc;
 }
 
-.req-relationship-card {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
+.req-relationship-content .ant-spin-nested-loading,
+.req-relationship-content .ant-spin-container {
   height: 100%;
-  min-height: 0;
-  min-width: 0;
-  overflow: hidden;
-  margin: 12px;
 }
 
-.req-relationship-card .ant-card-body {
-  flex: 1 1 auto;
+.req-relationship-content .ant-spin-container {
   display: flex;
-  min-height: 0;
-  min-width: 0;
-  padding: 0;
 }
 
 .antv-g6-graph-container {
-  flex: 1 1 auto;
-  min-height: 0;
-  min-width: 0;
+  flex: 1;
   width: 100%;
+  hight: 100%;
   overflow: hidden;
   background: white;
 }

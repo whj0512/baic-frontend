@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { message, Button, TreeSelect, Card } from 'antd'
+import { Spin, message, Button, TreeSelect, Card } from 'antd'
 import { ArrowLeftOutlined } from '@ant-design/icons'
 import type { Requirement } from '../../models/Requirement'
 import { API_ENDPOINTS, authFetch } from '../../config/api'
@@ -91,13 +91,13 @@ const ReqRelationShip: React.FC<ReqRelationShipProps> = ({ requirements, onBack 
         <h2>需求间关系</h2>
       </div>
       <div className="req-relationship-content">
-        <Card className="req-relationship-card">
+        <Spin spinning={loading} tip="正在计算需求间关系...">
           {normalizedRelationships.length > 0 ? (
             <AntvG6GraphRenderer graphData={g6GraphData} />
           ) : (
             !loading && <div className="empty-tip">没有计算结果或没有有效需求数据</div>
           )}
-        </Card>
+        </Spin>
       </div>
       <div className="req-relationship-operation">
         <span className="operation-label">筛选分析需求：</span>

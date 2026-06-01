@@ -84,7 +84,7 @@ export function buildG6GraphData(
       id: rel.id,
       source,
       target,
-      type: 'line',
+      type: 'quadratic',
       data: {
         relationType: rel.relationType,
         dataName: rel.dataName,
