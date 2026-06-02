@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Graph } from '@antv/g6'
 import type { IPointerEvent } from '@antv/g6'
 import type { G6GraphData } from '../types'
-import G6PropertiesPanel, { createPanelData } from './G6PropertiesPanel'
+import G6PropertiesPanel from './G6PropertiesPanel'
 import type { GraphElementPanelData } from './G6PropertiesPanel'
 import {
   G6_LEGEND_PLUGIN_OPTIONS,
