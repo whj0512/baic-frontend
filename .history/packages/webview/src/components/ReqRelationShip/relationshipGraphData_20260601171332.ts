@@ -84,7 +84,7 @@ export function buildG6GraphData(
       id: rel.id,
       source,
       target,
-      type: 'cubic-vertical',
+      type: 'ubic-vertical',
       data: {
         relationType: rel.relationType,
         dataName: rel.dataName,
