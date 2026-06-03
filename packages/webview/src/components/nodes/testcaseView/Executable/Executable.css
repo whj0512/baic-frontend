@@ -1,0 +1,44 @@
+.executable-node {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.executable-node__header {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 2px;
+    overflow: hidden;
+    border-bottom: 1px solid #c9a4a4;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.executable-node__detail {
+    z-index: 99;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 2px 5px;
+}
+
+.executable-node__row {
+    box-sizing: border-box;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.executable-node__row--highlight {
+    border-radius: 5px;
+    padding: 0 3px;
+    background: var(--vscode-notebook-selectedCellBackground, rgba(21, 104, 221, 0.12));
+}

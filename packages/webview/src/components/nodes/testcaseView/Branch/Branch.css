@@ -1,0 +1,126 @@
+.branch-node {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    overflow: visible;
+    align-items: center;
+    justify-content: flex-start;
+    user-select: none;
+}
+
+.branch-node svg {
+    fill: var(--vscode-menu-foreground, currentColor);
+}
+
+.branch-node__rect {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    border: 2px solid var(--vscode-menu-foreground, currentColor);
+    border-radius: 4px;
+    background-color: var(--default-background-color, var(--vscode-editor-background, #fff));
+}
+
+.branch-node__badge {
+    position: absolute;
+    right: 10px;
+    bottom: -8px;
+    display: flex;
+    width: 15px;
+    height: 15px;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--vscode-editor-background, #fff);
+}
+
+.branch-node__badge-text {
+    z-index: 10;
+    max-width: 100%;
+    padding: 0 2px;
+    color: var(--vscode-menu-foreground, currentColor);
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    font-style: italic;
+    text-align: center;
+    background-color: var(--vscode-editor-background, #fff);
+}
+
+.branch-node__add {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 2;
+    display: flex;
+    justify-content: flex-end;
+    padding: 15px;
+}
+
+.branch-node__add svg {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+
+.branch-node--panel {
+    min-height: 100%;
+    align-items: center;
+    justify-content: center;
+}
+
+.branch-node__rect-panel {
+    position: relative;
+    top: 0;
+    left: 0;
+    display: flex;
+    width: 100%;
+    height: 70%;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    border: 2px solid var(--vscode-menu-foreground, currentColor);
+    border-radius: 4px;
+    background-color: var(--default-background-color, var(--vscode-editor-background, #fff));
+}
+
+.branch-node__rect-panel-content {
+    z-index: 10;
+    max-width: 100%;
+    padding: 0 2px;
+    overflow: hidden;
+    color: var(--vscode-menu-foreground, currentColor);
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    font-style: italic;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.branch-node__badge-panel {
+    position: absolute;
+    right: 5px;
+    bottom: -8px;
+    display: flex;
+    width: 15px;
+    height: 15px;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--vscode-menu-background, var(--vscode-editor-background, #fff));
+}
+
+.branch-node__badge-panel-text {
+    z-index: 5;
+    max-width: 100%;
+    padding: 0 2px;
+    color: var(--vscode-menu-foreground, currentColor);
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    font-style: italic;
+    text-align: center;
+    background-color: var(--vscode-menu-background, var(--vscode-editor-background, #fff));
+}
