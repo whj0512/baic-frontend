@@ -6,12 +6,17 @@ import type {
   ExtensionToWebviewMessage,
   WebviewToExtensionMessage,
 } from './types'
+import { RequirementsSidebarProvider } from './sidebarView'
 import { getErrorMessage } from './utils'
 import { getWebviewHtml } from './webviewHtml'
 
 export function activate(context: vscode.ExtensionContext): void {
   const authService = new AuthService(context.secrets)
   const panels = new Set<vscode.WebviewPanel>()
+  const sidebarDisposable = vscode.window.registerWebviewViewProvider(
+    'baicRequirementsManagerSidebar',
+    new RequirementsSidebarProvider(),
+  )
 
   const broadcastAuthState = async () => {
     const snapshot = await authService.getSnapshot()
@@ -72,7 +77,12 @@ export function activate(context: vscode.ExtensionContext): void {
     await broadcastAuthState()
   })
 
-  context.subscriptions.push(openDisposable, loginDisposable, logoutDisposable)
+  context.subscriptions.push(
+    sidebarDisposable,
+    openDisposable,
+    loginDisposable,
+    logoutDisposable,
+  )
 }
 
 async function handleWebviewMessage(

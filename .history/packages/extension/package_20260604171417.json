@@ -1,5 +1,5 @@
 {
-  "name": "requirements-management-extension",
+  "name": "@baic/requirements-management-extension",
   "displayName": "BAIC Requirements Management",
   "description": "BAIC requirements management inside VS Code.",
   "version": "0.0.1",
@@ -11,9 +11,6 @@
     "Other"
   ],
   "main": "./dist/extension.js",
-  "activationEvents": [
-    "onView:baicRequirementsManagerSidebar"
-  ],
   "contributes": {
     "commands": [
       {
@@ -29,24 +26,6 @@
         "title": "BAIC: Logout"
       }
     ],
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "baicRequirementsManager",
-          "title": "BAIC Requirements",
-          "icon": "media/activity-bar.svg"
-        }
-      ]
-    },
-    "views": {
-      "baicRequirementsManager": [
-        {
-          "id": "baicRequirementsManagerSidebar",
-          "name": "Requirements Manager",
-          "type": "webview"
-        }
-      ]
-    },
     "configuration": {
       "title": "BAIC Requirements Management",
       "properties": {
