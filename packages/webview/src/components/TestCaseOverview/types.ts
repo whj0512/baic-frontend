@@ -1,5 +1,5 @@
 import type { GraphData } from '@antv/g6'
-import type { TEST_CASE_OVERVIEW_NODE_STYLES } from '../echartsNodeStyles'
+import type { TEST_CASE_OVERVIEW_NODE_STYLES } from '../graphNodeStyles'
 
 export type TestCaseOverviewGraphData = GraphData
 export type TestCaseOverviewNodeKind = keyof typeof TEST_CASE_OVERVIEW_NODE_STYLES

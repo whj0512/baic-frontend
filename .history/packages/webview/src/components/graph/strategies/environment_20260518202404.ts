@@ -5,9 +5,9 @@ import Controller from '../../nodes/environment/Controller'
 import Human from '../../nodes/environment/Human'
 import FunctionalModule from '../../nodes/environment/FunctionalModule'
 import Machine from '../../nodes/environment/Machine'
-import ControllerTimer from '../form-panel/controls/environment/ControllerTimer'
-import NodePorts from '../form-panel/controls/environment/NodePorts'
-import EdgeConnect from '../form-panel/controls/environment/EdgeConnect'
+import ControllerTimer from '../../form-panel/controls/environment/ControllerTimer'
+import NodePorts from '../../form-panel/controls/environment/NodePorts'
+import EdgeConnect from '../../form-panel/controls/environment/EdgeConnect'
 import ControlUnit from '../../nodes/environment/ControlUnit'
 
 const formConfig: FormConfig = {

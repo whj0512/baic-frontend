@@ -1,5 +1,5 @@
 import type { Requirement } from '../../models/Requirement'
-import { getRequirementRelationNodeStyle } from '../echartsNodeStyles'
+import { createGraphNodeStyle, getRequirementRelationNodeStyle } from '../graphNodeStyles'
 import type {
   DependencyResponse,
   G6GraphData,
@@ -132,24 +132,14 @@ function addG6Node(
 
   nodesMap.set(id, {
     id,
+    type: style.type,
     data: {
       name: requirement?.name || id,
       type: requirement?.type,
       subtype: requirement?.subtype,
     },
-    style: {
-      size: Math.max(48, style.symbolSize),
-      fill: style.backgroundColor,
-      stroke: style.borderColor,
-      lineWidth: Math.max(1, style.borderWidth),
-      label: true,
+    style: createGraphNodeStyle(style, {
       labelText: label,
-      labelFill: style.labelColor,
-      labelFontSize: 12,
-      labelFontWeight: 500,
-      labelPlacement: 'center',
-      labelWordWrap: true,
-      labelMaxWidth: Math.max(40, style.symbolSize - 12),
-    },
+    }),
   })
 }

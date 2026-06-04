@@ -7,7 +7,7 @@ import type { MenuProps } from 'antd'
 import { CloseCircleOutlined, DeleteOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
 import NodeWrapper from '../nodes/internalConstraints/NodeWrapper'
 import { getStrategy } from './strategies'
-import FormPanelContainer from './form-panel'
+import FormPanelContainer from '../form-panel'
 import {
   ensureGraphConnectionPorts,
   ensureNodeConnectionPorts,

@@ -1,5 +1,5 @@
 import type { Requirement } from '../../models/Requirement'
-import { TEST_CASE_OVERVIEW_NODE_STYLES } from '../echartsNodeStyles'
+import { createGraphNodeStyle, TEST_CASE_OVERVIEW_NODE_STYLES } from '../graphNodeStyles'
 import type {
   OverviewLinkMeta,
   OverviewNodeMeta,
@@ -7,10 +7,7 @@ import type {
   ParsedTreeNode,
   StackItem,
   TestCaseOverviewGraphData,
-  TestCaseOverviewNodeKind,
 } from './types'
-
-type TestCaseOverviewNodeStyle = typeof TEST_CASE_OVERVIEW_NODE_STYLES[TestCaseOverviewNodeKind]
 
 const SCENARIO_TEXT = `
 c23e3fed-7a54-4909-86fe-ad367bbff0b9_path_0 (path)
@@ -260,34 +257,20 @@ function setColumnPosition(nodes: OverviewNodeMeta[], x: number, startY: number,
 
 function toG6Node(node: OverviewNodeMeta): NonNullable<TestCaseOverviewGraphData['nodes']>[number] {
   const style = TEST_CASE_OVERVIEW_NODE_STYLES[node.kind]
-  const isTestCase = node.kind === 'testCase'
 
   return {
     id: node.id,
-    type: getG6NodeType(style),
+    type: style.type,
     data: {
       categoryName: style.name,
       name: node.name,
       tooltip: node.tooltip,
     },
-    style: {
+    style: createGraphNodeStyle(style, {
       x: node.x,
       y: node.y,
-      size: isTestCase ? [118, 58] : style.symbolSize,
-      radius: isTestCase ? 6 : undefined,
-      fill: style.backgroundColor,
-      stroke: style.borderColor,
-      lineWidth: style.borderWidth,
-      lineDash: getLineDash(style.borderType),
-      label: true,
       labelText: node.name,
-      labelFill: style.labelColor,
-      labelFontSize: 12,
-      labelFontWeight: 500,
-      labelPlacement: 'center',
-      labelWordWrap: true,
-      labelMaxWidth: isTestCase ? 96 : Math.max(44, style.symbolSize - 12),
-    },
+    }),
   }
 }
 
@@ -306,16 +289,6 @@ function toG6Edge(
       endArrow: false,
     },
   }
-}
-
-function getG6NodeType(style: TestCaseOverviewNodeStyle) {
-  return style.category === 0 ? 'circle' : style.category === 1 ? 'diamond' : 'rect'
-}
-
-function getLineDash(borderType?: string) {
-  if (borderType === 'dashed') return [6, 4]
-  if (borderType === 'dotted') return [2, 4]
-  return undefined
 }
 
 function escapeHtml(value: string) {

@@ -4,12 +4,10 @@ export const TEST_CASE_OVERVIEW_LEGEND_PLUGIN_OPTIONS = {
   type: 'legend',
   key: 'test-case-overview-legend',
   nodeField: 'categoryName',
-  layout: 'grid',
-  gridRow: 1,
-  gridCol: 3,
-  width: 420,
-  height: 48,
-  colPadding: 16,
+  x: 100,
+  y: 24,
+  layout: 'horizontal',
+  itemWidth: 16,
 }
 
 const TEST_CASE_OVERVIEW_ZOOM_CANVAS_KEY = 'test-case-overview-zoom-canvas'
@@ -30,13 +28,6 @@ const TEST_CASE_OVERVIEW_GRAPH_OPTIONS: Omit<GraphOptions, 'container' | 'data' 
       trigger: 'hover',
       getContent: async (_event: IElementEvent, items: ElementDatum[]) => getTooltipHtml(items[0]),
       onOpenChange: () => undefined,
-    },
-    {
-      type: 'grid-line',
-      key: 'my-grid-line', // 指定唯一标识符，便于后续动态更新
-      size: 20,
-      stroke: '#0001',
-      follow: true,
     },
   ],
 }

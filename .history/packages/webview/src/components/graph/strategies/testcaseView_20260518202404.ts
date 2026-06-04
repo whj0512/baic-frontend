@@ -6,8 +6,8 @@ import Loop from '../../nodes/testcaseView/Loop'
 import Traverse from '../../nodes/testcaseView/Traverse'
 import Branch from '../../nodes/testcaseView/Branch'
 import SubBranch from '../../nodes/testcaseView/SubBranch'
-import Action from '../form-panel/controls/testcaseView/Action'
-import Observe from '../form-panel/controls/testcaseView/Observe'
+import Action from '../../form-panel/controls/testcaseView/Action'
+import Observe from '../../form-panel/controls/testcaseView/Observe'
 
 const formConfig: FormConfig = {
     nodes: {

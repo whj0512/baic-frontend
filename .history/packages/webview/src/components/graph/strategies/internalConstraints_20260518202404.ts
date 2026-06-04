@@ -11,32 +11,32 @@ import State from '../../nodes/internalConstraints/State';
 import TruthTable from '../../nodes/internalConstraints/TruthTable';
 
 // 导入 Call 节点的自定义控件
-import Params from '../form-panel/controls/internalConstraints/Params'
-import Script from '../form-panel/controls/internalConstraints/Script'
+import Params from '../../form-panel/controls/internalConstraints/Params'
+import Script from '../../form-panel/controls/internalConstraints/Script'
 
 // 导入 Condition 节点的自定义控件
-import ConditionExpression from '../form-panel/controls/internalConstraints/ConditionExpression'
-import TimeTolerance from '../form-panel/controls/internalConstraints/TimeTolerance'
-import TestLayer from '../form-panel/controls/internalConstraints/TestLayer'
+import ConditionExpression from '../../form-panel/controls/internalConstraints/ConditionExpression'
+import TimeTolerance from '../../form-panel/controls/internalConstraints/TimeTolerance'
+import TestLayer from '../../form-panel/controls/internalConstraints/TestLayer'
 
 // 导入 Goto 节点的自定义控件
-import TargetSelecter from '../form-panel/controls/internalConstraints/TargetSelecter'
+import TargetSelecter from '../../form-panel/controls/internalConstraints/TargetSelecter'
 
 // 导入 Graph 节点的自定义控件
-import RefGraphs from '../form-panel/controls/internalConstraints/RefGraphs'
-import PathCoverage from '../form-panel/controls/internalConstraints/PathCoverage'
-import DeleteCoverageButton from '../form-panel/controls/internalConstraints/DeleteCoverageButton'
+import RefGraphs from '../../form-panel/controls/internalConstraints/RefGraphs'
+import PathCoverage from '../../form-panel/controls/internalConstraints/PathCoverage'
+import DeleteCoverageButton from '../../form-panel/controls/internalConstraints/DeleteCoverageButton'
 
 // 导入 Canvas 画布表单的专属自定义控件
-import LocalVariableList from '../form-panel/controls/internalConstraints/LocalVariableList'
-import VariableActionList from '../form-panel/controls/internalConstraints/VariableActionList'
+import LocalVariableList from '../../form-panel/controls/internalConstraints/LocalVariableList'
+import VariableActionList from '../../form-panel/controls/internalConstraints/VariableActionList'
 
 // 导入 Truth 节点的自定义控件
-import TruthTableControl from '../form-panel/controls/internalConstraints/TruthTable'
+import TruthTableControl from '../../form-panel/controls/internalConstraints/TruthTable'
 
 // 导入 State 节点的自定义控件
-import TestTimeProps from '../form-panel/controls/internalConstraints/TestTimeProps'
-import Action from '../form-panel/controls/internalConstraints/Action'
+import TestTimeProps from '../../form-panel/controls/internalConstraints/TestTimeProps'
+import Action from '../../form-panel/controls/internalConstraints/Action'
 
 // 表单配置
 const formConfig: FormConfig = {

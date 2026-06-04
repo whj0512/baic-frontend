@@ -9,8 +9,8 @@ import { register } from '@antv/x6-react-shape'
 import type { FormConfig, SidebarItem } from './types'
 import ObjectNode from '../../nodes/interaction/BaseObject'
 import CombinedFragmentNode from '../../nodes/interaction/CombinedFragment'
-import Params from '../form-panel/controls/interaction/Params'
-import Conditions from '../form-panel/controls/interaction/Conditions'
+import Params from '../../form-panel/controls/interaction/Params'
+import Conditions from '../../form-panel/controls/interaction/Conditions'
 
 /** 注册时序图节点（多次调用安全） */
 export const registerSequenceNodes = () => {
