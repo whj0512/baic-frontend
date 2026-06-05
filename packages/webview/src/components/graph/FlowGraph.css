@@ -2,6 +2,7 @@
   width: 100%;
   height: 100%;
   min-height: 500px;
+  color-scheme: light;
   border: 1px solid #d1d5db;
   border-radius: 8px;
   overflow: hidden;
@@ -28,6 +29,7 @@
   flex-shrink: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-color: #ffffff #ffffff;
   height: 100%;
   position: relative;
   transition: width 0.3s ease, opacity 0.3s ease;
@@ -48,6 +50,23 @@
 
 .graph-sidebar .x6-widget-stencil-content {
   width: 100% !important;
+}
+
+.graph-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.graph-sidebar::-webkit-scrollbar-track {
+  background: #ffffff;
+}
+
+.graph-sidebar::-webkit-scrollbar-thumb {
+  background-color: #ffffff;
+  border-radius: 3px;
+}
+
+.graph-sidebar::-webkit-scrollbar-thumb:hover {
+  background-color: #ffffff;
 }
 
 .sidebar-title {
@@ -202,11 +221,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
   cursor: pointer;
   font-size: 12px;
-  color: #6b7280;
+  color: #2563eb;
   transition: all 0.2s;
   flex-shrink: 0;
   z-index: 5;
@@ -215,9 +234,9 @@
 }
 
 .panel-toggle-btn:hover {
-  background: #f3f4f6;
-  color: #1890ff;
-  border-color: #1890ff;
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #93c5fd;
 }
 
 .sidebar-toggle-btn {
@@ -228,42 +247,4 @@
 .form-panel-toggle-btn {
   border-right: none;
   border-radius: 4px 0 0 4px;
-}
-
-/* Dark mode */
-@media (prefers-color-scheme: dark) {
-  .flow-graph-container {
-    border-color: #4b5563;
-    background-color: #1f2937;
-  }
-
-  .graph-sidebar {
-    background-color: #1f2937;
-    border-right-color: #374151;
-  }
-
-  .panel-toggle-btn {
-    background: #374151;
-    border-color: #4b5563;
-    color: #d1d5db;
-  }
-
-  .panel-toggle-btn:hover {
-    background: #4b5563;
-    color: #60a5fa;
-    border-color: #60a5fa;
-  }
-
-  .sidebar-title {
-    color: #f3f4f6;
-  }
-
-  .sidebar-item {
-    border-color: #4b5563;
-    color: #1f2937;
-  }
-
-  .graph-help-text {
-    background: rgba(31, 41, 55, 0.8);
-  }
 }

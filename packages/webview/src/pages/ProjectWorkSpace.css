@@ -4,6 +4,7 @@
   align-items: flex-start;
   height: calc(100vh - 60px);
   gap: 1px;
+  scrollbar-color: #d1d5db #f3f4f6;
   background-color: #e5e7eb;
 }
 
@@ -182,14 +183,14 @@
   justify-content: center;
   padding-top: 12px;
   cursor: pointer;
-  background-color: #f9fafb;
-  border-left: 1px solid #e5e7eb;
+  background-color: #f3f4f6;
+  border-left: 1px solid #d1d5db;
   transition: background-color 0.15s;
   user-select: none;
 }
 
 .right-collapse-bar:hover {
-  background-color: #eff6ff;
+  background-color: #e5e7eb;
 }
 
 .right-collapse-icon {
@@ -200,7 +201,7 @@
 }
 
 .right-collapse-bar:hover .right-collapse-icon {
-  color: #3b82f6;
+  color: #4b5563;
 }
 
 /* 面板内容区 */
@@ -944,22 +945,6 @@
   }
 
   /* 暗色模式：折叠触发条 */
-  .right-collapse-bar {
-    background-color: #111827;
-    border-left-color: #374151;
-  }
-
-  .right-collapse-bar:hover {
-    background-color: #1e3a8a;
-  }
-
-  .right-collapse-icon {
-    color: #9ca3af;
-  }
-
-  .right-collapse-bar:hover .right-collapse-icon {
-    color: #60a5fa;
-  }
 }
 
 /* 自定义滚动条样式 */
@@ -969,24 +954,14 @@
 }
 
 .workspace-container ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #f3f4f6;
 }
 
 .workspace-container ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #d1d5db;
   border-radius: 4px;
 }
 
 .workspace-container ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-@media (prefers-color-scheme: dark) {
-  .workspace-container ::-webkit-scrollbar-thumb {
-    background: #4b5563;
-  }
-
-  .workspace-container ::-webkit-scrollbar-thumb:hover {
-    background: #6b7280;
-  }
+  background: #9ca3af;
 }

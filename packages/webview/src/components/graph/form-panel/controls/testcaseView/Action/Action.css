@@ -11,7 +11,7 @@
 
 .testcase-action-add {
   cursor: pointer;
-  color: var(--vscode-menu-foreground, #1677ff);
+  color: #1677ff;
 }
 
 .testcase-action-list {

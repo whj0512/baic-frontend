@@ -40,5 +40,5 @@
 .executable-node__row--highlight {
     border-radius: 5px;
     padding: 0 3px;
-    background: var(--vscode-notebook-selectedCellBackground, rgba(21, 104, 221, 0.12));
+    background: rgba(21, 104, 221, 0.12);
 }
