@@ -1,7 +1,7 @@
 import * as vscode from 'vscode'
 
 import { AuthService } from './auth'
-import { getRuntimeConfig } from './config'
+import { BackendServiceManager } from './backendService'
 import type {
   ExtensionToWebviewMessage,
   WebviewToExtensionMessage,
@@ -10,8 +10,12 @@ import { RequirementsSidebarProvider } from './sidebarView'
 import { getErrorMessage } from './utils'
 import { getWebviewHtml } from './webviewHtml'
 
+let activeBackendService: BackendServiceManager | undefined
+
 export function activate(context: vscode.ExtensionContext): void {
-  const authService = new AuthService(context.secrets)
+  const authService = new AuthService(context.secrets, context.extensionUri)
+  const backendService = new BackendServiceManager(context)
+  activeBackendService = backendService
   const panels = new Set<vscode.WebviewPanel>()
   const sidebarDisposable = vscode.window.registerWebviewViewProvider(
     'baicRequirementsManagerSidebar',
@@ -27,7 +31,15 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const openDisposable = vscode.commands.registerCommand(
     'baic.openRequirementsManager',
-    () => {
+    async () => {
+      let runtimeConfig
+      try {
+        runtimeConfig = await backendService.start()
+      } catch (error) {
+        await showBackendError(error, backendService)
+        return
+      }
+
       const panel = vscode.window.createWebviewPanel(
         'baicRequirementsManager',
         'BAIC Requirements Manager',
@@ -45,10 +57,14 @@ export function activate(context: vscode.ExtensionContext): void {
       panel.onDidDispose(() => panels.delete(panel))
 
       panel.webview.onDidReceiveMessage((message: WebviewToExtensionMessage) => {
-        void handleWebviewMessage(message, panel.webview, authService)
+        void handleWebviewMessage(message, panel.webview, authService, backendService)
       })
 
-      panel.webview.html = getWebviewHtml(panel.webview, context.extensionUri)
+      panel.webview.html = getWebviewHtml(
+        panel.webview,
+        context.extensionUri,
+        runtimeConfig,
+      )
     },
   )
 
@@ -63,7 +79,8 @@ export function activate(context: vscode.ExtensionContext): void {
     if (!email) return
 
     try {
-      await authService.login(email.trim(), getRuntimeConfig())
+      const runtimeConfig = await backendService.start()
+      await authService.login(email.trim(), runtimeConfig)
       await vscode.window.showInformationMessage('BAIC login succeeded')
       await broadcastAuthState()
     } catch (error) {
@@ -77,11 +94,59 @@ export function activate(context: vscode.ExtensionContext): void {
     await broadcastAuthState()
   })
 
+  const startBackendDisposable = vscode.commands.registerCommand(
+    'baic.startBackend',
+    async () => {
+      try {
+        await backendService.start()
+        await vscode.window.showInformationMessage('BAIC backend is running')
+      } catch (error) {
+        await showBackendError(error, backendService)
+      }
+    },
+  )
+
+  const stopBackendDisposable = vscode.commands.registerCommand(
+    'baic.stopBackend',
+    async () => {
+      await backendService.stop()
+      await vscode.window.showInformationMessage('BAIC backend stopped')
+    },
+  )
+
+  const restartBackendDisposable = vscode.commands.registerCommand(
+    'baic.restartBackend',
+    async () => {
+      try {
+        await backendService.restart()
+        await vscode.window.showInformationMessage('BAIC backend restarted')
+      } catch (error) {
+        await showBackendError(error, backendService)
+      }
+    },
+  )
+
+  const showBackendLogsDisposable = vscode.commands.registerCommand(
+    'baic.showBackendLogs',
+    () => {
+      backendService.showLogs()
+    },
+  )
+
   context.subscriptions.push(
     sidebarDisposable,
     openDisposable,
     loginDisposable,
     logoutDisposable,
+    startBackendDisposable,
+    stopBackendDisposable,
+    restartBackendDisposable,
+    showBackendLogsDisposable,
+    {
+      dispose: () => {
+        void backendService.stop()
+      },
+    },
   )
 }
 
@@ -89,6 +154,7 @@ async function handleWebviewMessage(
   message: WebviewToExtensionMessage,
   webview: vscode.Webview,
   authService: AuthService,
+  backendService: BackendServiceManager,
 ): Promise<void> {
   try {
     switch (message.type) {
@@ -100,9 +166,10 @@ async function handleWebviewMessage(
         return
 
       case 'auth:login':
+        const runtimeConfig = await backendService.start()
         postToWebview(webview, {
           type: 'auth:state',
-          payload: await authService.login(message.payload.email, getRuntimeConfig()),
+          payload: await authService.login(message.payload.email, runtimeConfig),
         })
         return
 
@@ -113,8 +180,29 @@ async function handleWebviewMessage(
           payload: { status: 'unauthenticated' },
         })
         return
+
+      case 'clipboard:readText':
+        postToWebview(webview, {
+          type: 'clipboard:text',
+          payload: {
+            requestId: message.payload.requestId,
+            text: await vscode.env.clipboard.readText(),
+          },
+        })
+        return
     }
   } catch (error) {
+    if (message.type === 'clipboard:readText') {
+      postToWebview(webview, {
+        type: 'clipboard:error',
+        payload: {
+          requestId: message.payload.requestId,
+          message: getErrorMessage(error),
+        },
+      })
+      return
+    }
+
     postToWebview(webview, {
       type: 'auth:error',
       payload: { message: getErrorMessage(error) },
@@ -129,4 +217,20 @@ function postToWebview(
   void webview.postMessage(message)
 }
 
-export function deactivate(): void {}
+async function showBackendError(
+  error: unknown,
+  backendService: BackendServiceManager,
+): Promise<void> {
+  const action = await vscode.window.showErrorMessage(
+    `BAIC backend failed to start: ${getErrorMessage(error)}`,
+    'Show Logs',
+  )
+
+  if (action === 'Show Logs') {
+    backendService.showLogs()
+  }
+}
+
+export function deactivate(): void {
+  void activeBackendService?.stop()
+}

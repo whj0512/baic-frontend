@@ -1,0 +1,89 @@
+ExternalInteractionView: scenarios+=Scenario* ;
+
+Scenario:
+    'Scenario' name=ID '{'
+        interactions+=Interaction*
+    '}'
+;
+
+Interaction:
+      AtomicInteraction
+    | SelectionInteraction
+    | LoopInteraction
+    | ParallelInteraction
+;
+
+AtomicInteraction:
+    message=Message ';'
+;
+
+Message:
+    'Message'
+    'from' sender=ID
+    'to' receiver=ID
+    ':' label=STRING
+;
+
+SelectionInteraction:
+    ifBranch=IfBranch
+    (elifBranches+=ElifBranch)*
+    elseBranch=ElseBranch?
+;
+
+IfBranch:
+    'if' '(' condition=Expression ')' '{'
+        body+=Interaction*
+    '}'
+;
+
+ElifBranch:
+    'elif' '(' condition=Expression ')' '{'
+        body+=Interaction*
+    '}'
+;
+
+ElseBranch:
+    'else' '{'
+        body+=Interaction*
+    '}'
+;
+
+LoopInteraction:
+    'while' '(' condition=Expression ')' '{'
+        body+=Interaction*
+    '}'
+;
+
+ParallelInteraction:
+    parallelBlocks+=ParallelBlock ('||' parallelBlocks+=ParallelBlock)*
+;
+
+ParallelBlock:
+    '{'
+        body+=Interaction*
+    '}'
+;
+
+
+Expression: AssignmentExpression;
+
+AssignmentExpression: LogicalExpression ('=' AssignmentExpression)?;
+
+LogicalExpression: ComparisonExpression (('and' | 'or') ComparisonExpression)*;
+
+ComparisonExpression: AdditiveExpression (('==' | '!=' | '<' | '>' | '<=' | '>=') AdditiveExpression)*;
+
+AdditiveExpression: MultiplicativeExpression (('+' | '-') MultiplicativeExpression)*;
+
+MultiplicativeExpression: UnaryExpression (('*' | '/') UnaryExpression)*;
+
+UnaryExpression: ('!' | '-')? Primary;
+
+Primary: INT | FLOAT | BOOL | STRING | ID | '(' Expression ')';
+
+ID: /[\u4e00-\u9fa5a-zA-Z_\/][\u4e00-\u9fa5a-zA-Z0-9_\-\/]*/;
+
+Comment:
+    /\/\/.*$/
+    | /\/\*[\s\S]*?\*\//
+;

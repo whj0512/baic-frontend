@@ -1,5 +1,5 @@
 import { Clipboard, Keyboard, Selection, Snapline, Transform } from '@antv/x6'
-import type { Cell, Edge, Graph } from '@antv/x6'
+import type { Cell, Edge, Graph, Node } from '@antv/x6'
 import type { Dispatch, SetStateAction } from 'react'
 import {
   ensureNodeConnectionPorts,
@@ -75,17 +75,38 @@ const registerPortEvents = (
   graph: Graph,
   { strategy, onChange }: RegisterGraphEventHandlersOptions,
 ) => {
+  let activeConnectionHotAreaNode: Node | null = null
+
+  const hideActiveConnectionHotArea = (nextNode?: Node) => {
+    if (!activeConnectionHotAreaNode) return
+    if (nextNode && activeConnectionHotAreaNode.id === nextNode.id) return
+
+    setNodeConnectionHotAreaVisible(activeConnectionHotAreaNode, false)
+    activeConnectionHotAreaNode = null
+  }
+
   graph.on('node:added', ({ node }: any) => {
     ensureNodeConnectionPorts(node, strategy)
   })
 
   graph.on('node:mouseenter', ({ node }: any) => {
     ensureNodeConnectionPorts(node, strategy)
+    hideActiveConnectionHotArea(node)
     setNodeConnectionHotAreaVisible(node, true)
+    activeConnectionHotAreaNode = node
   })
 
   graph.on('node:mouseleave', ({ node }: any) => {
     setNodeConnectionHotAreaVisible(node, false)
+    if (activeConnectionHotAreaNode?.id === node.id) {
+      activeConnectionHotAreaNode = null
+    }
+  })
+
+  graph.on('node:removed', ({ node }: any) => {
+    if (activeConnectionHotAreaNode?.id === node.id) {
+      activeConnectionHotAreaNode = null
+    }
   })
 
   graph.on('edge:connected', ({ edge, isNew }: { edge: Edge; isNew: boolean }) => {

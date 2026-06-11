@@ -969,24 +969,13 @@ const internalConstraintsStrategy: GraphStrategy = {
           { id: 'out-no', group: 'out-no' },
         ]
       }
-      if (nodeShape === 'start-node') {
-        return [
-          { id: 'out-0', group: 'out' },
-        ]
-      }
-      if (nodeShape === 'then-node') {
-        return [
-          { id: 'in-0', group: 'in' },
-          { id: 'out-0', group: 'out' },
-        ]
-      }
       // 其他节点：无初始 port，创建连线时动态添加
       return []
     },
 
     // 节点是否支持动态添加多个 port
     supportsMultiplePorts: (nodeShape: string) => {
-      return !['condition-node', 'start-node', 'then-node'].includes(nodeShape)
+      return !['condition-node'].includes(nodeShape)
     },
 
     // 判断节点是否有多个命名输出
@@ -1005,6 +994,18 @@ const internalConstraintsStrategy: GraphStrategy = {
       return []
     },
   },
+  stencilLayoutOptions: {
+    columns: 1,
+    columnWidth: 160,
+    rowHeight: 100,
+    center: true,
+    resizeToFit: false,
+    marginX: 0,
+    marginY: 0,
+  },
+  stencilGraphWidth: 180,
+  stencilGraphHeight: 1000,
+  stencilGraphPadding: 10,
 }
 
 export default internalConstraintsStrategy

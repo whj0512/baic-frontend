@@ -2,7 +2,7 @@
   "name": "requirements-management-extension",
   "displayName": "BAIC Requirements Management",
   "description": "BAIC requirements management inside VS Code.",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "publisher": "baic",
   "engines": {
     "vscode": "^1.90.0"
@@ -27,6 +27,22 @@
       {
         "command": "baic.logout",
         "title": "BAIC: Logout"
+      },
+      {
+        "command": "baic.startBackend",
+        "title": "BAIC: Start Backend"
+      },
+      {
+        "command": "baic.stopBackend",
+        "title": "BAIC: Stop Backend"
+      },
+      {
+        "command": "baic.restartBackend",
+        "title": "BAIC: Restart Backend"
+      },
+      {
+        "command": "baic.showBackendLogs",
+        "title": "BAIC: Show Backend Logs"
       }
     ],
     "viewsContainers": {
@@ -50,6 +66,15 @@
     "configuration": {
       "title": "BAIC Requirements Management",
       "properties": {
+        "baic.backend.mode": {
+          "type": "string",
+          "enum": [
+            "bundled",
+            "external"
+          ],
+          "default": "bundled",
+          "description": "Controls whether the extension starts the bundled backend or connects to an external backend."
+        },
         "baic.apiBaseUrl": {
           "type": "string",
           "default": "http://localhost:8000",

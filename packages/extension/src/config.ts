@@ -2,15 +2,32 @@ import * as vscode from 'vscode'
 
 import type { RuntimeConfig } from './types'
 
-export function getRuntimeConfig(): RuntimeConfig {
+export type BackendMode = 'bundled' | 'external'
+
+interface RuntimeConfigOverride {
+  apiBaseUrl: string
+  projectWsBaseUrl: string
+}
+
+export function getBackendMode(): BackendMode {
+  const config = vscode.workspace.getConfiguration('baic')
+  const mode = config.get<string>('backend.mode', 'bundled')
+
+  return mode === 'external' ? 'external' : 'bundled'
+}
+
+export function getRuntimeConfig(
+  override?: RuntimeConfigOverride,
+): RuntimeConfig {
   const config = vscode.workspace.getConfiguration('baic')
 
   return {
-    apiBaseUrl: config.get<string>('apiBaseUrl', 'http://localhost:8000'),
-    projectWsBaseUrl: config.get<string>(
-      'projectWsBaseUrl',
-      'ws://localhost:8000',
-    ),
+    apiBaseUrl:
+      override?.apiBaseUrl ??
+      config.get<string>('apiBaseUrl', 'http://localhost:8000'),
+    projectWsBaseUrl:
+      override?.projectWsBaseUrl ??
+      config.get<string>('projectWsBaseUrl', 'ws://localhost:8000'),
     lspWs: {
       internalConstraints: config.get<string>(
         'lspWs.internalConstraints',

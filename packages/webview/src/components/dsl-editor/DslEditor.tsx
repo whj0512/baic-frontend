@@ -6,6 +6,7 @@ import { Editor, type Monaco } from '@monaco-editor/react'
 import type * as monacoNs from 'monaco-editor'
 import { getStrategy } from './strategies'
 import { connectLsp } from './lspClient'
+import { isExtensionAuthMode, readExtensionClipboardText } from '../../config/authClient'
 
 interface DslEditorProps {
   sectionKey: string
@@ -37,7 +38,12 @@ const DslEditor: React.FC<DslEditorProps> = ({
   const editorRef = useRef<monacoNs.editor.IStandaloneCodeEditor | null>(null)
   const monacoRef = useRef<typeof monacoNs | null>(null)
   const lspRef = useRef<{ dispose: () => void } | null>(null)
+  const readOnlyRef = useRef(readOnly)
   const [isEditorMounted, setIsEditorMounted] = React.useState(false)
+
+  useEffect(() => {
+    readOnlyRef.current = readOnly
+  }, [readOnly])
 
   const handleBeforeMount = useCallback((monaco: Monaco) => {
     monaco.languages.register({ id: languageId });
@@ -60,6 +66,7 @@ const DslEditor: React.FC<DslEditorProps> = ({
   ) => {
     editorRef.current = editor
     monacoRef.current = monaco
+    registerExtensionPasteHandler(editor, monaco, readOnlyRef)
     setIsEditorMounted(true)
   }, [])
 
@@ -130,3 +137,73 @@ const DslEditor: React.FC<DslEditorProps> = ({
 }
 
 export default DslEditor
+
+function registerExtensionPasteHandler(
+  editor: monacoNs.editor.IStandaloneCodeEditor,
+  monaco: typeof monacoNs,
+  readOnlyRef: React.MutableRefObject<boolean>,
+): void {
+  if (!isExtensionAuthMode()) return
+
+  editor.onKeyDown((event) => {
+    if (!isPasteShortcut(event.browserEvent) || readOnlyRef.current) return
+
+    event.preventDefault()
+    event.stopPropagation()
+
+    void readExtensionClipboardText()
+      .then(text => pasteTextIntoEditor(editor, monaco, text))
+      .catch(error => {
+        console.error('Failed to paste clipboard text into DSL editor:', error)
+      })
+  })
+}
+
+function isPasteShortcut(event: KeyboardEvent): boolean {
+  return (
+    (event.ctrlKey || event.metaKey) &&
+    !event.altKey &&
+    !event.shiftKey &&
+    event.key.toLowerCase() === 'v'
+  )
+}
+
+function pasteTextIntoEditor(
+  editor: monacoNs.editor.IStandaloneCodeEditor,
+  monaco: typeof monacoNs,
+  text: string,
+): void {
+  if (!text || !editor.hasModel()) return
+
+  const selections = editor.getSelections()
+  if (!selections?.length) return
+
+  editor.pushUndoStop()
+  editor.executeEdits(
+    'extension-clipboard-paste',
+    selections.map(selection => ({
+      range: selection,
+      text,
+      forceMoveMarkers: true,
+    })),
+    selections.map(selection => createCursorSelectionAfterPaste(monaco, selection, text)),
+  )
+  editor.pushUndoStop()
+  editor.focus()
+}
+
+function createCursorSelectionAfterPaste(
+  monaco: typeof monacoNs,
+  selection: monacoNs.Selection,
+  text: string,
+): monacoNs.Selection {
+  const start = selection.getStartPosition()
+  const lines = text.split(/\r\n|\r|\n/)
+  const lineNumber = start.lineNumber + lines.length - 1
+  const column =
+    lines.length === 1
+      ? start.column + lines[0].length
+      : lines[lines.length - 1].length + 1
+
+  return new monaco.Selection(lineNumber, column, lineNumber, column)
+}

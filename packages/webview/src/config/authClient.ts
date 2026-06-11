@@ -14,10 +14,13 @@ type WebviewToExtensionMessage =
   | { type: 'auth:get' }
   | { type: 'auth:login'; payload: { email: string } }
   | { type: 'auth:logout' }
+  | { type: 'clipboard:readText'; payload: { requestId: string } }
 
 type ExtensionToWebviewMessage =
   | { type: 'auth:state'; payload: AuthSnapshot }
   | { type: 'auth:error'; payload: { message: string } }
+  | { type: 'clipboard:text'; payload: { requestId: string; text: string } }
+  | { type: 'clipboard:error'; payload: { requestId: string; message: string } }
 
 type AuthListener = (snapshot: AuthSnapshot) => void
 
@@ -40,6 +43,11 @@ let messageListenerAttached = false
 const listeners = new Set<AuthListener>()
 const pendingWaiters = new Set<{
   resolve: (snapshot: AuthSnapshot) => void
+  reject: (error: Error) => void
+  timer: ReturnType<typeof setTimeout>
+}>()
+const pendingClipboardReads = new Map<string, {
+  resolve: (text: string) => void
   reject: (error: Error) => void
   timer: ReturnType<typeof setTimeout>
 }>()
@@ -119,6 +127,25 @@ export async function loginWithEmail(email: string): Promise<AuthSnapshot> {
   }
 
   return requestAuthState({ type: 'auth:login', payload: { email } })
+}
+
+export function readExtensionClipboardText(): Promise<string> {
+  if (!isExtensionAuthMode()) {
+    return navigator.clipboard?.readText?.() ?? Promise.resolve('')
+  }
+
+  attachExtensionMessageListener()
+
+  return new Promise((resolve, reject) => {
+    const requestId = createRequestId()
+    const timer = setTimeout(() => {
+      pendingClipboardReads.delete(requestId)
+      reject(new Error('Extension clipboard read timed out'))
+    }, 5000)
+
+    pendingClipboardReads.set(requestId, { resolve, reject, timer })
+    postToExtension({ type: 'clipboard:readText', payload: { requestId } })
+  })
 }
 
 export function isTokenExpired(token: string): boolean {
@@ -234,6 +261,19 @@ function attachExtensionMessageListener(): void {
     if (message.type === 'auth:error') {
       setAuthSnapshot({ status: 'unauthenticated' })
       rejectPending(new Error(message.payload.message))
+      return
+    }
+
+    if (message.type === 'clipboard:text') {
+      resolveClipboardRead(message.payload.requestId, message.payload.text)
+      return
+    }
+
+    if (message.type === 'clipboard:error') {
+      rejectClipboardRead(
+        message.payload.requestId,
+        new Error(message.payload.message),
+      )
     }
   })
 }
@@ -257,6 +297,28 @@ function rejectPending(error: Error): void {
     waiter.reject(error)
   })
   pendingWaiters.clear()
+}
+
+function resolveClipboardRead(requestId: string, text: string): void {
+  const pending = pendingClipboardReads.get(requestId)
+  if (!pending) return
+
+  clearTimeout(pending.timer)
+  pendingClipboardReads.delete(requestId)
+  pending.resolve(text)
+}
+
+function rejectClipboardRead(requestId: string, error: Error): void {
+  const pending = pendingClipboardReads.get(requestId)
+  if (!pending) return
+
+  clearTimeout(pending.timer)
+  pendingClipboardReads.delete(requestId)
+  pending.reject(error)
+}
+
+function createRequestId(): string {
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
 window.addEventListener('storage', (event) => {

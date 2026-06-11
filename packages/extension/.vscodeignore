@@ -3,4 +3,6 @@ src/**
 scripts/**
 tsconfig.json
 *.tsbuildinfo
+*.vsix
 dist/**/*.map
+!server/**

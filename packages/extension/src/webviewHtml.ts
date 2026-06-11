@@ -1,10 +1,12 @@
 import * as vscode from 'vscode'
 
-import { getConnectSources, getRuntimeConfig } from './config'
+import { getConnectSources } from './config'
+import type { RuntimeConfig } from './types'
 
 export function getWebviewHtml(
   webview: vscode.Webview,
   extensionUri: vscode.Uri,
+  config: RuntimeConfig,
 ): string {
   const nonce = createNonce()
   const webviewRoot = vscode.Uri.joinPath(extensionUri, 'media', 'webview')
@@ -14,7 +16,6 @@ export function getWebviewHtml(
   const styleUri = webview.asWebviewUri(
     vscode.Uri.joinPath(webviewRoot, 'assets', 'index.css'),
   )
-  const config = getRuntimeConfig()
   const connectSources = getConnectSources(config)
 
   return `<!doctype html>
