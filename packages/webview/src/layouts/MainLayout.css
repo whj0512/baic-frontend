@@ -4,10 +4,9 @@
 }
 
 .layout-content {
-  margin-top: 64px;
-  /* Height of TopBar */
   padding: 2rem;
-  min-height: calc(100vh - 64px);
+  min-height: 100vh;
+  box-sizing: border-box;
 }
 
 .extension-auth-page {

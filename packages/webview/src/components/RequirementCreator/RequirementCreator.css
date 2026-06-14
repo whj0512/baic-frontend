@@ -301,3 +301,38 @@
     font-size: 0.875rem;
     color: #4b5563;
 }
+
+/* Custom req type row: input + back button side by side */
+.req-type-custom-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.req-type-custom-row .form-input {
+    flex: 1;
+    margin: 0;
+}
+
+.req-type-back-btn {
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    color: #6b7280;
+    cursor: pointer;
+    font-size: 0.8rem;
+    line-height: 1;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.req-type-back-btn:hover {
+    background-color: #fee2e2;
+    border-color: #fca5a5;
+    color: #ef4444;
+}

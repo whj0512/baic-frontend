@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button, message, Spin, Badge, Modal, Collapse } from 'antd'
 import type { CollapseProps } from 'antd'
-import { ShareAltOutlined, ArrowLeftOutlined, DeleteOutlined, CloseOutlined, FileTextOutlined, PartitionOutlined, ExperimentOutlined } from '@ant-design/icons'
+import { ShareAltOutlined, ArrowLeftOutlined, ExperimentOutlined } from '@ant-design/icons'
 import './ProjectWorkSpace.css'
 import type { Requirement } from '../models/Requirement'
 import type { RequirementVersion } from '../models/RequirementVersion'
@@ -16,6 +16,7 @@ import { useProjectSync } from '../hooks/useProjectSync'
 
 // 中间区域视图类型
 type CenterView = 'overview' | 'editor' | 'create' | 'create-editor' | 'relationship' | 'test-case'
+type CreateCenterView = Extract<CenterView, 'create' | 'create-editor'>
 
 const createEmptyRequirementFormData = () => ({
   name: '',
@@ -39,35 +40,20 @@ function ProjectWorkSpace() {
   // 当前选中的需求
   const [selectedRequirement, setSelectedRequirement] = useState<string | null>(null)
 
-  // IDE 风格 Tab 管理 - 每个 tab 独立记忆视图状态
-  interface ReqTab {
-    id: string
-    label: string         // 截取的 name 前缀
-    savedView: CenterView // 该 tab 上次的视图状态
-    savedSection: SectionKey | null // 该 tab 上次编辑的 section
-  }
-  const [openTabs, setOpenTabs] = useState<ReqTab[]>([])
-  const [activeTabId, setActiveTabId] = useState<string | null>(null)
-  const tabBarRef = useRef<HTMLDivElement>(null)
-
   // 进入 relationship / test-case 视图前保存上一个视图状态，以便返回
   const prevViewStateRef = useRef<{ view: CenterView; reqId: string | null; section: SectionKey | null }>({
     view: 'overview', reqId: null, section: null
+  })
+  const createDraftViewRef = useRef<{ view: CreateCenterView; section: SectionKey | null }>({
+    view: 'create', section: null
   })
 
   // 测试用例视图：当前展示的需求列表
   const [testCaseRequirements, setTestCaseRequirements] = useState<Requirement[]>([])
 
-  // 保存当前活跃 tab 的视图快照
-  const saveCurrentTabState = () => {
-    if (!activeTabId) return
-    setOpenTabs(prev => prev.map(t =>
-      t.id === activeTabId ? { ...t, savedView: centerView, savedSection: editingSection } : t
-    ))
-  }
-
   // 中间区域视图状态
   const [centerView, setCenterView] = useState<CenterView>('overview')
+  const isLeftCollapsed = centerView === 'editor' || centerView === 'create-editor'
 
   // 当前编辑的 section
   const [editingSection, setEditingSection] = useState<SectionKey | null>(null)
@@ -75,9 +61,14 @@ function ProjectWorkSpace() {
   // 右侧面板折叠状态
   const [rightCollapsed, setRightCollapsed] = useState(false)
 
-  // 删除模式
-  const [deleteMode, setDeleteMode] = useState(false)
   const [deleting, setDeleting] = useState(false)
+
+  const restorePreviousCenterView = () => {
+    const prev = prevViewStateRef.current
+    setSelectedRequirement(prev.reqId)
+    setEditingSection(prev.section)
+    setCenterView(prev.view)
+  }
 
   // 初始化：获取项目元信息（仅 project，需求列表由 WebSocket 提供）
   useEffect(() => {
@@ -184,24 +175,12 @@ function ProjectWorkSpace() {
   const handleSectionClick = (sectionKey: SectionKey) => {
     setEditingSection(sectionKey)
     setCenterView('editor')
-    // 同步更新当前 tab 的保存状态
-    if (activeTabId) {
-      setOpenTabs(prev => prev.map(t =>
-        t.id === activeTabId ? { ...t, savedView: 'editor', savedSection: sectionKey } : t
-      ))
-    }
   }
 
   // 返回概览视图
   const handleBackToOverview = () => {
     setEditingSection(null)
     setCenterView('overview')
-    // 同步更新当前 tab 的保存状态
-    if (activeTabId) {
-      setOpenTabs(prev => prev.map(t =>
-        t.id === activeTabId ? { ...t, savedView: 'overview', savedSection: null } : t
-      ))
-    }
   }
 
   // 保存编辑器数据 —— DimensionEditor 内部已通过 PUT API 保存到后端
@@ -211,77 +190,21 @@ function ProjectWorkSpace() {
     // useProjectSync 会通过 WebSocket 接收 requirement_updated 事件并更新状态
   }
 
-  // 选择需求时重置视图 & 管理 tab
+  // 选择需求时重置视图
   const handleRequirementSelect = (reqId: string) => {
-    // 先保存当前 tab 的视图快照
-    saveCurrentTabState()
-
-    const req = requirements.find(r => r.id === reqId)
-    const label = req?.name ? (req.name.length > 18 ? req.name.slice(0, 18) + '…' : req.name) : reqId.slice(0, 8)
-
-    setOpenTabs(prev => {
-      const existing = prev.find(t => t.id === reqId)
-      if (existing) {
-        // tab 已存在：恢复其视图
-        setCenterView(existing.savedView)
-        setEditingSection(existing.savedSection)
-        return prev
-      }
-      // 新 tab：默认 overview
-      setCenterView('overview')
-      setEditingSection(null)
-      return [...prev, { id: reqId, label, savedView: 'overview', savedSection: null }]
-    })
-    setActiveTabId(reqId)
-    setSelectedRequirement(reqId)
-  }
-
-  // 切换 tab - 恢复目标 tab 的视图状态
-  const handleTabClick = (tabId: string) => {
-    if (tabId === activeTabId) return
-    // 先保存当前 tab 的视图快照
-    saveCurrentTabState()
-
-    const targetTab = openTabs.find(t => t.id === tabId)
-    setActiveTabId(tabId)
-    setSelectedRequirement(tabId)
-    if (targetTab) {
-      setCenterView(targetTab.savedView)
-      setEditingSection(targetTab.savedSection)
-    } else {
-      setCenterView('overview')
-      setEditingSection(null)
+    if (centerView === 'create' || centerView === 'create-editor') {
+      createDraftViewRef.current = { view: centerView, section: editingSection }
     }
-  }
-
-  // 关闭 tab
-  const handleTabClose = (e: React.MouseEvent, tabId: string) => {
-    e.stopPropagation()
-    setOpenTabs(prev => {
-      const idx = prev.findIndex(t => t.id === tabId)
-      const next = prev.filter(t => t.id !== tabId)
-      // 若关闭的是当前激活 tab，切到相邻 tab 并恢复其视图
-      if (tabId === activeTabId) {
-        const neighborTab = next[Math.min(idx, next.length - 1)] ?? null
-        setActiveTabId(neighborTab?.id ?? null)
-        setSelectedRequirement(neighborTab?.id ?? null)
-        if (neighborTab) {
-          setCenterView(neighborTab.savedView)
-          setEditingSection(neighborTab.savedSection)
-        } else {
-          setCenterView('overview')
-          setEditingSection(null)
-        }
-      }
-      return next
-    })
+    setSelectedRequirement(reqId)
+    setEditingSection(null)
+    setCenterView('overview')
   }
 
   // 删除需求
   const handleDeleteRequirement = (req: Requirement) => {
     Modal.confirm({
       title: '确认删除需求',
-      content: `确定要删除该需求吗？当前可能有用户正在编辑这条需求。`,
+      content: `确定要删除该需求吗？`,
       okText: '删除',
       okType: 'danger',
       cancelText: '取消',
@@ -297,29 +220,11 @@ function ProjectWorkSpace() {
           }
           message.success('需求已删除')
           removeRequirement(req.id)
-          // 同时关闭对应 tab 并恢复相邻 tab 视图
-          setOpenTabs(prev => {
-            const idx = prev.findIndex(t => t.id === req.id)
-            const next = prev.filter(t => t.id !== req.id)
-            if (req.id === activeTabId) {
-              const neighborTab = next[Math.min(idx, next.length - 1)] ?? null
-              setActiveTabId(neighborTab?.id ?? null)
-              setSelectedRequirement(neighborTab?.id ?? null)
-              if (neighborTab) {
-                setCenterView(neighborTab.savedView)
-                setEditingSection(neighborTab.savedSection)
-              } else {
-                setCenterView('overview')
-                setEditingSection(null)
-              }
-            }
-            return next
-          })
-          if (selectedRequirement === req.id && activeTabId !== req.id) {
+          if (selectedRequirement === req.id) {
             setSelectedRequirement(null)
+            setEditingSection(null)
             setCenterView('overview')
           }
-          setDeleteMode(false)
         } catch (error: any) {
           console.error('Delete error:', error)
           message.error(error.message || '删除失败，请稍后重试')
@@ -335,23 +240,31 @@ function ProjectWorkSpace() {
   const [createFormData, setCreateFormData] = useState(createEmptyRequirementFormData)
 
   const handleCreateRequirement = () => {
+    const draftView = createDraftViewRef.current
     setSelectedRequirement(null)
-    setEditingSection(null)
-    setCreateFormData(createEmptyRequirementFormData())
-    setCenterView('create')
+    setEditingSection(draftView.section)
+    setCenterView(draftView.view === 'create-editor' && draftView.section ? 'create-editor' : 'create')
   }
 
   // 处理新建完成或取消
   const handleCreateFinish = () => {
     setCreateFormData(createEmptyRequirementFormData())
+    createDraftViewRef.current = { view: 'create', section: null }
     setEditingSection(null)
     setCenterView('overview')
   }
 
   // 处理新建时的 Section 点击
   const handleCreateSectionClick = (sectionKey: SectionKey) => {
+    createDraftViewRef.current = { view: 'create-editor', section: sectionKey }
     setEditingSection(sectionKey)
     setCenterView('create-editor')
+  }
+
+  const handleBackToCreator = () => {
+    createDraftViewRef.current = { view: 'create', section: null }
+    setEditingSection(null)
+    setCenterView('create')
   }
 
   // 处理新建编辑器保存
@@ -416,19 +329,27 @@ function ProjectWorkSpace() {
   const renderReqItem = (req: Requirement) => (
     <div
       key={req.id}
-      className={`requirement-item ${selectedRequirement === req.id && !deleteMode ? 'selected' : ''} ${deleteMode ? 'delete-mode-item' : ''}`}
-      onClick={() => deleteMode ? handleDeleteRequirement(req) : handleRequirementSelect(req.id)}
+      className={`requirement-item ${selectedRequirement === req.id ? 'selected' : ''}`}
+      onClick={() => handleRequirementSelect(req.id)}
       style={{ marginBottom: 0 }}
     >
       <div className="requirement-item-header">
         <span className="requirement-date">{formatDate(req.updated_at)}</span>
-        {deleteMode && (
-          <DeleteOutlined style={{ color: '#ff4d4f', fontSize: 13 }} />
-        )}
       </div>
       <div className="requirement-item-content">
         {truncateText(req.name, 50)}
       </div>
+      <button
+        type="button"
+        className="requirement-delete-button"
+        onClick={(event) => {
+          event.stopPropagation()
+          handleDeleteRequirement(req)
+        }}
+        disabled={deleting}
+      >
+        删除
+      </button>
     </div>
   )
 
@@ -482,7 +403,7 @@ function ProjectWorkSpace() {
               setTestCaseRequirements(allReqs)
               prevViewStateRef.current = {
                 view: centerView,
-                reqId: activeTabId,
+                reqId: selectedRequirement,
                 section: editingSection
               }
               setSelectedRequirement(null)
@@ -499,7 +420,10 @@ function ProjectWorkSpace() {
   return (
     <div className="workspace-container">
       {/* ... Left Panel ... */}
-      <div className="workspace-left">
+      <div
+        className={`workspace-left${isLeftCollapsed ? ' workspace-left-collapsed' : ''}`}
+        aria-hidden={isLeftCollapsed}
+      >
         {/* ... (Unchanged) ... */}
         <div className="panel-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -517,18 +441,9 @@ function ProjectWorkSpace() {
           </div>
           <div style={{ display: 'flex', gap: 4 }}>
             <button
-              className={`btn-icon${deleteMode ? ' btn-icon-active' : ''}`}
-              title={deleteMode ? '退出删除模式' : '删除需求'}
-              onClick={() => setDeleteMode(prev => !prev)}
-              disabled={deleting}
-            >
-              <DeleteOutlined />
-            </button>
-            <button
               className="btn-icon"
               title="新建需求"
               onClick={handleCreateRequirement}
-              disabled={deleteMode}
             >
               +
             </button>
@@ -557,7 +472,7 @@ function ProjectWorkSpace() {
               // 保存当前视图状态，以便从 relationship 返回时恢复
               prevViewStateRef.current = {
                 view: centerView,
-                reqId: activeTabId,
+                reqId: selectedRequirement,
                 section: editingSection
               }
               setSelectedRequirement(null)
@@ -571,30 +486,6 @@ function ProjectWorkSpace() {
 
       {/* Center Panel */}
       <div className="workspace-center">
-        {/* IDE 风格 Tab 栏：仅在需求 tab 场景下显示 */}
-        {!['create', 'create-editor', 'relationship', 'test-case'].includes(centerView) && openTabs.length > 0 && (
-          <div className="center-tab-bar" ref={tabBarRef}>
-            {openTabs.map(tab => (
-              <div
-                key={tab.id}
-                className={`center-tab${activeTabId === tab.id ? ' center-tab-active' : ''}`}
-                onClick={() => handleTabClick(tab.id)}
-                title={requirements.find(r => r.id === tab.id)?.name ?? tab.label}
-              >
-                <FileTextOutlined className="center-tab-file-icon" />
-                <span className="center-tab-label">{tab.label}</span>
-                <span
-                  className="center-tab-close"
-                  onClick={(e) => handleTabClose(e, tab.id)}
-                  title="关闭"
-                >
-                  <CloseOutlined />
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* 内容区 */}
         <div className="center-content">
           {centerView === 'overview' && (
@@ -633,7 +524,7 @@ function ProjectWorkSpace() {
             <DimensionEditor
               requirement={draftRequirement}
               sectionKey={editingSection}
-              onBack={() => setCenterView('create')}
+              onBack={handleBackToCreator}
               onSave={handleCreateEditorSave}
             />
           )}
@@ -641,37 +532,14 @@ function ProjectWorkSpace() {
           {centerView === 'relationship' && (
             <ReqRelationShip
               requirements={requirements}
-              onBack={() => {
-                const prev = prevViewStateRef.current
-                if (prev.reqId) {
-                  // 恢复之前的 tab 和视图状态
-                  setActiveTabId(prev.reqId)
-                  setSelectedRequirement(prev.reqId)
-                  setCenterView(prev.view)
-                  setEditingSection(prev.section)
-                } else {
-                  setCenterView('overview')
-                  setEditingSection(null)
-                }
-              }}
+              onBack={restorePreviousCenterView}
             />
           )}
 
           {centerView === 'test-case' && (
             <TestCaseOverview
               requirements={testCaseRequirements}
-              onBack={() => {
-                const prev = prevViewStateRef.current
-                if (prev.reqId) {
-                  setActiveTabId(prev.reqId)
-                  setSelectedRequirement(prev.reqId)
-                  setCenterView(prev.view)
-                  setEditingSection(prev.section)
-                } else {
-                  setCenterView('overview')
-                  setEditingSection(null)
-                }
-              }}
+              onBack={restorePreviousCenterView}
             />
           )}
         </div>

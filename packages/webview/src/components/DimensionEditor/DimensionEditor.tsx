@@ -1,82 +1,135 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button, message } from 'antd'
 import { ArrowLeftOutlined, SaveOutlined, DownloadOutlined, FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons'
-import type { Requirement } from '../../models/Requirement'
 import FlowGraph, { type FlowGraphRef } from '../graph'
 import DslEditor from '../dsl-editor'
 import { getModelStrategy } from '../../models/strategies'
-import { API_ENDPOINTS, authFetch, getDslToRbgEndpoint, getRbgToDslEndpoint } from '../../config/api'
 import { exportGraphToRBG } from '../../models/strategies/internalConstraints/exportGraph'
+import { SECTION_CONFIG } from './dimensionEditorConfig'
+import { useDimensionEditorConversions } from './useDimensionEditorConversions'
+import { useDimensionEditorSnapshot } from './useDimensionEditorSnapshot'
+import { useUnsavedChangesGuard } from './useUnsavedChangesGuard'
+import type { DimensionEditorProps, SectionKey, ViewMode } from './types'
 import './DimensionEditor.css'
-
-type ViewMode = 'visual' | 'dsl'
-
-// SectionKey 与 CreateRequirement.tsx 保持一致
-type SectionKey = 'environment' | 'interaction' | 'internalComposition' | 'moduleResponses' | 'internalConstraints'
-
-const SECTION_CONFIG: Record<SectionKey, { dimensionCode: string; label: string; graphField: keyof Requirement; dslField: keyof Requirement }> = {
-  environment: { dimensionCode: 'IBD', label: '所处环境', graphField: 'graph_IBD', dslField: 'dsl_IBD' },
-  interaction: { dimensionCode: 'ESD', label: '与环境交互', graphField: 'graph_ESD', dslField: 'dsl_ESD' },
-  internalComposition: { dimensionCode: 'BDD', label: '内部组成', graphField: 'graph_BDD', dslField: 'dsl_BDD' },
-  moduleResponses: { dimensionCode: 'ISD', label: '组成模块间的响应', graphField: 'graph_ISD', dslField: 'dsl_ISD' },
-  internalConstraints: { dimensionCode: 'SC', label: '内部约束', graphField: 'graph_SC', dslField: 'dsl_SC' },
-}
-
-interface DimensionEditorProps {
-  requirement: Requirement
-  sectionKey: SectionKey
-  onBack: () => void
-  onSave?: (sectionKey: SectionKey, graphData: object, dslText: string) => void
-}
 
 function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionEditorProps) {
   const config = SECTION_CONFIG[sectionKey]
   const modelStrategy = getModelStrategy(sectionKey)
 
-  // 获取初始的图数据
-  const getInitialGraphData = (): object => {
-    const graphField = config.graphField
-    return (requirement[graphField] as object) || {}
-  }
+  const initialGraphData = (requirement[config.graphField] as object) || {}
+  const initialDslContent = (requirement[config.dslField] as string) || ''
+  const initialContent = requirement.nl_text || ''
 
-  // Local state for the content description
-  const [content, setContent] = useState(requirement.nl_text || '')
-
-  // Local state for graph data
-  const [graphData, setGraphData] = useState(getInitialGraphData())
-
-  // Ref to hold latest graph data
-  const graphDataRef = useRef(getInitialGraphData())
-
-  // Ref to access FlowGraph instance
-  const flowGraphRef = useRef<FlowGraphRef>(null)
-
-  // 待应用的画布属性（DSL 转图时 FlowGraph 尚未挂载，需暂存到 ref）
-  const pendingCanvasDataRef = useRef<Record<string, any> | null>(null)
-
-  // 视图模式状态
+  const [content, setContent] = useState(initialContent)
+  const [graphData, setGraphData] = useState(initialGraphData)
   const [viewMode, setViewMode] = useState<ViewMode>('dsl')
-
-  // Use specific DSL field for the current section
-  const [dslContent, setDslContent] = useState(requirement[config.dslField as keyof Requirement] as string || '')
+  const [dslContent, setDslContent] = useState(initialDslContent)
   const [dslLoading, setDslLoading] = useState(false)
   const [dslError, setDslError] = useState<string | undefined>()
-
-  // 可视化视图中的错误（RBG→DSL 转换失败时显示在 FlowGraph 顶部）
   const [graphError, setGraphError] = useState<string | undefined>()
+  const [saving, setSaving] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
-  const handleGraphChange = (data: object) => {
+  const contentRef = useRef(initialContent)
+  const graphDataRef = useRef<object>(initialGraphData)
+  const dslContentRef = useRef(initialDslContent)
+  const flowGraphRef = useRef<FlowGraphRef | null>(null)
+  const pendingCanvasDataRef = useRef<Record<string, any> | null>(null)
+
+  const {
+    savedSnapshotRef,
+    hasUnsavedChanges,
+    updateSavedSnapshot,
+    markSnapshotSaved,
+  } = useDimensionEditorSnapshot({
+    initialContent,
+    initialDslContent,
+    initialGraphData,
+    content,
+    dslContent,
+    graphData,
+    contentRef,
+    dslContentRef,
+    graphDataRef,
+  })
+
+  const {
+    convertGraphToDsl,
+    convertDslToVisual,
+    applyDslView,
+    applyVisualView,
+    handleDismissError,
+    handleDismissGraphError,
+  } = useDimensionEditorConversions({
+    config,
+    modelStrategy,
+    viewMode,
+    flowGraphRef,
+    dslContentRef,
+    graphDataRef,
+    pendingCanvasDataRef,
+    setViewMode,
+    setGraphData,
+    setDslContent,
+    setDslLoading,
+    setDslError,
+    setGraphError,
+  })
+
+  const {
+    handleSave,
+    handleContentChange,
+    handleDslContentChange,
+    handleGuardedBack,
+  } = useUnsavedChangesGuard({
+    requirement,
+    sectionKey,
+    config,
+    onBack,
+    onSave,
+    hasUnsavedChanges,
+    savedSnapshotRef,
+    contentRef,
+    dslContentRef,
+    graphDataRef,
+    pendingCanvasDataRef,
+    flowGraphRef,
+    markSnapshotSaved,
+    convertGraphToDsl,
+    convertDslToVisual,
+    applyDslView,
+    applyVisualView,
+    setSaving,
+    setContent,
+    setDslContent,
+    setGraphData,
+    viewMode,
+  })
+
+  const handleGraphChange = useCallback((data: object) => {
     graphDataRef.current = data
     setGraphData(data)
-  }
+  }, [])
 
-  // 切换到可视化视图后，待 FlowGraph 挂载完成再将 canvasData 写入 graph 实例
+  const handleSwitchToDsl = useCallback(async () => {
+    const nextDslContent = await convertGraphToDsl()
+    if (nextDslContent !== null) {
+      applyDslView(nextDslContent)
+    }
+  }, [applyDslView, convertGraphToDsl])
+
+  const handleSwitchToVisual = useCallback(async () => {
+    const convertedVisualData = await convertDslToVisual()
+    if (convertedVisualData !== null) {
+      applyVisualView(convertedVisualData)
+    }
+  }, [applyVisualView, convertDslToVisual])
+
   useEffect(() => {
     if (viewMode !== 'visual') return
     const pending = pendingCanvasDataRef.current
     if (!pending) return
 
-    // 此时 FlowGraph 已经渲染，尝试获取 graph 实例
     const applyCanvasData = () => {
       const graph = flowGraphRef.current?.getGraph()
       if (graph) {
@@ -86,12 +139,10 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
       }
     }
 
-    // 延迟一帧确保 FlowGraph 内部的 graph 实例已初始化
     const timer = setTimeout(applyCanvasData, 100)
     return () => clearTimeout(timer)
   }, [viewMode])
 
-  // 监听远程 graph 数据变化（WebSocket 推送导致 requirement prop 更新）
   useEffect(() => {
     const remoteGraph = (requirement[config.graphField] as object) || {}
     const remoteStr = JSON.stringify(remoteGraph)
@@ -99,121 +150,25 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
 
     if (remoteStr !== localStr && remoteStr !== '{}') {
       message.info('其他用户更新了图数据，已自动同步')
-      setGraphData(remoteGraph)
       graphDataRef.current = remoteGraph
+      setGraphData(remoteGraph)
+      updateSavedSnapshot({ graphData: remoteGraph })
       const graph = flowGraphRef.current?.getGraph()
       if (graph) graph.fromJSON(remoteGraph)
     }
-  }, [requirement, config.graphField])
+  }, [requirement, config.graphField, updateSavedSnapshot])
 
-  // 监听远程 DSL 数据变化
   useEffect(() => {
-    const remoteDsl = (requirement[config.dslField as keyof Requirement] as string) || ''
-    if (remoteDsl && remoteDsl !== dslContent) {
+    const remoteDsl = (requirement[config.dslField] as string) || ''
+    if (remoteDsl && remoteDsl !== dslContentRef.current) {
       message.info('其他用户更新了 DSL 数据，已自动同步')
+      dslContentRef.current = remoteDsl
       setDslContent(remoteDsl)
+      updateSavedSnapshot({ dslContent: remoteDsl })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requirement, config.dslField])
+  }, [requirement, config.dslField, updateSavedSnapshot])
 
-  // 切换到 DSL 视图并转换
-  const handleSwitchToDsl = useCallback(async () => {
-    // 已经在 DSL 视图时，直接返回，不重复调用转换接口
-    if (viewMode === 'dsl') return
-
-    const graph = flowGraphRef.current?.getGraph()
-    if (!graph) return
-
-    setDslLoading(true)
-    setGraphError(undefined)
-
-    try {
-      const jsonData = modelStrategy.exportGraphToJSON(graph)
-      // console.log(jsonData)
-      const response = await fetch(getRbgToDslEndpoint(config.dimensionCode), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(jsonData),
-      })
-
-      if (!response.ok) {
-        const errBody = await response.json().catch(() => null)
-        throw new Error(errBody?.error || `HTTP error! status: ${response.status}`)
-      }
-
-      const result = await response.text()
-      setViewMode('dsl')
-      setDslContent(result)
-    } catch (error) {
-      // 转换失败时保持在可视化视图，将错误信息展示在 FlowGraph 顶部
-      setGraphError(error instanceof Error ? error.message : '转换失败，请稍后重试')
-    } finally {
-      setDslLoading(false)
-    }
-  }, [viewMode, sectionKey, config.label, config.dimensionCode, modelStrategy])
-
-  // 清除 DSL 错误，让用户继续在编辑器中编辑
-  const handleDismissError = useCallback(() => {
-    setDslError(undefined)
-  }, [])
-
-  // 清除可视化视图中的图错误
-  const handleDismissGraphError = useCallback(() => {
-    setGraphError(undefined)
-  }, [])
-
-  // 切换到可视化视图
-  const handleSwitchToVisual = useCallback(async () => {
-    // 如果 DSL 内容为空，直接切换
-    if (!dslContent.trim()) {
-      setViewMode('visual')
-      return
-    }
-
-    setDslLoading(true)
-    setDslError(undefined)
-
-    try {
-      const response = await fetch(getDslToRbgEndpoint(config.dimensionCode), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain',
-        },
-        body: dslContent,
-      })
-
-      if (!response.ok) {
-        const errBody = await response.json().catch(() => null)
-        throw new Error(errBody?.error || `HTTP error! status: ${response.status}`)
-      }
-
-      const result = await response.text()
-      const x6Data = modelStrategy.importGraphFromJSON(result)
-
-      // 提取画布数据（含 canvasData）和单元格数据
-      const { canvasData, ...cellsData } = (x6Data as any)
-
-      // 更新图数据
-      setGraphData(cellsData)
-      graphDataRef.current = cellsData
-
-      // 将 canvasData 暂存，等 FlowGraph 挂载后再写入 graph 实例
-      if (canvasData) {
-        pendingCanvasDataRef.current = canvasData
-      }
-
-      setViewMode('visual')
-    } catch (error) {
-      setDslError(error instanceof Error ? error.message : '转换失败，请稍后重试')
-    } finally {
-      setDslLoading(false)
-    }
-  }, [dslContent])
-
-  // 下载图的 JSON 数据
-  const handleDownloadJSON = () => {
+  const handleDownloadJSON = useCallback(() => {
     const graph = flowGraphRef.current?.getGraph()
     if (!graph) return
 
@@ -227,86 +182,40 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
     a.download = `${sectionKey || 'graph'}.json`
     a.click()
     URL.revokeObjectURL(url)
-  }
+  }, [modelStrategy, sectionKey])
 
-  // ==== DEBUG 调试函数 ====
-  const handlePrintRBG = () => {
+  const handlePrintRBG = useCallback(() => {
     const graph = flowGraphRef.current?.getGraph()
     console.log(graph)
     if (!graph) return
+
     if (sectionKey === 'internalConstraints') {
       const rbgData = exportGraphToRBG(graph, requirement.id, content)
       console.log('======  OUTPUT RUN RESULT: exportGraphToRBG ======')
-      console.log(rbgData) // 直接保持为对象，方便在浏览器折叠展开
+      console.log(rbgData)
       message.success('打印成功！请按 F12 打开开发者工具控制台查看')
     } else {
       message.warning('仅支持内部约束画布使用该函数')
     }
-  }
-
-  const [saving, setSaving] = useState(false)
-  const [isFullscreen, setIsFullscreen] = useState(false)
-
-  const handleSave = async () => {
-    // If it's a new requirement (draft), just call onSave and return
-    if (requirement.id === 'NEW') {
-      if (onSave) {
-        onSave(sectionKey, graphDataRef.current, dslContent)
-        message.success('暂存成功')
-      }
-      onBack()
-      return
-    }
-
-    // If it's an existing requirement, call API
-    setSaving(true)
-    try {
-      const payload = {
-        [config.graphField]: graphDataRef.current,
-        [config.dslField]: dslContent,
-        nl_text: content
-      }
-
-      const response = await authFetch(`${API_ENDPOINTS.requirements}/${requirement.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || '保存失败')
-      }
-
-      // const data = await response.json()
-
-      if (onSave) {
-        onSave(sectionKey, graphDataRef.current, dslContent)
-      }
-      message.success('保存成功')
-      onBack()
-
-    } catch (error: any) {
-      console.error('Save error:', error)
-      message.error(error.message || '保存失败')
-    } finally {
-      setSaving(false)
-    }
-  }
+  }, [content, requirement.id, sectionKey])
 
   return (
     <div className="dimension-editor">
       <div className="dimension-editor-header">
-        <Button icon={<ArrowLeftOutlined />} onClick={onBack} type="text">
+        <Button icon={<ArrowLeftOutlined />} onClick={handleGuardedBack} type="text">
           返回概览
         </Button>
         <h2>
           <span className={`dimension-code tag-${config.dimensionCode}`}>{config.dimensionCode}</span>
           {config.label}
         </h2>
-        <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving}>
+        <Button
+          type="primary"
+          icon={<SaveOutlined />}
+          onClick={handleSave}
+          loading={saving}
+          className={hasUnsavedChanges ? 'dimension-save-btn--dirty' : undefined}
+        >
           保存
         </Button>
       </div>
@@ -317,7 +226,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
           <textarea
             className="editor-textarea"
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={(e) => handleContentChange(e.target.value)}
             placeholder={`请输入${config.label}详细内容...`}
           />
         </div>
@@ -335,7 +244,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
                 className={`editor-view-tab ${viewMode === 'visual' ? 'active' : ''}`}
                 onClick={handleSwitchToVisual}
               >
-                可视化模型 (Flow/Logic)
+                可视化模型(Flow/Logic)
               </label>
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -385,7 +294,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
                 error={dslError}
                 onDismissError={handleDismissError}
                 readOnly={false}
-                onChange={setDslContent}
+                onChange={handleDslContentChange}
               />
             )}
           </div>

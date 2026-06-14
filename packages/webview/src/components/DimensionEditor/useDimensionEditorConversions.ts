@@ -1,0 +1,157 @@
+import { useCallback } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
+import type { ModelStrategy } from '../../models/strategies'
+import type { FlowGraphRef } from '../graph'
+import { getDslToRbgEndpoint, getRbgToDslEndpoint } from '../../config/api'
+import type { ConvertedVisualData, DimensionSectionConfig, ViewMode } from './types'
+
+type MutableRef<T> = {
+  current: T
+}
+
+type ApplyViewOptions = {
+  switchView?: boolean
+}
+
+interface UseDimensionEditorConversionsOptions {
+  config: DimensionSectionConfig
+  modelStrategy: ModelStrategy
+  viewMode: ViewMode
+  flowGraphRef: MutableRef<FlowGraphRef | null>
+  dslContentRef: MutableRef<string>
+  graphDataRef: MutableRef<object>
+  pendingCanvasDataRef: MutableRef<Record<string, any> | null>
+  setViewMode: Dispatch<SetStateAction<ViewMode>>
+  setGraphData: Dispatch<SetStateAction<object>>
+  setDslContent: Dispatch<SetStateAction<string>>
+  setDslLoading: Dispatch<SetStateAction<boolean>>
+  setDslError: Dispatch<SetStateAction<string | undefined>>
+  setGraphError: Dispatch<SetStateAction<string | undefined>>
+}
+
+export function useDimensionEditorConversions({
+  config,
+  modelStrategy,
+  viewMode,
+  flowGraphRef,
+  dslContentRef,
+  graphDataRef,
+  pendingCanvasDataRef,
+  setViewMode,
+  setGraphData,
+  setDslContent,
+  setDslLoading,
+  setDslError,
+  setGraphError,
+}: UseDimensionEditorConversionsOptions) {
+  const convertGraphToDsl = useCallback(async (): Promise<string | null> => {
+    if (viewMode === 'dsl') return null
+
+    const graph = flowGraphRef.current?.getGraph()
+    if (!graph) return null
+
+    setDslLoading(true)
+    setGraphError(undefined)
+
+    try {
+      const jsonData = modelStrategy.exportGraphToJSON(graph)
+      const response = await fetch(getRbgToDslEndpoint(config.dimensionCode), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(jsonData),
+      })
+
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => null)
+        throw new Error(errBody?.error || `HTTP error! status: ${response.status}`)
+      }
+
+      return await response.text()
+    } catch (error) {
+      setGraphError(error instanceof Error ? error.message : '转换失败，请稍后重试')
+      return null
+    } finally {
+      setDslLoading(false)
+    }
+  }, [config.dimensionCode, flowGraphRef, modelStrategy, setDslLoading, setGraphError, viewMode])
+
+  const convertDslToVisual = useCallback(async (
+    sourceDsl = dslContentRef.current,
+  ): Promise<ConvertedVisualData | null> => {
+    if (!sourceDsl.trim()) {
+      return { cellsData: graphDataRef.current }
+    }
+
+    setDslLoading(true)
+    setDslError(undefined)
+
+    try {
+      const response = await fetch(getDslToRbgEndpoint(config.dimensionCode), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain',
+        },
+        body: sourceDsl,
+      })
+
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => null)
+        throw new Error(errBody?.error || `HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.text()
+      const x6Data = modelStrategy.importGraphFromJSON(result)
+      const { canvasData, ...cellsData } = (x6Data as any)
+
+      return { cellsData, canvasData }
+    } catch (error) {
+      setDslError(error instanceof Error ? error.message : '转换失败，请稍后重试')
+      return null
+    } finally {
+      setDslLoading(false)
+    }
+  }, [config.dimensionCode, dslContentRef, graphDataRef, modelStrategy, setDslError, setDslLoading])
+
+  const applyDslView = useCallback((nextDslContent: string, options: ApplyViewOptions = {}) => {
+    const { switchView = true } = options
+
+    dslContentRef.current = nextDslContent
+    setDslContent(nextDslContent)
+    if (switchView) {
+      setViewMode('dsl')
+    }
+  }, [dslContentRef, setDslContent, setViewMode])
+
+  const applyVisualView = useCallback((
+    { cellsData, canvasData }: ConvertedVisualData,
+    options: ApplyViewOptions = {},
+  ) => {
+    const { switchView = true } = options
+
+    graphDataRef.current = cellsData
+    pendingCanvasDataRef.current = canvasData ?? null
+    setGraphData(cellsData)
+    if (switchView) {
+      setViewMode('visual')
+    }
+  }, [graphDataRef, pendingCanvasDataRef, setGraphData, setViewMode])
+
+  const handleDismissError = useCallback(() => {
+    setDslError(undefined)
+  }, [setDslError])
+
+  const handleDismissGraphError = useCallback(() => {
+    setGraphError(undefined)
+  }, [setGraphError])
+
+  return {
+    convertGraphToDsl,
+    convertDslToVisual,
+    applyDslView,
+    applyVisualView,
+    handleDismissError,
+    handleDismissGraphError,
+  }
+}

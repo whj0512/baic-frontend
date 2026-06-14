@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Outlet, Navigate, useLocation } from 'react-router-dom'
-import TopBar from '../components/TopBar'
 import { isExtensionAuthMode, loginWithEmail } from '../config/authClient'
 import './MainLayout.css'
 import { useAuth } from '../hooks/useAuth'
@@ -83,7 +82,6 @@ function MainLayout() {
 
   return (
     <div className="main-layout">
-      <TopBar />
       <main className="layout-content">
         <Outlet />
       </main>

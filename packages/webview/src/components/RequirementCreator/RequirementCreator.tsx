@@ -1,8 +1,19 @@
 import { useState } from 'react'
-import { message, Tabs, Upload, Button } from 'antd'
-import { UploadOutlined, RobotOutlined, FormOutlined } from '@ant-design/icons'
+import { message, Tabs, Select } from 'antd'
+import { FormOutlined } from '@ant-design/icons'
 import { API_ENDPOINTS, authFetch } from '../../config/api'
 import './RequirementCreator.css'
+
+const CUSTOM_TYPE_KEY = '__custom__'
+
+const PRESET_REQ_TYPES = [
+  { value: '部件级', label: '部件级' },
+  { value: '系统级', label: '系统级' },
+  { value: CUSTOM_TYPE_KEY, label: '自定义...' },
+]
+
+const isPresetReqType = (value?: string) =>
+    !value || PRESET_REQ_TYPES.some(option => option.value === value)
 
 // Types
 type SectionKey = 'environment' | 'interaction' | 'internalComposition' | 'moduleResponses' | 'internalConstraints';
@@ -29,27 +40,6 @@ interface RequirementCreatorProps {
     onSuccess?: () => void
 }
 
-// Mock Data (Same as CreateRequirement)
-const MOCK_AVAILABLE_REQS = Array.from({ length: 10 }, (_, i) => ({
-    value: i + 1,
-    label: `需求项 ${i + 1} (System)`,
-}))
-
-const RELATION_TYPES = [
-    { value: 'Satisfies', label: 'Satisfies' },
-    { value: 'Derives', label: 'Derives From' },
-    { value: 'Refines', label: 'Refines' },
-    { value: 'Trace', label: 'Traces To' },
-    { value: 'Parent', label: 'Parent Of' },
-    { value: 'Child', label: 'Child Of' },
-]
-
-const AI_MODELS = [
-    { value: 'gpt-4', label: 'GPT-4 Turbo' },
-    { value: 'claude-3-opus', label: 'Claude 3 Opus' },
-    { value: 'gemini-pro', label: 'Gemini Pro' },
-]
-
 // Sections Config (from RequirementOverview/CreateRequirement)
 const SECTIONS: { key: SectionKey; dimensionCode: string; label: string; }[] = [
     { key: 'environment', dimensionCode: 'IBD', label: '所处环境' },
@@ -70,6 +60,9 @@ function RequirementCreator({
     // Tab State
     const [activeTab, setActiveTab] = useState('manual')
 
+    // track whether "custom" option is selected in req type dropdown
+    const [isCustomType, setIsCustomType] = useState(() => !isPresetReqType(formData?.req_type))
+
     // Local state fallback if not provided via props (for standalone usage safety)
     const [localFormData, setLocalFormData] = useState({
         name: '',
@@ -82,15 +75,6 @@ function RequirementCreator({
 
     // Start with local, but prefer props
     const currentFormData = formData || localFormData
-
-    // Relation State
-    const [currentRelationType, setCurrentRelationType] = useState('Satisfies')
-    const [currentReqId, setCurrentReqId] = useState<number | null>(null)
-
-    // Auto Gen State
-    const [selectedModel, setSelectedModel] = useState<string>('gpt-4')
-    const [fileList, setFileList] = useState<any[]>([])
-    const [isAnalyzing, setIsAnalyzing] = useState(false)
 
     const updateFormData = (newData: any) => {
         if (onChange) {
@@ -106,42 +90,6 @@ function RequirementCreator({
         const newData = {
             ...currentFormData,
             [name]: value
-        }
-        updateFormData(newData)
-    }
-
-    const handleAddRelation = () => {
-        if (!currentReqId) return
-        const targetReq = MOCK_AVAILABLE_REQS.find(r => r.value === currentReqId)
-        if (!targetReq) return
-
-        const newRelation: RelationItem = {
-            reqId: currentReqId,
-            relationType: currentRelationType,
-            reqLabel: targetReq.label
-        }
-
-        const exists = currentFormData.relationships.some(
-            r => r.reqId === newRelation.reqId && r.relationType === newRelation.relationType
-        )
-
-        if (exists) {
-            message.warning('该关系已存在')
-            return
-        }
-
-        const newData = {
-            ...currentFormData,
-            relationships: [...currentFormData.relationships, newRelation]
-        }
-        updateFormData(newData)
-        setCurrentReqId(null)
-    }
-
-    const handleRemoveRelation = (index: number) => {
-        const newData = {
-            ...currentFormData,
-            relationships: currentFormData.relationships.filter((_, i) => i !== index)
         }
         updateFormData(newData)
     }
@@ -196,24 +144,6 @@ function RequirementCreator({
         }
     }
 
-    const handleAnalyze = () => {
-        if (fileList.length === 0) {
-            message.warning('请先上传文件')
-            return
-        }
-        setIsAnalyzing(true)
-        setTimeout(() => {
-            const newData = {
-                ...currentFormData,
-                nl_text: '本需求描述了车辆在紧急制动情况下的系统响应行为，基于上传的文档自动提取。',
-            }
-            updateFormData(newData)
-            setIsAnalyzing(false)
-            message.success('解析完成，内容已自动填充')
-            setActiveTab('manual')
-        }, 2000)
-    }
-
     const renderManualForm = () => (
         <>
             <div className="creator-content">
@@ -240,14 +170,49 @@ function RequirementCreator({
                         <span className="section-title">需求类型</span>
                     </div>
                     <div className="form-group">
-                        <input
-                            type="text"
-                            name="req_type"
-                            className="form-input"
-                            placeholder="请输入需求类型"
-                            value={currentFormData.req_type}
-                            onChange={handleChange}
-                        />
+                        {isCustomType ? (
+                            <div className="req-type-custom-row">
+                                <input
+                                    type="text"
+                                    name="req_type"
+                                    className="form-input"
+                                    placeholder="请输入自定义需求类型"
+                                    value={currentFormData.req_type}
+                                    onChange={handleChange}
+                                    autoFocus
+                                />
+                                <button
+                                    type="button"
+                                    className="req-type-back-btn"
+                                    onClick={() => {
+                                        setIsCustomType(false)
+                                        updateFormData({ ...currentFormData, req_type: '' })
+                                    }}
+                                    title="返回选择"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        ) : (
+                            <Select
+                                style={{ width: '100%' }}
+                                placeholder="请选择需求类型"
+                                allowClear
+                                options={PRESET_REQ_TYPES}
+                                value={currentFormData.req_type || undefined}
+                                onChange={(val: string | undefined) => {
+                                    if (val === CUSTOM_TYPE_KEY) {
+                                        setIsCustomType(true)
+                                        updateFormData({ ...currentFormData, req_type: '' })
+                                    } else {
+                                        updateFormData({ ...currentFormData, req_type: val ?? '' })
+                                    }
+                                }}
+                                onClear={() => {
+                                    updateFormData({ ...currentFormData, req_type: '' })
+                                }}
+                            />
+                        )}
                     </div>
                 </div>
 
@@ -267,65 +232,10 @@ function RequirementCreator({
                     </div>
                 </div>
 
-                {/* Relationships */}
-                <div className="creator-section">
-                    <div className="section-header">
-                        <span className="section-title">制品间关系</span>
-                    </div>
-                    <div className="relation-input-row">
-                        <select
-                            className="form-select relation-type-select"
-                            value={currentRelationType}
-                            onChange={(e) => setCurrentRelationType(e.target.value)}
-                        >
-                            {RELATION_TYPES.map(t => (
-                                <option key={t.value} value={t.value}>{t.label}</option>
-                            ))}
-                        </select>
-                        <select
-                            className="form-select"
-                            style={{ flex: 1 }}
-                            value={currentReqId || ''}
-                            onChange={(e) => setCurrentReqId(e.target.value ? Number(e.target.value) : null)}
-                        >
-                            <option value="" disabled>选择关联需求</option>
-                            {MOCK_AVAILABLE_REQS.map(req => (
-                                <option key={req.value} value={req.value}>{req.label}</option>
-                            ))}
-                        </select>
-                        <button
-                            type="button"
-                            className="add-relation-btn"
-                            onClick={handleAddRelation}
-                            disabled={!currentReqId}
-                        >
-                            添加
-                        </button>
-                    </div>
-                    {currentFormData.relationships.length > 0 && (
-                        <div className="relations-list">
-                            {currentFormData.relationships.map((rel, index) => (
-                                <div key={index} className="relation-item">
-                                    <span className="relation-tag">{rel.relationType}</span>
-                                    <span className="relation-arrow">→</span>
-                                    <span className="relation-target">{rel.reqLabel}</span>
-                                    <button
-                                        type="button"
-                                        className="remove-relation-btn"
-                                        onClick={() => handleRemoveRelation(index)}
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
                 {/* Dimensions - Placeholder for creation view */}
                 <div className="creator-section">
                     <div className="section-header">
-                        <span className="section-title">五维模型定义 (创建后配置)</span>
+                        <span className="section-title">五维模型定义</span>
                     </div>
                     <div className="dimension-list">
                         {SECTIONS.map((section) => (
@@ -363,51 +273,6 @@ function RequirementCreator({
         </>
     )
 
-    const renderAutoGenerate = () => (
-        <div className="creator-content">
-            <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
-                <h3 style={{ marginBottom: '1rem', color: '#374151' }}>智能需求生成</h3>
-                <p style={{ marginBottom: '2rem', color: '#6b7280' }}>上传文档，AI 帮您提取需求内容。</p>
-
-                <div style={{ maxWidth: 400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <select
-                        className="form-select"
-                        style={{ width: '100%', height: '40px' }} // Added height to match Button size roughly
-                        value={selectedModel}
-                        onChange={(e) => setSelectedModel(e.target.value)}
-                    >
-                        {AI_MODELS.map(model => (
-                            <option key={model.value} value={model.value}>{model.label}</option>
-                        ))}
-                    </select>
-                    <Upload.Dragger
-                        name="file"
-                        multiple={false}
-                        fileList={fileList}
-                        beforeUpload={(file) => {
-                            setFileList([file])
-                            return false
-                        }}
-                        onRemove={() => setFileList([])}
-                    >
-                        <p className="ant-upload-drag-icon"><UploadOutlined /></p>
-                        <p className="ant-upload-text">点击上传文档</p>
-                    </Upload.Dragger>
-                    <Button
-                        type="primary"
-                        size="large"
-                        onClick={handleAnalyze}
-                        loading={isAnalyzing}
-                        disabled={fileList.length === 0}
-                        block
-                    >
-                        开始解析
-                    </Button>
-                </div>
-            </div>
-        </div>
-    )
-
     return (
         <div className="requirement-creator">
             <div className="creator-header">
@@ -422,15 +287,14 @@ function RequirementCreator({
                     activeKey={activeTab}
                     onChange={setActiveTab}
                     items={[
-                        { key: 'manual', label: <span><FormOutlined /> 条目创建</span> },
-                        { key: 'auto', label: <span><RobotOutlined /> 自动生成</span> }
+                        { key: 'manual', label: <span><FormOutlined /> 条目创建</span> }
                     ]}
                     className="creator-tabs"
                     tabBarStyle={{ marginBottom: 0, paddingLeft: 24 }}
                 />
             </div>
 
-            {activeTab === 'manual' ? renderManualForm() : renderAutoGenerate()}
+            {renderManualForm()}
         </div>
     )
 }
