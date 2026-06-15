@@ -50,6 +50,12 @@
 
 .graph-sidebar .x6-widget-stencil-content {
   width: 100% !important;
+  top: 0 !important;
+}
+
+.graph-sidebar .x6-widget-stencil-title,
+.graph-sidebar .x6-widget-stencil-group-title {
+  display: none !important;
 }
 
 .graph-sidebar::-webkit-scrollbar {
@@ -203,7 +209,40 @@
 }
 
 .form-panel-wrapper .form-panel {
+  width: var(--form-panel-width, 280px);
   transition: width 0.3s ease, opacity 0.3s ease;
+}
+
+.form-panel-wrapper.resizing .form-panel {
+  transition: opacity 0.3s ease;
+}
+
+.form-panel-resize-handle {
+  width: 6px;
+  margin-left: -3px;
+  margin-right: -3px;
+  cursor: col-resize;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 6;
+  touch-action: none;
+}
+
+.form-panel-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: transparent;
+  transition: background 0.2s;
+}
+
+.form-panel-resize-handle:hover::after,
+.form-panel-wrapper.resizing .form-panel-resize-handle::after {
+  background: #93c5fd;
 }
 
 .form-panel-wrapper.collapsed .form-panel {
@@ -212,6 +251,15 @@
   border-left: none;
   opacity: 0;
   pointer-events: none;
+}
+
+.form-panel-wrapper.collapsed .form-panel-resize-handle {
+  display: none;
+}
+
+.flow-graph-form-panel-resizing {
+  cursor: col-resize !important;
+  user-select: none;
 }
 
 /* 面板收起/展开按钮 */

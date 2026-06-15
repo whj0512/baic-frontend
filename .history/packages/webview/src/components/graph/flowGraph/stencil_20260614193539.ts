@@ -8,17 +8,16 @@ export const createFlowGraphStencil = (
   strategy: GraphStrategy,
 ) => {
   const stencil = new Stencil({
-    title: '',
+    title: '组件库',
     target: graph,
     stencilGraphWidth: strategy.stencilGraphWidth || 160,
     stencilGraphHeight: strategy.stencilGraphHeight || 0,
     stencilGraphPadding: strategy.stencilGraphPadding || 10,
-    collapsable: false,
+    collapsable: true,
     groups: [
       {
         name: 'default',
-        title: '',
-        collapsable: false,
+        title: '基础组件',
       },
     ],
     layoutOptions: strategy.stencilLayoutOptions || {

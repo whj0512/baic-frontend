@@ -8,19 +8,11 @@ export const createFlowGraphStencil = (
   strategy: GraphStrategy,
 ) => {
   const stencil = new Stencil({
-    title: '',
     target: graph,
     stencilGraphWidth: strategy.stencilGraphWidth || 160,
     stencilGraphHeight: strategy.stencilGraphHeight || 0,
     stencilGraphPadding: strategy.stencilGraphPadding || 10,
-    collapsable: false,
-    groups: [
-      {
-        name: 'default',
-        title: '',
-        collapsable: false,
-      },
-    ],
+    collapsable: true,
     layoutOptions: strategy.stencilLayoutOptions || {
       columns: 1,
       columnWidth: 140,
