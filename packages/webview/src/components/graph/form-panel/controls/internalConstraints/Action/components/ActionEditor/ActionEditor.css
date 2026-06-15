@@ -1,0 +1,43 @@
+.internal-action-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.internal-action-editor .ant-select {
+  min-width: 72px;
+}
+
+.internal-action-editor__func-args {
+  min-width: 120px;
+}
+
+.internal-action-editor__help {
+  color: #8c8c8c;
+  cursor: help;
+}
+
+.internal-action-editor__warn-tips {
+  margin-top: 4px;
+  color: #fa8c16;
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.internal-action-editor__fixup {
+  margin-left: 8px;
+  color: #1677ff;
+}
+
+@media (max-width: 520px) {
+  .internal-action-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .internal-action-editor .ant-select {
+    width: 100%;
+  }
+}

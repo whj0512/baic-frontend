@@ -1,7 +1,9 @@
 .action-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
   padding: 4px 0;
   border-bottom: 1px solid #f0f0f0;
 }
@@ -10,30 +12,38 @@
   border-bottom: none;
 }
 
-.action-item-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
+.action-item--dragging {
+  opacity: 0.5;
 }
 
-.action-item .drag-handle {
+.action-item__handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
   color: #999;
   cursor: grab;
+  flex-shrink: 0;
   font-size: 14px;
 }
 
-.action-item .drag-handle:hover {
+.action-item__handle:hover {
   color: #666;
 }
 
-.action-item .remove-icon {
+.action-item .editable-switch {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.action-item__remove {
   color: #999;
   cursor: pointer;
+  flex-shrink: 0;
   font-size: 12px;
   transition: color 0.2s;
 }
 
-.action-item .remove-icon:hover {
+.action-item__remove:hover {
   color: #ff4d4f;
 }

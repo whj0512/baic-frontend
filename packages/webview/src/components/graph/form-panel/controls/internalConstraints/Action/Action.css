@@ -5,20 +5,85 @@
 .action-toolbar {
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
+  justify-content: flex-end;
+  gap: 4px;
+  min-height: 24px;
+  margin-bottom: 6px;
 }
 
-.action-toolbar .add-icon {
-  font-size: 16px;
-  color: #1890ff;
+.action-toolbar__icon,
+.action-toolbar__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: #595959;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
   cursor: pointer;
-  transition: color 0.2s;
+  font-size: 14px;
+  transition: color 0.2s, background 0.2s;
 }
 
-.action-toolbar .add-icon:hover {
-  color: #40a9ff;
+.action-toolbar__icon:hover,
+.action-toolbar__button:hover {
+  color: #1890ff;
+  background: #e6f7ff;
 }
 
 .action-list {
   width: 100%;
+}
+
+.action-advanced-editor {
+  overflow: hidden;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+}
+
+.action-advanced-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: #fafafa;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.action-advanced-lang {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+.action-advanced-lang-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #1890ff;
+  background: #e6f7ff;
+  border-radius: 3px;
+}
+
+.action-advanced-shortcut {
+  font-size: 11px;
+  color: #bfbfbf;
+}
+
+.action-advanced-shortcut kbd {
+  display: inline-block;
+  padding: 0 4px;
+  font-family: inherit;
+  font-size: 11px;
+  color: #8c8c8c;
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 3px;
+  line-height: 18px;
 }

@@ -1,14 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  CodeOutlined,
-  CopyOutlined,
-  LoadingOutlined,
-  CaretRightOutlined,
-} from '@ant-design/icons'
+import { CodeOutlined, CopyOutlined, LoadingOutlined } from '@ant-design/icons'
 import Editor from '@monaco-editor/react'
 import { Button, Input, message, Modal, Tooltip } from 'antd'
 import type { Graph } from '@antv/x6'
-import { useAdvancedEditor } from '../../../../../../hooks/useAdvancedEditor'
 import EditableSwitch from '../../common/EditableSwitch'
 import {
   calculateCallShell,
@@ -37,19 +31,14 @@ const Script: React.FC<ScriptProps> = ({
   const [completed, setCompleted] = useState(true)
   const [runParams, setRunParams] = useState<RunParam[]>([])
   const [runResult, setRunResult] = useState('')
-  const [runError, setRunError] = useState(false)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [advancedValue, setAdvancedValue] = useState(value)
   const compileSeqRef = useRef(0)
-  const advancedEditor = useAdvancedEditor<string>({
-    value,
-    onSave: (nextValue) => onChange?.(nextValue),
-    onError: (errorMessage) => message.error(errorMessage),
-  })
 
   const getCallNodes = useCallback(() => (
     collectCallNodes(graph, currentNodeId)
   ), [graph, currentNodeId])
 
-  // ── 编译：提取脚本变量 ──
   useEffect(() => {
     const seq = compileSeqRef.current + 1
     compileSeqRef.current = seq
@@ -70,13 +59,11 @@ const Script: React.FC<ScriptProps> = ({
       if (result.status === 'ok') {
         setRunParams(Object.values(result.data ?? {}))
         setRunResult('')
-        setRunError(false)
         return
       }
 
       setRunParams([])
       setRunResult('')
-      setRunError(false)
       message.error(result.message || '脚本变量提取失败')
     }, COMPILE_DELAY)
 
@@ -86,31 +73,9 @@ const Script: React.FC<ScriptProps> = ({
     }
   }, [getCallNodes, value])
 
-  // ── 自动运行脚本 ──
   const allParamsFilled = useMemo(() => (
     runParams.length > 0 && runParams.every((param) => String(param.value ?? '').trim() !== '')
   ), [runParams])
-
-  const runScript = useCallback(async () => {
-    const variables = listToObject(runParams)
-    if (Object.keys(variables).length !== runParams.length) {
-      message.error('参数值不合法')
-      setRunResult('')
-      setRunError(true)
-      return
-    }
-
-    const result = await calculateCallShell(getCallNodes(), variables)
-
-    if (result.status === 'ok') {
-      setRunResult(result.data ?? '')
-      setRunError(false)
-      return
-    }
-
-    setRunResult(result.message || '脚本运行失败')
-    setRunError(true)
-  }, [getCallNodes, runParams])
 
   useEffect(() => {
     if (!runParams.length || !allParamsFilled) {
@@ -119,13 +84,11 @@ const Script: React.FC<ScriptProps> = ({
 
     let cancelled = false
 
-    const run = async () => {
+    const runScript = async () => {
       const variables = listToObject(runParams)
       if (Object.keys(variables).length !== runParams.length) {
-        if (!cancelled) {
-          setRunResult('')
-          setRunError(false)
-        }
+        message.error('illegal value!')
+        setRunResult('')
         return
       }
 
@@ -136,22 +99,20 @@ const Script: React.FC<ScriptProps> = ({
 
       if (result.status === 'ok') {
         setRunResult(result.data ?? '')
-        setRunError(false)
         return
       }
 
-      setRunResult(result.message || '脚本运行失败')
-      setRunError(true)
+      setRunResult('')
+      message.error(result.message || '脚本运行失败')
     }
 
-    run()
+    runScript()
 
     return () => {
       cancelled = true
     }
   }, [allParamsFilled, getCallNodes, runParams])
 
-  // ── 事件处理 ──
   const handleScriptChange = (nextValue: string) => {
     onChange?.(nextValue)
   }
@@ -159,7 +120,6 @@ const Script: React.FC<ScriptProps> = ({
   const handleParamChange = (index: number, nextValue: string) => {
     if (!nextValue.trim()) {
       setRunResult('')
-      setRunError(false)
     }
 
     setRunParams((prev) => {
@@ -173,66 +133,68 @@ const Script: React.FC<ScriptProps> = ({
   }
 
   const handleCopyParams = async () => {
-    try {
-      await navigator.clipboard.writeText(JSON.stringify(runParams, null, 2))
-      message.success('参数已复制')
-    } catch {
-      message.error('复制失败，请手动复制')
-    }
+    await navigator.clipboard.writeText(JSON.stringify(runParams))
+    message.success('copy successfully!')
+  }
+
+  const handleOpenAdvancedEditor = () => {
+    setAdvancedValue(value)
+    setAdvancedOpen(true)
+  }
+
+  const handleSaveAdvancedEditor = () => {
+    onChange?.(advancedValue)
+    setAdvancedOpen(false)
   }
 
   return (
     <div className="script-control">
-      {/* ── 操作栏：高级编辑 + 状态图标 ── */}
       <div className="script-actionbar">
-        {!completed ? (
-          <LoadingOutlined className="script-status-icon" />
-        ) : (
-          runParams.length > 0 && (
-            <Tooltip title="复制参数">
-              <CopyOutlined
-                onClick={handleCopyParams}
-                className="script-status-icon script-copy-icon"
-              />
-            </Tooltip>
-          )
-        )}
         <Tooltip title="高级编辑">
           <button
             type="button"
             className="script-action-button"
-            onClick={advancedEditor.openEditor}
+            onClick={handleOpenAdvancedEditor}
           >
             <CodeOutlined />
           </button>
         </Tooltip>
       </div>
 
-      {/* ── 脚本输入 ── */}
       <div className="script-input-wrapper">
         <EditableSwitch readonlyValue={value || '未设置脚本'}>
           {(onFinish) => (
-            <Input
+            <input
+              type="text"
+              className="script-input"
               value={value}
               placeholder="输入脚本表达式"
               autoFocus
               onBlur={onFinish}
               onChange={(event) => handleScriptChange(event.target.value)}
-              onPressEnter={onFinish}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  onFinish()
+                }
+              }}
             />
           )}
         </EditableSwitch>
       </div>
 
-      {/* ── 参数列表 + 结果 ── */}
-      {(runParams.length > 0 || runResult) && (
-        <div className="script-param-container">
-          {runParams.length > 0 && (
-            <div className="script-param-header">
-              <span className="script-param-title">变量</span>
-            </div>
-          )}
+      {!completed ? (
+        <LoadingOutlined className="script-status-icon" />
+      ) : (
+        runParams.length > 0 && (
+          <CopyOutlined
+            onClick={handleCopyParams}
+            className="script-status-icon script-copy-icon"
+          />
+        )
+      )}
 
+      {runParams.length > 0 && (
+        <div className="script-param-container">
           {runParams.map((item, index) => {
             const type = item.type === 'int' ? 'integer' : item.type
             const readonlyValue = item.value || ''
@@ -257,62 +219,36 @@ const Script: React.FC<ScriptProps> = ({
             )
           })}
 
-          {/* 手动运行按钮 */}
-          {allParamsFilled && (
-            <div className="script-run-row">
-              <Button
-                type="primary"
-                size="small"
-                icon={<CaretRightOutlined />}
-                onClick={runScript}
-              >
-                运行
-              </Button>
-            </div>
-          )}
-
-          {/* 运行结果 */}
           {runResult && (
-            <div className={`script-result-row${runError ? ' script-result-error' : ''}`}>
-              <span className="script-result-label">
-                {runError ? '错误：' : '结果：'}
-              </span>
+            <div className="script-result-row">
+              <span className="script-result-label">结果：</span>
               <span className="script-result-text">{runResult}</span>
             </div>
           )}
         </div>
       )}
 
-      {/* ── 高级编辑器 Modal ── */}
       <Modal
         title="脚本高级编辑"
-        open={advancedEditor.open}
+        open={advancedOpen}
         width={760}
         centered
         destroyOnHidden
-        onCancel={advancedEditor.closeEditor}
+        onCancel={() => setAdvancedOpen(false)}
         footer={[
-          <Button key="cancel" onClick={advancedEditor.closeEditor}>
+          <Button key="cancel" onClick={() => setAdvancedOpen(false)}>
             取消
           </Button>,
-          <Button key="save" type="primary" onClick={advancedEditor.saveEditor}>
+          <Button key="save" type="primary" onClick={handleSaveAdvancedEditor}>
             保存
           </Button>,
         ]}
       >
         <div className="script-advanced-editor">
-          <div className="script-advanced-toolbar">
-            <span className="script-advanced-lang">
-              语言：<span className="script-advanced-lang-badge">Python</span>
-            </span>
-            <span className="script-advanced-shortcut">
-              <kbd>Ctrl</kbd>+<kbd>S</kbd> 保存
-            </span>
-          </div>
           <Editor
             height="320px"
             defaultLanguage="python"
-            value={advancedEditor.draftValue}
+            value={advancedValue}
             options={{
               minimap: { enabled: false },
               scrollBeyondLastLine: false,
@@ -320,8 +256,7 @@ const Script: React.FC<ScriptProps> = ({
               lineNumbers: 'on',
               automaticLayout: true,
             }}
-            onChange={(nextValue) => advancedEditor.setDraftValue(nextValue ?? '')}
-            onMount={advancedEditor.handleEditorMount}
+            onChange={(nextValue) => setAdvancedValue(nextValue ?? '')}
           />
         </div>
       </Modal>

@@ -1,34 +1,19 @@
-import React, { useState } from 'react'
-import { PlusCircleOutlined } from '@ant-design/icons'
+import { CodeOutlined, PlusCircleOutlined } from '@ant-design/icons'
+import Editor from '@monaco-editor/react'
+import { type FC, useCallback, useMemo, useState } from 'react'
+import { Button, message, Modal, Tooltip } from 'antd'
+import { useAdvancedEditor } from '../../../../../../hooks/useAdvancedEditor'
 import ActionItem from './components/ActionItem'
+import {
+  createDefaultAction,
+  moveItem,
+  normalizeActionList,
+  parseActionListDraft,
+  type ActionValue,
+} from './utils'
 import './Action.css'
 
-// 生成唯一 ID
-const generateId = () => {
-  return `action_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
-}
-
-export interface ActionValue {
-  id?: string
-  express: string
-  pre_think_time: number
-  post_think_time: number
-  type: string
-  name?: string
-  symbol?: string
-  value?: string
-}
-
-export const createDefaultAction = (v: Partial<ActionValue> = {}): ActionValue => {
-  return {
-    id: generateId(),
-    express: '',
-    pre_think_time: 0,
-    post_think_time: 0,
-    type: 'action',
-    ...v,
-  }
-}
+export type { ActionValue } from './utils'
 
 interface ActionProps {
   value?: ActionValue[]
@@ -36,73 +21,138 @@ interface ActionProps {
   controlSchema?: { groupId?: string }
 }
 
-const Action: React.FC<ActionProps> = ({ value = [], onChange, controlSchema }) => {
-  const [newActionIndex, setNewActionIndex] = useState(-1)
+const serializeActionList = (items: ActionValue[]) => JSON.stringify(items, null, 2)
 
-  // 1. 标准化数据源，支持旧数据的平滑迁徙
-  const formItemValue: ActionValue[] = (value || []).map((v: any) => {
-    // 兼容旧格式，向新格式靠拢：如果包含旧的 name/symbol/value
-    let finalExpress = v.express || ''
-    if (!v.express && v.name !== undefined) {
-      if (v.symbol === '()') {
-        finalExpress = `${v.name}(${v.value})`
-      } else {
-        finalExpress = `${v.name || ''}${v.symbol || ''}${v.value || ''}`
-      }
-    }
+const validateActionListDraft = (draftValue: string) => {
+  try {
+    parseActionListDraft(draftValue)
+    return null
+  } catch (error) {
+    return error instanceof Error ? error.message : 'Invalid action JSON'
+  }
+}
 
-    return {
-      ...v,
-      id: v.id || generateId(),
-      express: finalExpress,
-      pre_think_time: v.pre_think_time ?? 0,
-      post_think_time: v.post_think_time ?? 0,
-      type: v.type || 'action'
-    }
+const Action: FC<ActionProps> = ({ value, onChange, controlSchema }) => {
+  const items = useMemo(() => normalizeActionList(value), [value])
+  const [editingActionId, setEditingActionId] = useState<string | null>(null)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+
+  const commit = useCallback((nextItems: ActionValue[]) => {
+    onChange?.(nextItems)
+  }, [onChange])
+
+  const advancedEditor = useAdvancedEditor<ActionValue[], string>({
+    value: items,
+    serialize: serializeActionList,
+    validate: validateActionListDraft,
+    parse: parseActionListDraft,
+    onSave: commit,
+    onError: (errorMessage) => message.error(errorMessage),
   })
 
-  const triggerChange = (newValues: ActionValue[]) => {
-    onChange?.(newValues)
+  const handleAdd = () => {
+    const nextAction = createDefaultAction()
+    const nextItems = [...items, nextAction]
+    commit(nextItems)
+    setEditingActionId(nextAction.id)
   }
 
-  const handleAddAction = () => {
-    const item = createDefaultAction()
-    const newValue = [...formItemValue, item]
-    setNewActionIndex(newValue.length - 1)
-    triggerChange(newValue)
+  const handleUpdate = (index: number, nextValue: ActionValue) => {
+    const nextItems = [...items]
+    nextItems[index] = nextValue
+    commit(nextItems)
   }
 
-  const handleRemove = (index: number) => {
-    const newValue = formItemValue.filter((_, i) => i !== index)
-    triggerChange(newValue)
-    setNewActionIndex(-1)
+  const handleRemove = (index: number, itemId: string) => {
+    commit(items.filter((_, itemIndex) => itemIndex !== index))
+    setEditingActionId((currentId) => (currentId === itemId ? null : currentId))
   }
 
-  const handleItemUpdate = (index: number, updatedItem: ActionValue) => {
-    const newValue = [...formItemValue]
-    newValue[index] = updatedItem
-    triggerChange(newValue)
+  const handleDrop = (targetIndex: number) => {
+    if (dragIndex === null) return
+    if (dragIndex !== targetIndex) {
+      commit(moveItem(items, dragIndex, targetIndex))
+    }
+    setDragIndex(null)
   }
 
   return (
     <div className="action-control">
       <div className="action-toolbar">
-        <PlusCircleOutlined className="add-icon" onClick={handleAddAction} />
+        <Tooltip title="Add action">
+          <PlusCircleOutlined className="action-toolbar__icon" onClick={handleAdd} />
+        </Tooltip>
+        <Tooltip title="Advanced edit">
+          <button
+            type="button"
+            className="action-toolbar__button"
+            onClick={advancedEditor.openEditor}
+          >
+            <CodeOutlined />
+          </button>
+        </Tooltip>
       </div>
       <div className="action-list">
-        {formItemValue.map((item, index) => (
+        {items.map((item, index) => (
           <ActionItem
-            key={item.id!}
+            key={item.id}
             value={item}
             index={index}
-            editableMode={index === newActionIndex}
+            isEditing={item.id === editingActionId}
             controlSchema={controlSchema}
-            onUpdate={(updatedItem) => handleItemUpdate(index, updatedItem)}
-            onRemove={() => handleRemove(index)}
-            onFinishEdit={() => setNewActionIndex(-1)}
+            onUpdate={(nextValue) => handleUpdate(index, nextValue)}
+            onRemove={() => handleRemove(index, item.id)}
+            onStartEdit={() => setEditingActionId(item.id)}
+            onFinishEdit={() =>
+              setEditingActionId((currentId) => (currentId === item.id ? null : currentId))
+            }
+            onDragStart={setDragIndex}
+            onDrop={handleDrop}
           />
         ))}
       </div>
+
+      <Modal
+        title="Action advanced edit"
+        open={advancedEditor.open}
+        width={760}
+        centered
+        destroyOnHidden
+        onCancel={advancedEditor.closeEditor}
+        footer={[
+          <Button key="cancel" onClick={advancedEditor.closeEditor}>
+            Cancel
+          </Button>,
+          <Button key="save" type="primary" onClick={advancedEditor.saveEditor}>
+            Save
+          </Button>,
+        ]}
+      >
+        <div className="action-advanced-editor">
+          <div className="action-advanced-toolbar">
+            <span className="action-advanced-lang">
+              Language: <span className="action-advanced-lang-badge">JSON</span>
+            </span>
+            <span className="action-advanced-shortcut">
+              <kbd>Ctrl</kbd>+<kbd>S</kbd> Save
+            </span>
+          </div>
+          <Editor
+            height="320px"
+            defaultLanguage="json"
+            value={advancedEditor.draftValue}
+            options={{
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              fontSize: 14,
+              lineNumbers: 'on',
+              automaticLayout: true,
+            }}
+            onChange={(nextValue) => advancedEditor.setDraftValue(nextValue ?? '')}
+            onMount={advancedEditor.handleEditorMount}
+          />
+        </div>
+      </Modal>
     </div>
   )
 }
