@@ -1,5 +1,6 @@
 import { register } from '@antv/x6-react-shape'
 import type { GraphStrategy, FormConfig } from './types'
+import { ensureInternalConstraintsRequiredNodes } from './internalConstraintsRequiredNodes'
 import Call from '../../nodes/internalConstraints/Call';
 import Comment from '../../nodes/internalConstraints/Comment';
 import Condition from '../../nodes/internalConstraints/Condition';
@@ -737,6 +738,7 @@ const formConfig: FormConfig = {
 }
 
 const internalConstraintsStrategy: GraphStrategy = {
+  ensureRequiredNodes: ensureInternalConstraintsRequiredNodes,
   sidebarItems: [
     {
       type: 'call',

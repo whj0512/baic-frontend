@@ -8,9 +8,9 @@ import type { Project } from '../models/Project'
 function Home() {
   const navigate = useNavigate()
 
-  // Mock 项目数据
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     fetchProjects()
@@ -34,63 +34,41 @@ function Home() {
     }
   }
 
-  const [searchQuery, setSearchQuery] = useState('')
-  const [isSelectionMode, setIsSelectionMode] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-
   const handleProjectClick = (projectKey: string) => {
-    if (!isSelectionMode) {
-      navigate(`/workspace/${projectKey}`)
-    }
+    navigate(`/workspace/${projectKey}`)
   }
 
-  const toggleSelectionMode = () => {
-    if (isSelectionMode && selectedIds.size > 0) {
-      showDeleteConfirm()
-    } else {
-      setIsSelectionMode(!isSelectionMode)
-      if (isSelectionMode) {
-        setSelectedIds(new Set())
-      }
-    }
-  }
-
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelectedIds(new Set(filteredProjects.map((p) => p.id)))
-    } else {
-      setSelectedIds(new Set())
-    }
-  }
-
-  const handleSelectOne = (id: string) => {
-    const newSet = new Set(selectedIds)
-    if (newSet.has(id)) {
-      newSet.delete(id)
-    } else {
-      newSet.add(id)
-    }
-    setSelectedIds(newSet)
-  }
-
-  const showDeleteConfirm = () => {
+  const showSingleDeleteConfirm = (projectId: string, name: string) => {
     Modal.confirm({
-      title: '确认删除',
-      content: `您确定要删除选中的 ${selectedIds.size} 个项目吗？此操作不可恢复。`,
+      title: '确认删除项目',
+      content: `您确定要删除项目 "${name}" 吗？此操作将把项目移至回收站（软删除），不可撤销。`,
       okText: '确认删除',
       okType: 'danger',
       cancelText: '取消',
-      onOk() {
-        handleDelete()
+      async onOk() {
+        setLoading(true)
+        try {
+          const response = await authFetch(`${API_ENDPOINTS.projects}/${projectId}`, {
+            method: 'DELETE',
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}))
+            throw new Error(errorData.detail || '删除失败')
+          }
+
+          message.success(`项目 "${name}" 已成功删除`)
+          setProjects((prev) => prev.filter((p) => p.id !== projectId))
+        } catch (error: any) {
+          console.error('Delete project error:', error)
+          message.error(error.message || '删除项目失败，请稍后重试')
+          // 重新拉取以确保状态一致
+          fetchProjects()
+        } finally {
+          setLoading(false)
+        }
       },
     })
-  }
-
-  const handleDelete = () => {
-    setProjects((prev) => prev.filter((p) => !selectedIds.has(p.id)))
-    setIsSelectionMode(false)
-    setSelectedIds(new Set())
-    message.success('项目已删除')
   }
 
   const formatDate = (dateString: string) => {
@@ -110,26 +88,12 @@ function Home() {
       (project.description || '').toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const isAllSelected =
-    filteredProjects.length > 0 &&
-    filteredProjects.every((p) => selectedIds.has(p.id))
-
   return (
     <div className="home-content-wrapper">
       {/* 页面标题 */}
       <div className="home-header">
         <h2>项目总览</h2>
         <div className="home-actions">
-          <button
-            className={`delete-btn ${isSelectionMode ? 'active' : ''}`}
-            onClick={toggleSelectionMode}
-          >
-            {isSelectionMode
-              ? selectedIds.size > 0
-                ? '确认删除'
-                : '取消选择'
-              : '删除项目'}
-          </button>
           <button className="create-btn" onClick={() => navigate('/create-project')}>
             新建项目
           </button>
@@ -153,16 +117,6 @@ function Home() {
           <table className="home-table">
             <thead>
               <tr>
-                {isSelectionMode && (
-                  <th className="selection-col">
-                    <input
-                      type="checkbox"
-                      checked={isAllSelected}
-                      onChange={handleSelectAll}
-                    />
-                  </th>
-                )}
-                <th>标识</th>
                 <th>项目名称</th>
                 <th>描述</th>
                 <th>创建时间</th>
@@ -174,35 +128,29 @@ function Home() {
               {filteredProjects.length > 0 ? (
                 filteredProjects.map((project) => (
                   <tr key={project.id}>
-                    {isSelectionMode && (
-                      <td className="selection-col">
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.has(project.id)}
-                          onChange={() => handleSelectOne(project.id)}
-                        />
-                      </td>
-                    )}
-                    <td>
-                      <span className="project-key-badge">{project.key}</span>
-                    </td>
                     <td className="project-name">{project.name}</td>
                     <td className="project-description">{project.description}</td>
                     <td>{formatDate(project.created_at)}</td>
                     <td>{formatDate(project.updated_at)}</td>
-                    <td>
+                    <td className="actions-cell">
                       <button
-                        className="action-btn"
+                        className="action-btn view-btn"
                         onClick={() => handleProjectClick(project.key)}
                       >
                         查看
+                      </button>
+                      <button
+                        className="action-btn delete-action-btn"
+                        onClick={() => showSingleDeleteConfirm(project.id, project.name)}
+                      >
+                        删除
                       </button>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={isSelectionMode ? 7 : 6} className="empty-state">
+                  <td colSpan={5} className="empty-state">
                     没有找到匹配的项目
                   </td>
                 </tr>

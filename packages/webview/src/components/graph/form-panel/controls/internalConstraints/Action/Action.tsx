@@ -1,16 +1,18 @@
-import { CodeOutlined, PlusCircleOutlined } from '@ant-design/icons'
-import Editor from '@monaco-editor/react'
+import { CodeOutlined, PlusCircleOutlined, SnippetsOutlined } from '@ant-design/icons'
 import { type FC, useCallback, useMemo, useState } from 'react'
-import { Button, message, Modal, Tooltip } from 'antd'
+import { message, Tooltip } from 'antd'
 import { useAdvancedEditor } from '../../../../../../hooks/useAdvancedEditor'
 import ActionItem from './components/ActionItem'
 import {
   createDefaultAction,
+  duplicateAction,
   moveItem,
   normalizeActionList,
   parseActionListDraft,
+  serializeActionListDraft,
   type ActionValue,
 } from './utils'
+import { createActionCompletionItems } from '../../../../../../data/advancedEditorCompletions'
 import './Action.css'
 
 export type { ActionValue } from './utils'
@@ -21,20 +23,12 @@ interface ActionProps {
   controlSchema?: { groupId?: string }
 }
 
-const serializeActionList = (items: ActionValue[]) => JSON.stringify(items, null, 2)
-
-const validateActionListDraft = (draftValue: string) => {
-  try {
-    parseActionListDraft(draftValue)
-    return null
-  } catch (error) {
-    return error instanceof Error ? error.message : 'Invalid action JSON'
-  }
-}
-
 const Action: FC<ActionProps> = ({ value, onChange, controlSchema }) => {
   const items = useMemo(() => normalizeActionList(value), [value])
+  const groupId = controlSchema?.groupId
+  const advancedCompletionItems = useMemo(() => createActionCompletionItems(groupId), [groupId])
   const [editingActionId, setEditingActionId] = useState<string | null>(null)
+  const [copiedAction, setCopiedAction] = useState<ActionValue | null>(null)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
 
   const commit = useCallback((nextItems: ActionValue[]) => {
@@ -43,9 +37,16 @@ const Action: FC<ActionProps> = ({ value, onChange, controlSchema }) => {
 
   const advancedEditor = useAdvancedEditor<ActionValue[], string>({
     value: items,
-    serialize: serializeActionList,
-    validate: validateActionListDraft,
+    title: 'Action advanced edit',
+    languageLabel: 'Python',
+    editorLanguage: 'python',
+    shortcutLabel: 'Save',
+    cancelText: 'Cancel',
+    saveText: 'Save',
+    serialize: serializeActionListDraft,
     parse: parseActionListDraft,
+    completionLanguage: 'python',
+    completionItems: advancedCompletionItems,
     onSave: commit,
     onError: (errorMessage) => message.error(errorMessage),
   })
@@ -55,6 +56,17 @@ const Action: FC<ActionProps> = ({ value, onChange, controlSchema }) => {
     const nextItems = [...items, nextAction]
     commit(nextItems)
     setEditingActionId(nextAction.id)
+  }
+
+  const handleCopy = (action: ActionValue) => {
+    setCopiedAction({ ...action })
+  }
+
+  const handlePaste = () => {
+    if (!copiedAction) return
+
+    const nextAction = duplicateAction(copiedAction)
+    commit([...items, nextAction])
   }
 
   const handleUpdate = (index: number, nextValue: ActionValue) => {
@@ -82,6 +94,16 @@ const Action: FC<ActionProps> = ({ value, onChange, controlSchema }) => {
         <Tooltip title="Add action">
           <PlusCircleOutlined className="action-toolbar__icon" onClick={handleAdd} />
         </Tooltip>
+        <Tooltip title="Paste action">
+          <button
+            type="button"
+            className="action-toolbar__button"
+            disabled={!copiedAction}
+            onClick={handlePaste}
+          >
+            <SnippetsOutlined />
+          </button>
+        </Tooltip>
         <Tooltip title="Advanced edit">
           <button
             type="button"
@@ -101,6 +123,7 @@ const Action: FC<ActionProps> = ({ value, onChange, controlSchema }) => {
             isEditing={item.id === editingActionId}
             controlSchema={controlSchema}
             onUpdate={(nextValue) => handleUpdate(index, nextValue)}
+            onCopy={handleCopy}
             onRemove={() => handleRemove(index, item.id)}
             onStartEdit={() => setEditingActionId(item.id)}
             onFinishEdit={() =>
@@ -111,48 +134,6 @@ const Action: FC<ActionProps> = ({ value, onChange, controlSchema }) => {
           />
         ))}
       </div>
-
-      <Modal
-        title="Action advanced edit"
-        open={advancedEditor.open}
-        width={760}
-        centered
-        destroyOnHidden
-        onCancel={advancedEditor.closeEditor}
-        footer={[
-          <Button key="cancel" onClick={advancedEditor.closeEditor}>
-            Cancel
-          </Button>,
-          <Button key="save" type="primary" onClick={advancedEditor.saveEditor}>
-            Save
-          </Button>,
-        ]}
-      >
-        <div className="action-advanced-editor">
-          <div className="action-advanced-toolbar">
-            <span className="action-advanced-lang">
-              Language: <span className="action-advanced-lang-badge">JSON</span>
-            </span>
-            <span className="action-advanced-shortcut">
-              <kbd>Ctrl</kbd>+<kbd>S</kbd> Save
-            </span>
-          </div>
-          <Editor
-            height="320px"
-            defaultLanguage="json"
-            value={advancedEditor.draftValue}
-            options={{
-              minimap: { enabled: false },
-              scrollBeyondLastLine: false,
-              fontSize: 14,
-              lineNumbers: 'on',
-              automaticLayout: true,
-            }}
-            onChange={(nextValue) => advancedEditor.setDraftValue(nextValue ?? '')}
-            onMount={advancedEditor.handleEditorMount}
-          />
-        </div>
-      </Modal>
     </div>
   )
 }

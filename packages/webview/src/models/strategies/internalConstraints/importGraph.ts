@@ -63,6 +63,8 @@ interface ApiTransition {
   target_node: string
   sourcePort?: string
   targetPort?: string
+  source_port_name?: string
+  target_port_name?: string
   desc?: string
   condition?: string
   loop_times?: number
@@ -175,6 +177,57 @@ const getPortGroupsForShape = (shape: string): Record<string, any> => {
   }
 }
 
+const getX6PortGroup = (shape: string, item: ApiPortItem) => {
+  let x6Group = portGroupMapping[item.group] || item.group
+
+  // 针对 condition 节点的特殊处理，后端返回 group 为 condition，通过 id 区分 yes/no
+  if (shape === 'condition-node' && item.group === 'condition') {
+    if (item.id === 'yes') {
+      x6Group = 'out-yes'
+    } else if (item.id === 'no') {
+      x6Group = 'out-no'
+    }
+  }
+
+  return x6Group
+}
+
+const normalizeConditionPortId = (portId: string, x6Group?: string) => {
+  if (x6Group === 'in' && ['top', 'top1', 'top_1', 'in', 'in-0'].includes(portId)) {
+    return 'in-0'
+  }
+
+  if (x6Group === 'out-yes' && ['yes', 'left', 'out-yes'].includes(portId)) {
+    return 'out-yes'
+  }
+
+  if (x6Group === 'out-no' && ['no', 'right', 'out-no'].includes(portId)) {
+    return 'out-no'
+  }
+
+  return portId
+}
+
+const normalizePortIdForShape = (portId: string | undefined, shape?: string, x6Group?: string) => {
+  if (!portId) return undefined
+
+  if (shape === 'condition-node') {
+    const inferredGroup = x6Group
+      || (['yes', 'left', 'out-yes'].includes(portId) ? 'out-yes' : undefined)
+      || (['no', 'right', 'out-no'].includes(portId) ? 'out-no' : undefined)
+      || (['top', 'top1', 'top_1', 'in', 'in-0'].includes(portId) ? 'in' : undefined)
+
+    return normalizeConditionPortId(portId, inferredGroup)
+  }
+
+  // 处理 top_1 和 top1 不一致的问题
+  if (portId === 'top_1') {
+    return 'top1'
+  }
+
+  return portId
+}
+
 /**
  * 将 API 节点转换为 X6 节点数据
  */
@@ -238,28 +291,16 @@ const convertNode = (apiNode: ApiNode): any => {
   // 解析 ports
   const portGroups = getPortGroupsForShape(shape)
   const portItems: any[] = []
+  const addedPortIds = new Set<string>()
 
   if (apiNode.ports?.items) {
     apiNode.ports.items.forEach(item => {
-      let x6Group = portGroupMapping[item.group] || item.group
-      let portId = item.id
-
-      // 针对 condition 节点的特殊处理，后端返回 group 为 condition，通过 id 区分 yes/no
-      if (shape === 'condition-node' && item.group === 'condition') {
-        if (item.id === 'yes') {
-          x6Group = 'out-yes'
-        } else if (item.id === 'no') {
-          x6Group = 'out-no'
-        }
-      }
-
-      // 处理 top_1 和 top1 不一致的问题
-      if (portId === 'top_1') {
-        portId = 'top1'
-      }
+      const x6Group = getX6PortGroup(shape, item)
+      const portId = normalizePortIdForShape(item.id, shape, x6Group)
 
       // 仅添加 port groups 中存在的 group
-      if (portGroups[x6Group]) {
+      if (portId && portGroups[x6Group] && !addedPortIds.has(portId)) {
+        addedPortIds.add(portId)
         portItems.push({
           id: portId,
           group: x6Group,
@@ -286,7 +327,7 @@ const convertNode = (apiNode: ApiNode): any => {
 /**
  * 将 API 边转换为 X6 边数据
  */
-const convertEdge = (apiTransition: ApiTransition): any => {
+const convertEdge = (apiTransition: ApiTransition, nodeShapeById: Map<string, string>): any => {
   const edgeData: any = {
     edgeName: apiTransition.desc || '',
     condition: apiTransition.condition ?? '',
@@ -298,13 +339,22 @@ const convertEdge = (apiTransition: ApiTransition): any => {
     test_coverage: apiTransition.test_coverage,
   }
 
+  const sourcePort = normalizePortIdForShape(
+    apiTransition.sourcePort ?? apiTransition.source_port_name,
+    nodeShapeById.get(apiTransition.source_node)
+  )
+  const targetPort = normalizePortIdForShape(
+    apiTransition.targetPort ?? apiTransition.target_port_name,
+    nodeShapeById.get(apiTransition.target_node)
+  )
+
   // 构建 source / target（带 port 连接）
-  const source: any = apiTransition.sourcePort
-    ? { cell: apiTransition.source_node, port: apiTransition.sourcePort }
+  const source: any = sourcePort
+    ? { cell: apiTransition.source_node, port: sourcePort }
     : apiTransition.source_node
 
-  const target: any = apiTransition.targetPort
-    ? { cell: apiTransition.target_node, port: apiTransition.targetPort }
+  const target: any = targetPort
+    ? { cell: apiTransition.target_node, port: targetPort }
     : apiTransition.target_node
 
   return {
@@ -343,10 +393,12 @@ export const importGraphFromJSON = (jsonString: string): any => {
   const apiData: ApiGraphData = JSON.parse(jsonString)
 
   const cells: any[] = []
+  const nodeShapeById = new Map<string, string>()
 
   // 转换节点
   if (apiData.nodes && Array.isArray(apiData.nodes)) {
     apiData.nodes.forEach(node => {
+      nodeShapeById.set(node.id, typeNameToShape[node.type_name] || 'custom-rect-node')
       cells.push(convertNode(node))
     })
   }
@@ -354,7 +406,7 @@ export const importGraphFromJSON = (jsonString: string): any => {
   // 转换边
   if (apiData.transitions && Array.isArray(apiData.transitions)) {
     apiData.transitions.forEach(transition => {
-      cells.push(convertEdge(transition))
+      cells.push(convertEdge(transition, nodeShapeById))
     })
   }
 

@@ -10,15 +10,25 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react'
 import type { Graph, Stencil } from '@antv/x6'
-import { Dropdown } from 'antd'
+import Editor from '@monaco-editor/react'
+import { Button, Dropdown } from 'antd'
 import type { MenuProps } from 'antd'
 import { CloseCircleOutlined, DeleteOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
 import { getStrategy } from './strategies'
 import FormPanelContainer from './form-panel'
 import {
+  AdvancedEditorHostProvider,
+  useAdvancedEditorHost,
+} from '../../hooks/useAdvancedEditor'
+import {
   type FlowGraphContextMenuState,
 } from './flowGraph/graphEventRegistry'
 import { useFlowGraphInstance } from './flowGraph/useFlowGraphInstance'
+import {
+  ensureGraphConnectionPorts,
+  scheduleGraphConnectionViewRefresh,
+} from './edgeConnection'
+import { syncInitialEdgeLabels } from './flowGraph/edgeLabels'
 import './FlowGraph.css'
 
 interface FlowGraphProps {
@@ -41,9 +51,10 @@ const clampFormPanelWidth = (width: number) => (
 // 暴露给父组件的方法
 export interface FlowGraphRef {
   getGraph: () => Graph | null
+  loadData: (nextData: any) => void
 }
 
-const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
+const FlowGraphContent = forwardRef<FlowGraphRef, FlowGraphProps>(
   ({ sectionKey, data, onChange, readOnly = false, errorMessage, onDismissError }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null)
     const stencilContainerRef = useRef<HTMLDivElement>(null)
@@ -66,12 +77,23 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
       cell: null,
     })
 
+    const activeAdvancedEditor = useAdvancedEditorHost()
     const strategy = useMemo(() => getStrategy(sectionKey), [sectionKey])
 
     // 暴露 getGraph 方法给父组件
     useImperativeHandle(ref, () => ({
       getGraph: () => graphRef.current,
-    }), [graphReady])
+      loadData: (nextData: any) => {
+        const graph = graphRef.current
+        if (!graph) return
+
+        graph.fromJSON(nextData)
+        ensureGraphConnectionPorts(graph, strategy)
+        syncInitialEdgeLabels(graph)
+        scheduleGraphConnectionViewRefresh(graph, strategy)
+        strategy.ensureRequiredNodes?.(graph)
+      },
+    }), [graphReady, strategy])
 
     const closeContextMenu = useCallback(() => {
       setContextMenu(prev => ({ ...prev, visible: false, cell: null }))
@@ -207,6 +229,64 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
             />
           </div>
         )}
+        {!readOnly && activeAdvancedEditor && (
+          <div
+            className="flow-advanced-editor-wrapper"
+            style={{
+              '--advanced-editor-width': `${activeAdvancedEditor.width}px`,
+            } as CSSProperties}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flow-advanced-editor-header">
+              <div className="flow-advanced-editor-title">{activeAdvancedEditor.title}</div>
+              <button
+                type="button"
+                className="flow-advanced-editor-close"
+                onClick={activeAdvancedEditor.closeEditor}
+                title={activeAdvancedEditor.cancelText}
+              >
+                ×
+              </button>
+            </div>
+            <div className="flow-advanced-editor-toolbar">
+              <span className="flow-advanced-editor-lang">
+                Language:{' '}
+                <span className="flow-advanced-editor-lang-badge">
+                  {activeAdvancedEditor.languageLabel}
+                </span>
+              </span>
+              <span className="flow-advanced-editor-shortcut">
+                <kbd>Ctrl</kbd>+<kbd>S</kbd> {activeAdvancedEditor.shortcutLabel}
+              </span>
+            </div>
+            <div className="flow-advanced-editor-body">
+              <Editor
+                key={activeAdvancedEditor.id}
+                height="100%"
+                defaultLanguage={activeAdvancedEditor.editorLanguage}
+                value={activeAdvancedEditor.draftValue}
+                options={{
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                  fixedOverflowWidgets: true,
+                  fontSize: 14,
+                  lineNumbers: 'on',
+                  automaticLayout: true,
+                }}
+                onChange={(nextValue) => activeAdvancedEditor.setDraftValue(nextValue ?? '')}
+                onMount={activeAdvancedEditor.handleEditorMount}
+              />
+            </div>
+            <div className="flow-advanced-editor-footer">
+              <Button onClick={activeAdvancedEditor.closeEditor}>
+                {activeAdvancedEditor.cancelText}
+              </Button>
+              <Button type="primary" onClick={activeAdvancedEditor.saveEditor}>
+                {activeAdvancedEditor.saveText}
+              </Button>
+            </div>
+          </div>
+        )}
         {contextMenu.visible && (
           <Dropdown
             menu={{ items: contextMenuItems }}
@@ -228,5 +308,11 @@ const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
       </div>
     )
   })
+
+const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>((props, ref) => (
+  <AdvancedEditorHostProvider>
+    <FlowGraphContent {...props} ref={ref} />
+  </AdvancedEditorHostProvider>
+))
 
 export default FlowGraph

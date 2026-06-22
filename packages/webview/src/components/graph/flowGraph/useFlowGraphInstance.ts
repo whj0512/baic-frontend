@@ -2,7 +2,10 @@ import { useEffect } from 'react'
 import { Graph } from '@antv/x6'
 import type { Dispatch, MutableRefObject, RefObject, SetStateAction } from 'react'
 import type { Stencil } from '@antv/x6'
-import { ensureGraphConnectionPorts } from '../edgeConnection'
+import {
+  ensureGraphConnectionPorts,
+  scheduleGraphConnectionViewRefresh,
+} from '../edgeConnection'
 import type { GraphStrategy } from '../strategies/types'
 import { syncInitialEdgeLabels } from './edgeLabels'
 import {
@@ -68,6 +71,7 @@ export const useFlowGraphInstance = ({
       graph.fromJSON(data)
       ensureGraphConnectionPorts(graph, strategy)
       syncInitialEdgeLabels(graph)
+      scheduleGraphConnectionViewRefresh(graph, strategy)
     }
 
     ensureGraphConnectionPorts(graph, strategy)
@@ -80,6 +84,7 @@ export const useFlowGraphInstance = ({
       setContextMenu,
       setFormPanelCollapsed,
     })
+    strategy.ensureRequiredNodes?.(graph)
 
     return () => {
       const currentStencil = stencilRef.current

@@ -8,13 +8,24 @@ interface NodeWrapperProps {
     /** 样式配置 */
     stroke?: string;
     fill?: string;
+    fontColor?: string;
+    fontSize?: number;
     node?: any,
     /** 子内容 */
     children?: ReactNode;
 }
 
 const NodeWrapper: FC<NodeWrapperProps> = (props) => {
-    const { width: propWidth, height: propHeight, stroke: propStroke, fill: propFill, node, children } = props;
+    const {
+        width: propWidth,
+        height: propHeight,
+        stroke: propStroke,
+        fill: propFill,
+        fontColor: propFontColor,
+        fontSize: propFontSize,
+        node,
+        children,
+    } = props;
     const nodeData = node?.getData?.() || {};
     const nodeSize = node?.getSize?.() || {};
 
@@ -22,6 +33,8 @@ const NodeWrapper: FC<NodeWrapperProps> = (props) => {
     const height = propHeight || nodeSize.height || nodeData.height || 120;
     const stroke = propStroke || nodeData.stroke || '#333';
     const fill = propFill || nodeData.fill || '#fff';
+    const fontColor = propFontColor || nodeData.fontColor || '#333';
+    const fontSize = propFontSize || nodeData.fontSize || 12;
     const nodeName = nodeData.nodeName || '';
 
     return (
@@ -32,6 +45,8 @@ const NodeWrapper: FC<NodeWrapperProps> = (props) => {
                 height,
                 borderColor: stroke,
                 backgroundColor: fill,
+                color: fontColor,
+                fontSize,
             }}
         >
             <div className="node-wrapper__rect">

@@ -7,7 +7,6 @@ import './CreateProject.css'
 function CreateProject() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
-    key: '',
     name: '',
     description: '',
   })
@@ -26,13 +25,19 @@ function CreateProject() {
 
     setSubmitting(true)
     try {
+      // 自动基于项目名称生成符合要求的唯一项目标识
+      const cleanName = formData.name.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '')
+      const baseKey = cleanName || 'proj'
+      const randomSuffix = Math.random().toString(36).substring(2, 8)
+      const projectKey = `${baseKey}-${randomSuffix}`
+
       const response = await authFetch(API_ENDPOINTS.projects, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          key: formData.key || null,
+          key: projectKey,
           name: formData.name || null,
           description: formData.description || null,
         }),
@@ -64,23 +69,6 @@ function CreateProject() {
       </div>
 
       <form className="create-project-form" onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="key">项目标识 <span className="required">*</span></label>
-          <input
-            type="text"
-            id="key"
-            name="key"
-            className="form-input"
-            placeholder="请输入项目标识（如：AVCS, FCS）"
-            value={formData.key}
-            onChange={handleChange}
-            required
-            pattern="[A-Za-z0-9_-]+"
-            title="项目标识只能包含字母、数字、下划线和连字符"
-          />
-          <small className="form-hint">项目的唯一标识符，用于快速识别项目</small>
-        </div>
-
         <div className="form-group">
           <label htmlFor="name">项目名称 <span className="required">*</span></label>
           <input

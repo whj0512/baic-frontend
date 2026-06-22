@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useState } from 'react'
 import EditableSwitch from '../../common/EditableSwitch'
+import ConditionTreeModal from './ConditionTreeModal'
 import './ConditionExpression.css'
 
 interface ConditionExpressionProps {
@@ -8,25 +9,32 @@ interface ConditionExpressionProps {
 }
 
 const ConditionExpression: React.FC<ConditionExpressionProps> = ({ value = '', onChange }) => {
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange?.(e.target.value)
+  const [open, setOpen] = useState(false)
+
+  const handleOpen = () => {
+    setOpen(true)
+  }
+
+  const handleConfirm = (nextValue: string) => {
+    onChange?.(nextValue)
+    setOpen(false)
   }
 
   return (
     <div className="condition-expression-control">
-      <EditableSwitch readonlyValue={value || '未设置条件'}>
-        {(onFinish) => (
-          <textarea
-            className="condition-expression-textarea"
-            defaultValue={value}
-            placeholder="输入条件表达式"
-            autoFocus
-            rows={3}
-            onBlur={onFinish}
-            onChange={handleChange}
-          />
-        )}
+      <EditableSwitch
+        key={open ? 'condition-open' : 'condition-closed'}
+        readonlyValue={value || '未设置条件'}
+        onChange={handleOpen}
+      >
+        {() => <span className="condition-expression-edit-placeholder" />}
       </EditableSwitch>
+      <ConditionTreeModal
+        open={open}
+        value={value}
+        onCancel={() => setOpen(false)}
+        onConfirm={handleConfirm}
+      />
     </div>
   )
 }

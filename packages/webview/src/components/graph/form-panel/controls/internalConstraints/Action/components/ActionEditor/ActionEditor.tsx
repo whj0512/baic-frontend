@@ -11,7 +11,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { getLegacyActionDatabaseData } from '../../data/legacyLogics'
+import { getLegacyActionDatabaseData } from '../../../../../../../../../../extension/data/legacyLogics'
 import {
   ACTION_SIGNAL_NAME,
   type ActionCandidate,
@@ -24,7 +24,6 @@ import {
   getListOfName,
   getSignalGuide,
   getSymbols,
-  isModifySignalValue,
   isNameMatchOption,
   isSwitchComponent,
   replaceChSymbolWithEnSymbol,
@@ -65,7 +64,9 @@ const ActionEditor: FC<ActionEditorProps> = ({
   const containerRef = useRef<HTMLDivElement>(null)
   const isUserTrigger = useRef(false)
   const [inputedName, setInputedName] = useState(
-    matchedOption ? defaultValue.name.trim() : formatAction(defaultValue).trim(),
+    matchedOption
+      ? defaultValue.name.trim()
+      : (defaultValue.express || formatAction(defaultValue)).trim(),
   )
   const [inputedValue, setInputedValue] = useState(defaultValue.value)
   const [selectedSymbol, setSelectedSymbol] = useState(defaultValue.symbol)
@@ -103,37 +104,23 @@ const ActionEditor: FC<ActionEditorProps> = ({
   }, [selectedNameOption])
 
   useEffect(() => {
-    if (isUserTrigger.current) return
-
-    const matcher = isNameMatchOption(summaryList, defaultValue.name)
-    if (matcher) {
-      const matched = matcher()
-      setSelectedNameOption(matched.selectedNameOption)
-      setInputedName(defaultValue.name.trim())
-      setInputedValue(defaultValue.value)
-      setSelectedSymbol(defaultValue.symbol)
-      return
-    }
-
-    setSelectedNameOption(null)
-    setInputedName(formatAction(defaultValue).trim())
-    setInputedValue('')
-    setSelectedSymbol('')
-  }, [defaultValue, summaryList])
-
-  useEffect(() => {
     if (!isUserTrigger.current) return
 
     isUserTrigger.current = false
+    const isStandardAction = Boolean(selectedNameOption)
+    const express = isStandardAction
+      ? formatAction({ name: inputedName, symbol: selectedSymbol, value: inputedValue })
+      : inputedName.trim()
+
     onUpdate({
       ...defaultValue,
-      name: inputedName,
-      symbol: selectedSymbol,
-      value: inputedValue,
-      isStandard: true,
-      express: formatAction({ name: inputedName, symbol: selectedSymbol, value: inputedValue }),
+      name: isStandardAction ? inputedName : '',
+      symbol: isStandardAction ? selectedSymbol : '',
+      value: isStandardAction ? inputedValue : '',
+      isStandard: isStandardAction,
+      express,
     })
-  }, [defaultValue, inputedName, inputedValue, onUpdate, selectedSymbol])
+  }, [defaultValue, inputedName, inputedValue, onUpdate, selectedNameOption, selectedSymbol])
 
   useEffect(() => {
     cacheKeyWithUsageFrequency(ACTION_SIGNAL_NAME, inputedName)
@@ -176,11 +163,9 @@ const ActionEditor: FC<ActionEditorProps> = ({
     }
 
     setInputedName(text)
-    if (!isModifySignalValue(selectedNameOption, selectedSymbol, inputedValue)) {
-      setInputedValue('')
-      setSelectedSymbol('')
-      setSelectedNameOption(null)
-    }
+    setInputedValue('')
+    setSelectedSymbol('')
+    setSelectedNameOption(null)
     isUserTrigger.current = true
   }
 
@@ -199,11 +184,9 @@ const ActionEditor: FC<ActionEditorProps> = ({
     }
 
     setInputedName(text)
-    if (!isModifySignalValue(selectedNameOption, selectedSymbol, inputedValue)) {
-      setInputedValue('')
-      setSelectedSymbol('')
-      setSelectedNameOption(null)
-    }
+    setInputedValue('')
+    setSelectedSymbol('')
+    setSelectedNameOption(null)
     isUserTrigger.current = true
   }
 

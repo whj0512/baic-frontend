@@ -1,4 +1,5 @@
 import React from 'react'
+import type { Graph } from '@antv/x6'
 
 export interface SidebarItem {
   type: string
@@ -88,6 +89,8 @@ export type EdgeMode = 'sequence' | 'direct'
 export interface GraphStrategy {
   sidebarItems: SidebarItem[]
   registerNodes?: () => void
+  // 在图初始化或重新加载数据后补齐该类型图所需的节点
+  ensureRequiredNodes?: (graph: Graph) => void
   // 表单配置
   formConfig?: FormConfig
   // 边规则配置（基于 Port 的连线，优先级最高）

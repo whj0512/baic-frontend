@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Button, message } from 'antd'
+import { Button, ConfigProvider, message } from 'antd'
 import { ArrowLeftOutlined, SaveOutlined, DownloadOutlined, FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons'
 import FlowGraph, { type FlowGraphRef } from '../graph'
 import DslEditor from '../dsl-editor'
@@ -35,6 +35,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
   const dslContentRef = useRef(initialDslContent)
   const flowGraphRef = useRef<FlowGraphRef | null>(null)
   const pendingCanvasDataRef = useRef<Record<string, any> | null>(null)
+  const editorGroupRef = useRef<HTMLDivElement | null>(null)
 
   const {
     savedSnapshotRef,
@@ -153,8 +154,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
       graphDataRef.current = remoteGraph
       setGraphData(remoteGraph)
       updateSavedSnapshot({ graphData: remoteGraph })
-      const graph = flowGraphRef.current?.getGraph()
-      if (graph) graph.fromJSON(remoteGraph)
+      flowGraphRef.current?.loadData(remoteGraph)
     }
   }, [requirement, config.graphField, updateSavedSnapshot])
 
@@ -199,6 +199,14 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
     }
   }, [content, requirement.id, sectionKey])
 
+  const getEditorPopupContainer = useCallback(() => {
+    if (isFullscreen && editorGroupRef.current) {
+      return editorGroupRef.current
+    }
+
+    return document.body
+  }, [isFullscreen])
+
   return (
     <div className="dimension-editor">
       <div className="dimension-editor-header">
@@ -231,7 +239,11 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
           />
         </div>
 
-        <div className={`editor-group${isFullscreen ? ' editor-group--fullscreen' : ''}`}>
+        <ConfigProvider getPopupContainer={getEditorPopupContainer}>
+          <div
+            ref={editorGroupRef}
+            className={`editor-group${isFullscreen ? ' editor-group--fullscreen' : ''}`}
+          >
           <div className="editor-group-header">
             <div className="editor-view-tabs">
               <label
@@ -298,7 +310,8 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
               />
             )}
           </div>
-        </div>
+          </div>
+        </ConfigProvider>
       </div>
     </div>
   )

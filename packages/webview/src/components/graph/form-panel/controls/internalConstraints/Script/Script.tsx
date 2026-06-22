@@ -5,11 +5,11 @@ import {
   LoadingOutlined,
   CaretRightOutlined,
 } from '@ant-design/icons'
-import Editor from '@monaco-editor/react'
-import { Button, Input, message, Modal, Tooltip } from 'antd'
+import { Button, Input, message, Tooltip } from 'antd'
 import type { Graph } from '@antv/x6'
 import { useAdvancedEditor } from '../../../../../../hooks/useAdvancedEditor'
 import EditableSwitch from '../../common/EditableSwitch'
+import { createActionCompletionItems } from '../../../../../../data/advancedEditorCompletions'
 import {
   calculateCallShell,
   collectCallNodes,
@@ -22,6 +22,7 @@ import './Script.css'
 interface ScriptProps {
   value?: string
   onChange?: (value: string) => void
+  controlSchema?: { groupId?: string }
   graph?: Graph
   currentNodeId?: string
 }
@@ -31,6 +32,7 @@ const COMPILE_DELAY = 1000
 const Script: React.FC<ScriptProps> = ({
   value = '',
   onChange,
+  controlSchema,
   graph,
   currentNodeId,
 }) => {
@@ -39,8 +41,18 @@ const Script: React.FC<ScriptProps> = ({
   const [runResult, setRunResult] = useState('')
   const [runError, setRunError] = useState(false)
   const compileSeqRef = useRef(0)
+  const groupId = controlSchema?.groupId
+  const advancedCompletionItems = useMemo(() => createActionCompletionItems(groupId), [groupId])
   const advancedEditor = useAdvancedEditor<string>({
     value,
+    title: '脚本高级编辑',
+    languageLabel: 'Python',
+    editorLanguage: 'python',
+    shortcutLabel: '保存',
+    cancelText: '取消',
+    saveText: '保存',
+    completionLanguage: 'python',
+    completionItems: advancedCompletionItems,
     onSave: (nextValue) => onChange?.(nextValue),
     onError: (errorMessage) => message.error(errorMessage),
   })
@@ -282,49 +294,6 @@ const Script: React.FC<ScriptProps> = ({
           )}
         </div>
       )}
-
-      {/* ── 高级编辑器 Modal ── */}
-      <Modal
-        title="脚本高级编辑"
-        open={advancedEditor.open}
-        width={760}
-        centered
-        destroyOnHidden
-        onCancel={advancedEditor.closeEditor}
-        footer={[
-          <Button key="cancel" onClick={advancedEditor.closeEditor}>
-            取消
-          </Button>,
-          <Button key="save" type="primary" onClick={advancedEditor.saveEditor}>
-            保存
-          </Button>,
-        ]}
-      >
-        <div className="script-advanced-editor">
-          <div className="script-advanced-toolbar">
-            <span className="script-advanced-lang">
-              语言：<span className="script-advanced-lang-badge">Python</span>
-            </span>
-            <span className="script-advanced-shortcut">
-              <kbd>Ctrl</kbd>+<kbd>S</kbd> 保存
-            </span>
-          </div>
-          <Editor
-            height="320px"
-            defaultLanguage="python"
-            value={advancedEditor.draftValue}
-            options={{
-              minimap: { enabled: false },
-              scrollBeyondLastLine: false,
-              fontSize: 14,
-              lineNumbers: 'on',
-              automaticLayout: true,
-            }}
-            onChange={(nextValue) => advancedEditor.setDraftValue(nextValue ?? '')}
-            onMount={advancedEditor.handleEditorMount}
-          />
-        </div>
-      </Modal>
     </div>
   )
 }

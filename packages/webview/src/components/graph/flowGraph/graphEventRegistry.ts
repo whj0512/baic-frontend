@@ -1,4 +1,4 @@
-import { Clipboard, Keyboard, Selection, Snapline, Transform } from '@antv/x6'
+import { Clipboard, History, Keyboard, Selection, Snapline, Transform } from '@antv/x6'
 import type { Cell, Edge, Graph, Node } from '@antv/x6'
 import type { Dispatch, SetStateAction } from 'react'
 import {
@@ -44,7 +44,7 @@ export const registerGraphEventHandlers = (
   }
 
   registerPlugins(graph)
-  registerKeyboardShortcuts(graph)
+  registerKeyboardShortcuts(graph, options.readOnly)
 }
 
 const registerChangeEvents = (
@@ -239,26 +239,72 @@ const registerPlugins = (graph: Graph) => {
   graph.use(new Clipboard({
     enabled: true,
   }))
+  graph.use(new History({
+    enabled: true,
+  }))
   graph.use(new Keyboard({
     enabled: true,
   }))
 }
 
-const registerKeyboardShortcuts = (graph: Graph) => {
-  graph.bindKey('ctrl+c', () => {
+const preventKeyboardDefault = (event: KeyboardEvent) => {
+  event.preventDefault()
+  event.stopPropagation()
+}
+
+const registerKeyboardShortcuts = (graph: Graph, readOnly: boolean) => {
+  graph.bindKey(['backspace', 'del'], (event) => {
+    preventKeyboardDefault(event)
+    if (readOnly) return
+
+    const cells = graph.getSelectedCells()
+    if (cells.length) {
+      graph.removeCells(cells)
+      graph.cleanSelection()
+    }
+  })
+
+  graph.bindKey(['ctrl+c', 'meta+c', 'command+c'], (event) => {
+    preventKeyboardDefault(event)
+
     const cells = graph.getSelectedCells()
     if (cells.length) {
       graph.copy(cells)
     }
-    return false
   })
 
-  graph.bindKey('ctrl+v', () => {
-    if (!graph.isClipboardEmpty()) {
-      const cells = graph.paste({ offset: 32 })
-      graph.cleanSelection()
-      graph.select(cells)
-    }
-    return false
+  graph.bindKey(['ctrl+v', 'meta+v', 'command+v'], (event) => {
+    preventKeyboardDefault(event)
+    if (readOnly || graph.isClipboardEmpty()) return
+
+    const cells = graph.paste({ offset: 32 })
+    graph.cleanSelection()
+    graph.select(cells)
+  })
+
+  graph.bindKey(['ctrl+z', 'meta+z'], (event) => {
+    preventKeyboardDefault(event)
+    if (readOnly || !graph.canUndo()) return
+
+    graph.undo()
+  })
+
+  graph.bindKey(['ctrl+y', 'meta+y'], (event) => {
+    preventKeyboardDefault(event)
+    if (readOnly || !graph.canRedo()) return
+
+    graph.redo()
+  })
+
+  graph.bindKey(['ctrl+a', 'meta+a'], (event) => {
+    preventKeyboardDefault(event)
+
+    graph.select(graph.getCells())
+  })
+
+  graph.bindKey('esc', (event) => {
+    preventKeyboardDefault(event)
+
+    graph.cleanSelection()
   })
 }

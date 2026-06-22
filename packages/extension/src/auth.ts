@@ -11,6 +11,28 @@ const SECRET_USERNAME = 'baic.auth.username'
 const SECRET_EXPIRES_AT = 'baic.auth.expiresAt'
 const LOCAL_JWT_SECRET = 'secret-key'
 const LOCAL_JWT_EXPIRES_IN_SECONDS = 3600
+const BUNDLED_SEED_USERS = new Map<string, { id: string; email: string }>([
+  [
+    'leefisher@example.org',
+    { id: '6461d218-258e-4596-a385-b869263f4526', email: 'leefisher@example.org' },
+  ],
+  [
+    'kevingriffith@example.org',
+    { id: '1d34c274-d76c-41e3-96c3-582987654d84', email: 'kevingriffith@example.org' },
+  ],
+  [
+    'lesliefritz@example.org',
+    { id: 'c9686724-d599-481c-b256-18e1d4fd1278', email: 'lesliefritz@example.org' },
+  ],
+  [
+    'jonathansmith@example.org',
+    { id: '3b33dc90-52a6-430f-b38b-2ae79257fd16', email: 'jonathansmith@example.org' },
+  ],
+  [
+    'andreawiggins@example.net',
+    { id: '84afec9e-4ec7-49d2-9ef0-94eaf246a369', email: 'andreawiggins@example.net' },
+  ],
+])
 
 export class AuthService {
   constructor(
@@ -127,11 +149,17 @@ export class AuthService {
       const seedSql = Buffer.from(
         await vscode.workspace.fs.readFile(seedSqlUri),
       ).toString('utf8')
-      return findSeededUser(seedSql, normalizedEmail)
+      return findSeededUser(seedSql, normalizedEmail) ?? getBundledSeedUser(normalizedEmail)
     } catch {
-      return undefined
+      return getBundledSeedUser(normalizedEmail)
     }
   }
+}
+
+function getBundledSeedUser(
+  normalizedEmail: string,
+): { id: string; email: string } | undefined {
+  return BUNDLED_SEED_USERS.get(normalizedEmail)
 }
 
 function isTokenExpired(token: string): boolean {
@@ -156,7 +184,7 @@ function findSeededUser(
   normalizedEmail: string,
 ): { id: string; email: string } | undefined {
   const insertPattern =
-    /INSERT\s+OR\s+IGNORE\s+INTO\s+ibase_users[\s\S]*?VALUES\s*\(\s*'([^']+)'\s*,[\s\S]*?'([^']+@[^']+)'\s*,/gi
+    /INSERT\s+(?:OR\s+IGNORE\s+)?INTO\s+ibase_users[\s\S]*?VALUES\s*\(\s*'([^']+)'\s*,[\s\S]*?'([^']+@[^']+)'\s*,/gi
   let match: RegExpExecArray | null
 
   while ((match = insertPattern.exec(seedSql)) !== null) {

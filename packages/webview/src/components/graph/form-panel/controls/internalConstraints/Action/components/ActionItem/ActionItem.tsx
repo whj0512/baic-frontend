@@ -1,5 +1,6 @@
-import { CloseOutlined, HolderOutlined } from '@ant-design/icons'
-import { type DragEvent, type FC, useState } from 'react'
+import { CloseOutlined, CopyOutlined, HolderOutlined } from '@ant-design/icons'
+import { Tooltip } from 'antd'
+import { type DragEvent, type FC, type MouseEvent, useState } from 'react'
 import EditableSwitch from '../../../../common/EditableSwitch'
 import ActionEditor from '../ActionEditor'
 import { formatAction, type ActionValue } from '../../utils'
@@ -11,6 +12,7 @@ interface ActionItemProps {
   isEditing: boolean
   controlSchema?: { groupId?: string }
   onUpdate: (value: ActionValue) => void
+  onCopy: (value: ActionValue) => void
   onRemove: () => void
   onStartEdit: () => void
   onFinishEdit: () => void
@@ -24,6 +26,7 @@ const ActionItem: FC<ActionItemProps> = ({
   isEditing,
   controlSchema,
   onUpdate,
+  onCopy,
   onRemove,
   onStartEdit,
   onFinishEdit,
@@ -39,7 +42,7 @@ const ActionItem: FC<ActionItemProps> = ({
       return
     }
 
-    if (!value.name.trim() && !value.value.trim()) {
+    if (!value.name.trim() && !value.value.trim() && !value.express?.trim()) {
       onRemove()
       return
     }
@@ -61,6 +64,11 @@ const ActionItem: FC<ActionItemProps> = ({
     event.preventDefault()
     setIsDragging(false)
     onDrop(index)
+  }
+
+  const handleCopy = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+    onCopy(value)
   }
 
   return (
@@ -91,6 +99,15 @@ const ActionItem: FC<ActionItemProps> = ({
           />
         )}
       </EditableSwitch>
+      <Tooltip title="Copy action">
+        <button
+          type="button"
+          className="action-item__copy"
+          onClick={handleCopy}
+        >
+          <CopyOutlined />
+        </button>
+      </Tooltip>
       <CloseOutlined className="action-item__remove" onClick={onRemove} />
     </div>
   )

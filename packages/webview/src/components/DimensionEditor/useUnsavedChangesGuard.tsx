@@ -197,10 +197,7 @@ export function useUnsavedChangesGuard({
     setDslContent(snapshot.dslContent)
     setGraphData(nextGraphData)
 
-    const graph = flowGraphRef.current?.getGraph()
-    if (graph) {
-      graph.fromJSON(nextGraphData)
-    }
+    flowGraphRef.current?.loadData(nextGraphData)
   }, [
     contentRef,
     dslContentRef,

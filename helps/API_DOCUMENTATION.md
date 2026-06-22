@@ -5,7 +5,95 @@
 基本说明
 - 服务示例地址： `http://127.0.0.1:8000`
 - 默认内容类型：JSON 请求使用 `Content-Type: application/json`；部分接口可直接发送纯文本（`text/plain`）。
-- 身份认证：注册/登录接口返回 JWT（JSON Web Token）。受保护接口（可选）使用 HTTP Header：`Authorization: Bearer <token>`。
+
+- 身份认证与请求头（重要）：
+  - Authorization: Bearer <token>
+    - 说明：受保护的写操作（例如创建/更新/删除需求、创建项目等）需要在 HTTP 请求头中携带 JWT。格式严格为：
+      Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    - token 来源：可通过 `/login`, `/register` 或 `/auth/email` 等认证接口获取（这些接口会返回 JWT）。
+      - 解析：服务端使用 `auth.decode_token(token)` 解码，默认从 token payload 中读取 `sub` 作为用户 id；若你的 token 使用不同的 claim（如 `user_id`），需要相应调整服务端解码映射。
+    - 新增 `/auth/email` 说明（变更行为）：
+      - 注意：为了兼容前端最少修改，`/auth/email` 仍然接收 JSON 体中 key 为 `email` 的字段，但该字段现在应包含一个标准 JWT 字符串（而不再是明文邮箱地址）。服务端实现行为为：
+        1. 从请求体的 `email` 字段读取字符串（此处为 JWT token）。
+        2. 使用 `auth.decode_token(token)` 解码 token，尝试从 payload 中提取邮箱信息（通常在 `email`、`username` 或 `sub` 字段）。
+        3. 使用解出的邮箱去调用外部验证服务：
+           `GET https://ihub.testfarm.cn:8020/users?limit=10&page=1&filter[_and][0][email][_eq]=<email>`
+           - 若外部服务返回 HTTP 200 则视为鉴权通过；否则鉴权失败（返回 401 / matched: false）。
+        4. 当鉴权通过时，服务不再读取本地数据库查询用户信息，而是直接使用外部服务返回的用户信息（优先使用其中的 `id` / `user_id` 字段作为系统用户 id，并使用返回的 `email` 字段覆盖）。随后调用内部 `create_token(user_id, email)` 生成绑定到本系统的 JWT（如果生成失败仍会返回 matched: true 但不包含 token 字段）。
+      - 返回示例（鉴权通过，带 token）：
+
+```json
+{"matched": true, "token": "<jwt>", "user_id": "<remote_user_id>", "email": "user@example.com"}
+```
+
+      - 返回示例（鉴权失败）：
+
+```json
+{"matched": false}
+```
+
+      - 错误与异常：如果请求体缺失 `email` 字段或 token 解码失败，会返回 400/401/500 等错误并包含 `error` 字段说明具体原因；若调用外部验证服务超时或连接失败，会返回 504/502 对应的错误。
+  - Auth 开关（开发/测试便利）：
+    - 新增环境变量 `AUTH_ENABLED`，用于在运行时开启或关闭鉴权检查。
+    - 用法：在启动服务前设置环境变量（Windows PowerShell 示例）：
+
+      $env:AUTH_ENABLED = '0'; uvicorn main:app --reload
+
+    - 说明：当 `AUTH_ENABLED` 为 `0` / `false` / `no` 等表示“关闭鉴权”时，服务中的鉴权依赖将不再强制要求 Authorization 头，依赖 `get_current_user` 将返回一个匿名用户：`{"id":"anonymous","email":null}`。默认（未设置或为 `1`/`true`）为开启鉴权。
+    - 注意：关闭鉴权仅用于本地开发和测试，生产环境务必开启鉴权并使用 HTTPS/WSS。
+  - Content-Type
+    - 对于 JSON 请求必须设置 `Content-Type: application/json`（如 /rbg-to-dsl、/projects 创建等）。
+    - 对于 DSL 文本类接口（如 /dsl-to-rbg、/dsl-to-rbg/IBD 等），可使用 `Content-Type: text/plain` 并直接在 body 中发送 UTF-8 文本。
+  - Accept（可选）
+    - 客户端可以设置 `Accept` 指定期望响应格式（如 `application/json` 或 `text/plain`），但服务会根据接口默认返回类型。
+  - WebSocket 认证
+    - 如果使用 WebSocket 实时频道（`/ws/projects/{project_id}`），可以通过查询参数传入 token：
+      ws://<host>:<port>/ws/projects/{project_id}?token=<jwt>
+    - 服务端会在连接建立时解码并验证该 token；若 token 无效，连接会被拒绝（close code 1008，reason: "Invalid or expired token"）。当 `AUTH_ENABLED` 被关闭时（开发模式），WebSocket 也允许匿名连接，客户端无需传入 token。
+
+- 受保护的主要接口（需携带 Authorization: Bearer <token>）
+  - POST /requirements (创建需求)
+  - PUT /requirements/{requirement_id} (更新需求)
+  - DELETE /requirements/{requirement_id} (删除需求)
+  - POST /projects (创建项目)
+  - WebSocket /ws/projects/{project_id} （如果使用 token 查询参数，则会验证）
+
+- 错误响应约定（与认证和头相关）
+  - 401 Unauthorized：缺失或无效 token（返回 JSON，示例：`{"detail":"Missing or invalid Authorization header"}` 或 `{"detail":"Invalid or expired token"}`）
+  - 403 Forbidden：鉴权通过但无权限（当前实现未细化权限，未来可扩展为 403）
+  - 400 Bad Request：Content-Type 不匹配或请求体无效（示例：`{"error":"Expected application/json content type"}` 或 JSON 解析错误说明）
+
+- 示例：带 Token 的 curl 请求（创建 requirement）
+
+```bash
+curl -X POST http://127.0.0.1:8000/requirements \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your_jwt_here>" \
+  -d '{"project_key":"default","nl_text":"示例需求文本"}'
+```
+
+- 示例：在测试时关闭鉴权（PowerShell）并发送请求（不带 Authorization 头）
+
+```powershell
+$env:AUTH_ENABLED = '0'; uvicorn main:app --reload
+# 然后在另一个终端执行：
+curl -X POST http://127.0.0.1:8000/requirements -H "Content-Type: application/json" -d '{"project_key":"default","nl_text":"示例需求文本"}'
+```
+
+- 示例：WebSocket 连接携带 token
+
+```
+# JavaScript/browser
+const ws = new WebSocket('ws://127.0.0.1:8000/ws/projects/default?token='+encodeURIComponent('<your_jwt_here>'));
+
+# 或者使用 wscat:
+wscat -c "ws://127.0.0.1:8000/ws/projects/default?token=<your_jwt_here>"
+```
+
+- 安全建议
+  - 生产环境强烈建议使用 HTTPS（wss 对于 WebSocket）来避免 token 在传输中被窃取。
+  - 不要在 URL（query string）中长期保存敏感 token（WebSocket 使用时可短期传入或改为在握手 header 中传递）。
+
 - ID 形式：服务中使用 UUID 字符串（36 字符），例如 `3fa85f64-5717-4562-b3fc-2c963f66afa6`。
 - 错误响应格式（常见）：JSON，例如 `{"detail": "错误原因"}` 或 `{"error": "message"}`。
 
@@ -89,6 +177,194 @@ curl -X POST http://127.0.0.1:8000/rbg-to-dsl -H "Content-Type: application/json
 - 常见错误：
   - 400：Content-Type 非 `application/json`（返回 `{"error":"Expected application/json content type"}`）
   - 500：解析/转换异常（返回 `{"error":"exception message"}`）
+
+---
+
+## 新增：图形转换的细化端点（IBD / BDD / ESD）
+下面这些端点用于在不同图类型之间做 DSL 文本与 rbg(JSON) 的互转，行为和返回格式与上面 `/dsl-to-rbg`、`/rbg-to-dsl` 保持一致，但限定了图类型与后端实现模块（例如 `environment.py`/`composition.py`/`scenario.py`）。
+注：ISD与ESD用同一套接口
+
+### 3.a POST /dsl-to-rbg/IBD
+- 用途：将 IBD（内部块图）DSL 文本转换为 IBD 类型的 rbg JSON（使用 `environment.dsl_to_json`）。
+- URL：`POST /dsl-to-rbg/IBD`
+- 请求头：
+  - `Content-Type` 可为 `text/plain`（服务会读取原始 body 并以 UTF-8 解码）
+- 请求体（body）：IBD DSL 文本（UTF-8），例如：
+
+```text
+Device Sensor;
+Controller Ctrl;
+Connect from Sensor to Ctrl {
+    Interaction send { value }
+};
+```
+
+- curl 示例：
+
+```bash
+curl -X POST http://127.0.0.1:8000/dsl-to-rbg/IBD -H "Content-Type: text/plain" --data-binary @ibd.dsl
+```
+
+- 成功响应（200）：
+  JSON：IBD rbg 格式数据（由 `environment.dsl_to_json` 返回），举例：
+
+```json
+{
+  "id": "...",
+  "desc": "",
+  "graph_type": "IBD",
+  "components": [ ... ],
+  "connects": [ ... ]
+}
+```
+
+- 常见错误：
+  - 400：请求 body 为空或 DSL 无法解析（返回 `{"error":"..."}`）
+  - 500：内部异常（返回 `{"error":"exception message"}`）
+
+---
+
+### 3.b POST /rbg-to-dsl/IBD
+- 用途：将 IBD rbg JSON 转回 IBD DSL 文本（使用 `environment.json_to_dsl`）。
+- URL：`POST /rbg-to-dsl/IBD`
+- 请求头：
+  - 必须：`Content-Type: application/json`
+- 请求体（JSON）：IBD rbg JSON（例如 `environment.dsl_to_json` 的输出）。
+- curl 示例：
+
+```bash
+curl -X POST http://127.0.0.1:8000/rbg-to-dsl/IBD -H "Content-Type: application/json" -d @ibd.json
+```
+
+- 成功响应（200）：
+  Plain text（IBD DSL 文本），Content-Type: `text/plain`
+
+- 常见错误：
+  - 400：Content-Type 非 `application/json` 或 请求体 JSON 无效（返回 `{"error":"..."}`，JSON 解析错误会返回更详细的提示）
+  - 400：输入 JSON 无法被转换为 DSL（返回 `{"error":"Failed to convert IBD JSON to DSL: ..."}`）
+  - 500：其他内部异常
+
+---
+
+### 3.c POST /dsl-to-rbg/BDD
+- 用途：将 BDD（块定义图）CompositionView DSL 转为 BDD rbg JSON（使用 `composition.dsl_to_json`）。
+- URL：`POST /dsl-to-rbg/BDD`
+- 请求头：
+  - `Content-Type` 可为 `text/plain`
+- 请求体（body）：CompositionView DSL 文本，例如：
+
+```text
+MyMachine {
+    FunctionalModule ModA;
+    FunctionalModule ModB;
+}
+```
+
+- curl 示例：
+
+```bash
+curl -X POST http://127.0.0.1:8000/dsl-to-rbg/BDD -H "Content-Type: text/plain" --data-binary @composition.dsl
+```
+
+- 成功响应（200）：
+  JSON：BDD rbg 格式数据（由 `composition.dsl_to_json` 返回），示例：
+
+```json
+{
+  "id": "...",
+  "desc": "",
+  "graph_type": "BDD",
+  "components": [ ... ],
+  "relations": [ ... ]
+}
+```
+
+- 常见错误：
+  - 400：请求体为空或 DSL 解析失败
+  - 500：内部异常
+
+---
+
+### 3.d POST /rbg-to-dsl/BDD
+- 用途：将 BDD rbg JSON 转回 CompositionView DSL 文本（使用 `composition.json_to_dsl`）。
+- URL：`POST /rbg-to-dsl/BDD`
+- 请求头：
+  - 必须：`Content-Type: application/json`
+- 请求体（JSON）：BDD rbg JSON（例如由 `composition.dsl_to_json` 产生）
+- curl 示例：
+
+```bash
+curl -X POST http://127.0.0.1:8000/rbg-to-dsl/BDD -H "Content-Type: application/json" -d @bdd.json
+```
+
+- 成功响应（200）：
+  Plain text（CompositionView DSL 文本），Content-Type: `text/plain`
+
+- 常见错误：
+  - 400：Content-Type 非 `application/json` 或 JSON 格式错误
+  - 400：转换失败时返回 `{"error":"Failed to convert BDD JSON to DSL: ..."}`
+  - 500：其他内部异常
+
+---
+
+### 3.e POST /dsl-to-rbg/ESD
+- 用途：将 ESD（外部顺序图 / Scenario DSL）文本转换为 ESD rbg JSON（使用 `scenario.dsl_to_json`）。
+- URL：`POST /dsl-to-rbg/ESD`
+- 请求头：
+  - `Content-Type` 可为 `text/plain`
+- 请求体（body）：Scenario DSL 文本，例如：
+
+```text
+Scenario 主场景 {
+    Message from A to B : "ping():void";
+}
+```
+
+- curl 示例：
+
+```bash
+curl -X POST http://127.0.0.1:8000/dsl-to-rbg/ESD -H "Content-Type: text/plain" --data-binary @scenario.dsl
+```
+
+- 成功响应（200）：
+  JSON：ESD rbg 格式数据（由 `scenario.dsl_to_json` 返回），示例：
+
+```json
+{
+  "id": "...",
+  "desc": "",
+  "graph_type": "ESD",
+  "interactions": [ ... ],
+  "interfaceRelations": [ ... ],
+  "components": [ ... ]
+}
+```
+
+- 常见错误：
+  - 400：请求体为空或 DSL 解析失败
+  - 500：内部异常
+
+---
+
+### 3.f POST /rbg-to-dsl/ESD
+- 用途：将 ESD rbg JSON 转回 Scenario DSL 文本（使用 `scenario.json_to_dsl`）。
+- URL：`POST /rbg-to-dsl/ESD`
+- 请求头：
+  - 必须：`Content-Type: application/json`
+- 请求体（JSON）：ESD rbg JSON（例如由 `scenario.dsl_to_json` 产生）
+- curl 示例：
+
+```bash
+curl -X POST http://127.0.0.1:8000/rbg-to-dsl/ESD -H "Content-Type: application/json" -d @esd.json
+```
+
+- 成功响应（200）：
+  Plain text（Scenario DSL 文本），Content-Type: `text/plain`
+
+- 常见错误：
+  - 400：Content-Type 非 `application/json` 或 JSON 无法解析（服务会尝试返回详细的 JSONDecodeError 信息）
+  - 400：转换失败时返回 `{"error":"Failed to convert ESD JSON to DSL: ..."}`
+  - 500：其他内部异常
 
 ---
 
@@ -202,7 +478,7 @@ curl -X POST http://127.0.0.1:8000/login -H "Content-Type: application/json" -d 
 - 请求体（JSON）模式（RequirementSaveRequest）：
   - `project_key` (string | null) — 可选；若为空使用 `'default'` 项目（会自动创建 project）
   - `nl_text` (string | null) — 自然语言文本
-  - `dsl_text` (string | null) — DSL 文本
+  - `dsl_SC` (string | null) — DSL 文本（写入到字段 `dsl_SC`）
   - `graph_IBD` (object | null) — 内部块图 (IBD) 的 JSON 表示
   - `graph_ESD` (object | null) — 外部顺序图 (ESD) 的 JSON 表示
   - `graph_SC` (object | null) — 状态图 (SC) 的 JSON 表示
@@ -218,7 +494,7 @@ curl -X POST http://127.0.0.1:8000/requirements \
   -d '{
     "project_key": "proj1",
     "nl_text": "这是自然语言描述",
-    "dsl_text": "Graph CondCall type request desc \"CondCall\"\nState S desc \"START\"\nState A desc \"A\"\nState B desc \"B\"\nTransition T1\n\tfrom: S to: A\nTransition T2\n\tfrom: A to: B",
+    "dsl_SC": "Graph CondCall type request desc \"CondCall\"\nState S desc \"START\"\nState A desc \"A\"\nState B desc \"B\"\nTransition T1\n\tfrom: S to: A\nTransition T2\n\tfrom: A to: B",
     "graph_IBD": null,
     "graph_ESD": null,
     "graph_SC": {
@@ -240,7 +516,7 @@ curl -X POST http://127.0.0.1:8000/requirements \
   }'
 ```
 
-- 成功响应（200）：
+- 成功响应（200）示例（修改：返回中以 `dsl_SC` 代替旧 `dsl_text`）：
 
 ```json
 {
@@ -279,7 +555,7 @@ curl http://127.0.0.1:8000/requirements/3fa85f64-5717-4562-b3fc-2c963f66afa6
     "current_version_id": "version-uuid",
     "previous_version_id": null,
     "nl_text": "这是自然语言描述",
-    "dsl_text": "Graph ...",
+    "dsl_SC": "Graph ...",
     "graph_IBD": {},
     "graph_ESD": null,
     "graph_SC": null,
@@ -327,8 +603,74 @@ curl http://127.0.0.1:8000/projects
 ```
 
 - 说明：返回项目的基础信息数组，字段可能根据数据库模式略有不同（例如 `key` 在代码中为 `key` 字段）。
+  - 注意：该接口默认不会返回已被软删除（soft-deleted）的项目；被标记为删除的项目在内部会设置 `deleted_at` 字段，前端默认看不到这些项目。
 
 ---
+
+## 10.a POST /projects
+- 用途：创建一个新项目；如果不传 `key` 将使用 `default`。
+- URL：`POST /projects`
+- 请求头：
+  - `Content-Type: application/json`
+  - 可选：`Authorization: Bearer <token>`（用于记录 `created_by`，实现可选）
+- 请求体（JSON）：
+  - `key` (string | null) — 可选；项目唯一标识（若为空使用 `'default'`）
+  - `name` (string | null) — 可选；项目名
+  - `description` (string | null) — 可选；项目描述
+
+- 请求示例：
+
+```bash
+curl -X POST http://127.0.0.1:8000/projects -H "Content-Type: application/json" -H "Authorization: Bearer <token>" -d '{"key":"proj1","name":"Project 1","description":"示例项目"}'
+```
+
+- 成功响应（201 或 200，当前实现返回 200）示例：
+
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "key": "proj1",
+  "name": "Project 1",
+  "description": "示例项目"
+}
+```
+
+- 常见错误：
+  - 400：`key` 已存在（`{"detail":"Project key already exists"}`）
+  - 400：请求体无效 JSON（`{"detail":"Invalid JSON body"}`）
+
+---
+
+## 10.b DELETE /projects/{project_id}
+- 用途：对指定 project 执行安全的软删除（soft-delete）。该操作不会物理删除数据库行，而是将项目行的 `deleted_at` 字段设置为删除时间，后续 `GET /projects` 和其他列举接口将不会返回该项目。
+- URL：`DELETE /projects/{project_id}`
+- 请求头：
+  - 可选/通常：`Authorization: Bearer <token>`（若启用鉴权则需要；与 `POST /projects` 的鉴权规则一致）
+- 路径参数：
+  - `project_id` — 字符串（UUID），要删除的项目 id
+- 请求示例（curl）：
+
+```bash
+curl -X DELETE http://127.0.0.1:8000/projects/<PROJECT_ID> -H "Authorization: Bearer <token>"
+```
+
+- 成功响应（200）示例：
+
+```json
+{ "deleted": true, "project_id": "<PROJECT_ID>" }
+```
+
+- 如果要删除的 project 不存在或已经被删除（404）：
+
+```json
+{ "detail": "Project not found" }
+```
+
+- 行为说明：
+  - 这是一个软删除操作；实现为将 `req_project.deleted_at` 字段设为当前时间（ISO8601 字符串），并不会删除项目下的需求/测试用例等数据行。
+  - 在删除成功后，服务端会向该项目的 WebSocket 订阅者广播一条事件，事件名为 `project_deleted`，载荷示例： `{ "event": "project_deleted", "project_id": "<PROJECT_ID>" }`。
+  - 如果数据库在启动时未创建 `deleted_at` 列（在本服务实现中会尽量在启动时创建该列），删除接口会在执行时返回 404/失败以避免在运行时修改数据库结构（避免权限/只读问题）。建议在部署阶段执行迁移以确保 `deleted_at` 列存在。
+
 
 ## 11. GET /projects/{project_id}/requirements
 - 用途：查询指定项目下的需求列表（每条需求为 requirement 表当前快照）。
@@ -348,7 +690,7 @@ curl http://127.0.0.1:8000/projects
       "current_version_id": "version-uuid",
       "previous_version_id": null,
       "nl_text": "这是自然语言描述",
-      "dsl_text": "Graph ...",
+      "dsl_SC": "Graph ...",
       "graph_IBD": {},
       "graph_ESD": null,
       "graph_SC": null,
@@ -485,13 +827,13 @@ curl -X POST http://127.0.0.1:8000/register -H "Content-Type: application/json" 
 curl -X POST http://127.0.0.1:8000/login -H "Content-Type: application/json" -d '{"username":"alice","password":"s3cret!"}'
 ```
 
-- 新建需求（带 token）：
+- 新建需求（带 token）示例（更新请求字段为 `dsl_SC`）：
 
 ```bash
-curl -X POST http://127.0.0.1:8000/requirements -H "Content-Type: application/json" -H "Authorization: Bearer <token>" -d '{"project_key":"proj1","nl_text":"示例","dsl_text":"Graph...","graph_json":{"nodes":[]}}'
+curl -X POST http://127.0.0.1:8000/requirements -H "Content-Type: application/json" -H "Authorization: Bearer <token>" -d '{"project_key":"proj1","nl_text":"示例","dsl_SC":"Graph...","graph_json":{"nodes":[]}}'
 ```
 
-- 更新需求（取回 diff 的示例）：
+- 更新需求示例（保持不变，因为 body 可以只包含要更新的字段）：
 
 ```bash
 curl -X PUT http://127.0.0.1:8000/requirements/<requirement_id> -H "Content-Type: application/json" -H "Authorization: Bearer <token>" -d '{"nl_text":"更新文本"}'
@@ -507,7 +849,115 @@ websocat "ws://127.0.0.1:8000/ws/projects/<projectId>?token=<token>"
 
 ---
 
-## 设计备注与后续改进建议（参考）
-- 当前实现采用“服务器为权威”的模型：服务器生成/记录版本并决定更新的合并逻辑（field-level 合并 + 新版本插入）。
-- 若需要更强的一致性或自动化合并（例如多人实时同时在同一文本/图上做细粒度编辑），推荐引入 CRDT（例如 Yjs）或 OT 实现；这将带来更复杂的前后端集成但能提供无冲突合并能力。
-- 对于跨进程/多实例部署，建议把广播层改为 Redis Pub/Sub（后端在每个实例上订阅 Redis 频道并将消息转发到本进程的 WebSocket 连接）。
+## 14. DELETE /requirements/{requirement_id}
+- 用途：删除指定的 requirement（会同时删除其所有版本记录）。
+- URL：`DELETE /requirements/{requirement_id}`
+- 请求头：
+  - 可选：`Authorization: Bearer <token>`（如果提供，服务器可记录执行删除的用户，但目前删除操作不依赖于身份验证）
+- 路径参数：
+  - `requirement_id` — 字符串（UUID）
+
+- 请求示例（curl）：
+
+```bash
+curl -X DELETE http://127.0.0.1:8000/requirements/3fa85f64-5717-4562-b3fc-2c963f66afa6 -H "Authorization: Bearer <token>"
+```
+
+- 成功响应（200）示例：
+
+```json
+{ "deleted": true, "requirement_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6" }
+```
+
+- 如果要删除的 requirement 不存在（404）：
+
+```json
+{ "detail": "Requirement not found" }
+```
+
+- 说明：
+  - 删除操作会先删除 `requirement_version` 表中与该 requirement_id 相关的版本记录，然后删除 `requirement` 主表中的记录，以避免外键约束问题。
+
+---
+
+## 15. POST /dependency
+- 用途：识别一个项目（project）内需求（requirements）之间的数据依赖关系。
+- URL：`POST /dependency`
+- 请求头：
+  - `Content-Type: application/json`
+- 请求体（JSON）：
+  - `project_id` (string) — 必需；项目的 UUID，用于查找该项目下的所有需求（使用当前版本快照）。
+
+- 行为说明：
+  - 服务端会读取该项目下的所有需求（使用 `GET latest-version per requirement`），提取每条需求的 `graph_SC`（状态机图）作为输入，调用 `dependency_manager.CoarseDependencyManager` 来计算图级别的依赖关系（数据依赖）。
+  - 如果某条需求没有 `graph_SC` 字段则会被跳过。
+
+- 请求示例（curl）：
+
+```bash
+curl -X POST http://127.0.0.1:8000/dependency -H "Content-Type: application/json" -d '{"project_id":"<project_uuid>"}'
+```
+
+- 成功响应（200）：
+
+```json
+{
+  "dependencies": [
+    {
+      "dependent_graph": "ReqA",
+      "depended_graph": "ReqB",
+      "data_name": "speed",
+      "dependent_range": "(0, 100]",
+      "depended_range": "[0, 200]"
+    }
+  ]
+}
+```
+
+- 说明：返回的依赖关系数组格式与 `dependency_manager.CoarseDependencyManager.get_dependencies()` 返回值一致；字段可能包含 `dependent_graph`、`depended_graph`、`data_name`、`dependent_range`、`depended_range` 等。
+
+- 常见错误：
+  - 400：缺少 `project_id` 或请求体不是有效 JSON（返回 `{"error":"..."}`）
+  - 500：内部错误（例如依赖分析异常）
+
+---
+
+## 新增：POST /test_cases
+- 用途：保存测试用例，测试内容以 JSON 存储，关联需求与场景以列表形式保存。
+- URL：`POST /test_cases`
+- 请求头：
+  - `Content-Type: application/json`
+  - 可选：`Authorization: Bearer <token>`（若开启鉴权则需要）
+- 请求体（JSON）模式（TestCaseCreateRequest）：
+  - `project_id` (string | null) — 可选；若为空使用或创建 `default` 项目。
+  - `name` (string | null) — 可选；测试用例名称。
+  - `test_content` (object) — 必填；测试用例的 JSON 内容（任意结构，将以 JSON 存入数据库的 `test_content` 字段）。
+  - `related_requirements` (array[string] | null) — 可选；与之关联的 requirement id 列表。
+  - `related_scenarios` (array[string] | null) — 可选；与之关联的 scenario id 列表。
+  - `properties` (object | null) — 可选；额外的键值属性。
+
+- 返回示例（200）：
+
+```json
+{
+  "id": "<test_case_id>",
+  "test_case": {
+    "id": "<test_case_id>",
+    "project_id": "<project_uuid>",
+    "name": "...",
+    "test_content": { /* 原始 JSON */ },
+    "related_requirements": ["req-1","req-2"],
+    "related_scenarios": ["scen-1"],
+    "properties": { /* ... */ },
+    "created_by": "user-id",
+    "created_at": "2026-..."
+  }
+}
+```
+
+- 说明：服务端在数据库中以 `JSON` 类型（或文本）保存 `test_content`，并将 `related_requirements` 与 `related_scenarios` 也以数组/JSON 格式保存在对应列。详情请参考 `mysql_init.sql` 的建表语句（已将 `req_test_case` 表加入初始化脚本）。
+
+- 常见错误：
+  - 400：请求体无效或 `test_content` 缺失。
+  - 401：鉴权失败（若启用授权）。
+  - 500：数据库错误等。

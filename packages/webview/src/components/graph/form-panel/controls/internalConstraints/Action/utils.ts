@@ -3,7 +3,7 @@ import type {
   LegacyActionDatabaseData,
   LegacyLogicDefinition,
   LegacySignalTypeDefinition,
-} from './data/legacyLogics'
+} from '../../../../../../../../extension/data/legacyLogics'
 
 export interface ActionValue {
   id: string
@@ -68,6 +68,19 @@ export const createDefaultAction = (value: Partial<ActionValue> = {}): ActionVal
   ...value,
 })
 
+export const duplicateAction = (value: ActionValue): ActionValue => {
+  return createDefaultAction({
+    name: value.name,
+    symbol: value.symbol,
+    value: value.value,
+    isStandard: value.isStandard,
+    express: value.express,
+    pre_think_time: value.pre_think_time,
+    post_think_time: value.post_think_time,
+    type: value.type,
+  })
+}
+
 export const normalizeAction = (
   value: Partial<ActionValue> & { express?: string },
 ): ActionValue => {
@@ -93,7 +106,11 @@ export const normalizeActionList = (value: unknown): ActionValue[] => {
   return Array.isArray(value) ? value.map((item) => normalizeAction(item || {})) : []
 }
 
-export const formatAction = (value: Pick<ActionValue, 'name' | 'symbol' | 'value'>) => {
+export const formatAction = (
+  value: Pick<ActionValue, 'name' | 'symbol' | 'value'> & { express?: string },
+) => {
+  if (value.express) return value.express
+
   const name = value.name.trim()
   const actionValue = value.value.trim()
 
@@ -110,12 +127,22 @@ export const moveItem = (items: ActionValue[], from: number, to: number) => {
   return next
 }
 
+export const serializeActionListDraft = (items: ActionValue[]) => (
+  items.map((item) => item.express || formatAction(item)).join('\n')
+)
+
 export const parseActionListDraft = (draftValue: string) => {
-  const parsed = JSON.parse(draftValue) as unknown
-  if (!Array.isArray(parsed)) {
-    throw new Error('Action JSON must be an array')
-  }
-  return normalizeActionList(parsed)
+  return draftValue
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((express) => createDefaultAction({
+      name: '',
+      symbol: '',
+      value: '',
+      isStandard: false,
+      express,
+    }))
 }
 
 export const getSymbols = (groupId?: string) => {

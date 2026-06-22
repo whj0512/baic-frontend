@@ -237,10 +237,6 @@ export const ensureNodeConnectionPorts = (node: Node, strategy: GraphStrategy) =
   ensureHotPorts(node)
 }
 
-export const ensureGraphConnectionPorts = (graph: Graph, strategy: GraphStrategy) => {
-  graph.getNodes().forEach((node) => ensureNodeConnectionPorts(node, strategy))
-}
-
 export const toSerializableGraphJSON = (graph: Graph) => {
   const json = graph.toJSON() as any
 
@@ -477,6 +473,74 @@ const finalizeRuleEdge = (graph: Graph, strategy: GraphStrategy, edge: Edge, sou
   applyConditionLabel(edge, sourcePortId)
 
   return true
+}
+
+const isValidRuleOutputPort = (node: Node, portId?: string | null) => {
+  const group = getPortGroup(node, portId)
+  return Boolean(group && !isHotPortGroup(group) && (group === 'out' || group.startsWith('out-')))
+}
+
+const isValidRuleInputPort = (node: Node, portId?: string | null) => {
+  return getPortGroup(node, portId) === 'in'
+}
+
+const shouldRepairRuleEdgePorts = (edge: Edge, sourceNode: Node, targetNode: Node) => {
+  const sourcePortId = edge.getSourcePortId()
+  const targetPortId = edge.getTargetPortId()
+
+  return !isValidRuleOutputPort(sourceNode, sourcePortId) || !isValidRuleInputPort(targetNode, targetPortId)
+}
+
+const repairExistingRuleEdgePorts = (graph: Graph, strategy: GraphStrategy) => {
+  graph.getEdges().forEach((edge) => {
+    const sourceNode = (edge.getSourceCell() || graph.getCellById(edge.getSourceCellId() || '')) as Node | null
+    const targetNode = (edge.getTargetCell() || graph.getCellById(edge.getTargetCellId() || '')) as Node | null
+
+    if (!sourceNode?.isNode?.() || !targetNode?.isNode?.()) return
+    if (!shouldRepairRuleEdgePorts(edge, sourceNode, targetNode)) return
+
+    finalizeRuleEdge(graph, strategy, edge, sourceNode, targetNode)
+  })
+}
+
+export const ensureGraphConnectionPorts = (graph: Graph, strategy: GraphStrategy) => {
+  graph.getNodes().forEach((node) => ensureNodeConnectionPorts(node, strategy))
+
+  if (strategy.edgeRules) {
+    repairExistingRuleEdgePorts(graph, strategy)
+  }
+}
+
+const queueAfterPaint = (callback: () => void) => {
+  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(callback)
+    })
+    return
+  }
+
+  setTimeout(callback, 0)
+}
+
+const refreshConnectionViews = (graph: Graph, strategy: GraphStrategy) => {
+  ensureGraphConnectionPorts(graph, strategy)
+
+  graph.getNodes().forEach((node) => {
+    const view = graph.findViewByCell(node) as any
+    view?.update?.()
+  })
+
+  graph.getEdges().forEach((edge) => {
+    const view = graph.findViewByCell(edge) as any
+    view?.update?.()
+  })
+}
+
+export const scheduleGraphConnectionViewRefresh = (graph: Graph, strategy: GraphStrategy) => {
+  queueAfterPaint(() => refreshConnectionViews(graph, strategy))
+  graph.once('render:done', () => {
+    queueAfterPaint(() => refreshConnectionViews(graph, strategy))
+  })
 }
 
 const finalizeSequenceEdge = (graph: Graph, edge: Edge, sourceNode: Node, targetNode: Node) => {

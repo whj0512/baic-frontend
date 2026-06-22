@@ -55,7 +55,7 @@ export const ACTION_SIGNAL_NAME = 'action_signal_usage_frequency'
 
 // 获取符号列表
 export const getSymbols = (groupId?: string): string[] => {
-  return ['=', '>', '<', '>=', '<=', '!=']
+  return ['=', '>', '<', '>=', '<=', '!=', '==']
 }
 
 // 获取信号/函数列表
