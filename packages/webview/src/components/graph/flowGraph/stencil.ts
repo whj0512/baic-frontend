@@ -1,12 +1,33 @@
 import { Stencil } from '@antv/x6'
-import type { Graph } from '@antv/x6'
+import type { Graph, Node } from '@antv/x6'
 import type { GraphStrategy } from '../strategies/types'
+import {
+  beginPreConnection,
+  cancelPreConnection,
+  registerPreConnectionDocumentEvents,
+  transferPreConnectionTarget,
+} from './preConnection'
 
 export const createFlowGraphStencil = (
   graph: Graph,
   container: HTMLDivElement,
   strategy: GraphStrategy,
 ) => {
+  const preConnectionOptions = strategy.preConnectionRules ? {
+    getDragNode: (sourceNode: Node) => {
+      const draggingNode = sourceNode.clone()
+      if (beginPreConnection(graph, strategy, draggingNode, { stencil: true })) {
+        registerPreConnectionDocumentEvents(graph, strategy)
+      }
+      return draggingNode
+    },
+    getDropNode: (draggingNode: Node) => {
+      const droppingNode = draggingNode.clone()
+      transferPreConnectionTarget(graph, draggingNode, droppingNode)
+      return droppingNode
+    },
+  } : {}
+
   const stencil = new Stencil({
     title: '',
     target: graph,
@@ -26,6 +47,7 @@ export const createFlowGraphStencil = (
       columnWidth: 140,
       rowHeight: 120,
     },
+    ...preConnectionOptions,
   })
 
   container.appendChild(stencil.container)
@@ -47,7 +69,10 @@ export const createFlowGraphStencil = (
   return stencil
 }
 
-export const disposeFlowGraphStencil = (stencil: Stencil | null) => {
+export const disposeFlowGraphStencil = (stencil: Stencil | null, graph?: Graph) => {
+  if (graph) {
+    cancelPreConnection(graph)
+  }
   if (!stencil) return
 
   if (stencil.container?.parentNode) {

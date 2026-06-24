@@ -1,5 +1,6 @@
 import type { Edge, Graph, Node } from '@antv/x6'
 import type { GraphStrategy } from './strategies/types'
+import { isPreConnectionPreview } from './flowGraph/preConnectionData'
 
 type Terminal = {
   cell?: string
@@ -31,7 +32,7 @@ const hotPortGroups = {
         strokeWidth: 1,
         opacity: 0,
         cursor: 'crosshair',
-        'pointer-events': 'all',
+        'pointer-events': 'none',
       },
     },
   },
@@ -52,7 +53,7 @@ const hotPortGroups = {
         strokeWidth: 1,
         opacity: 0,
         cursor: 'crosshair',
-        'pointer-events': 'all',
+        'pointer-events': 'none',
       },
     },
   },
@@ -73,7 +74,7 @@ const hotPortGroups = {
         strokeWidth: 1,
         opacity: 0,
         cursor: 'crosshair',
-        'pointer-events': 'all',
+        'pointer-events': 'none',
       },
     },
   },
@@ -94,7 +95,7 @@ const hotPortGroups = {
         strokeWidth: 1,
         opacity: 0,
         cursor: 'crosshair',
-        'pointer-events': 'all',
+        'pointer-events': 'none',
       },
     },
   },
@@ -137,10 +138,22 @@ const getHotPortRectAttrs = (node: Node, portId: string, visible: boolean) => {
   const { width, height } = node.getSize()
   const side = getHotPortSide(portId)
   const horizontal = side === 'top' || side === 'bottom'
+  let x = -width / 2
+  let y = -height / 2
+
+  if (side === 'top') {
+    y = 0
+  } else if (side === 'bottom') {
+    y = -HOT_EDGE_THICKNESS
+  } else if (side === 'left') {
+    x = 0
+  } else if (side === 'right') {
+    x = -HOT_EDGE_THICKNESS
+  }
 
   return {
-    x: horizontal ? -width / 2 : -HOT_EDGE_THICKNESS / 2,
-    y: horizontal ? -HOT_EDGE_THICKNESS / 2 : -height / 2,
+    x,
+    y,
     width: horizontal ? width : HOT_EDGE_THICKNESS,
     height: horizontal ? HOT_EDGE_THICKNESS : height,
     rx: 0,
@@ -151,7 +164,7 @@ const getHotPortRectAttrs = (node: Node, portId: string, visible: boolean) => {
     opacity: visible ? 0.95 : 0,
     magnet: true,
     cursor: 'crosshair',
-    'pointer-events': 'all',
+    'pointer-events': visible ? 'all' : 'none',
   }
 }
 
@@ -242,23 +255,25 @@ export const toSerializableGraphJSON = (graph: Graph) => {
 
   return {
     ...json,
-    cells: json.cells?.map((cell: any) => {
-      if (!cell.ports) return cell
+    cells: json.cells
+      ?.filter((cell: any) => !isPreConnectionPreview(cell))
+      .map((cell: any) => {
+        if (!cell.ports) return cell
 
-      const groups = Object.fromEntries(
-        Object.entries(cell.ports.groups || {}).filter(([groupName]) => !isHotPortGroup(groupName))
-      )
-      const items = (cell.ports.items || []).filter((port: any) => !isHotPortId(port.id) && !isHotPortGroup(port.group))
+        const groups = Object.fromEntries(
+          Object.entries(cell.ports.groups || {}).filter(([groupName]) => !isHotPortGroup(groupName))
+        )
+        const items = (cell.ports.items || []).filter((port: any) => !isHotPortId(port.id) && !isHotPortGroup(port.group))
 
-      return {
-        ...cell,
-        ports: {
-          ...cell.ports,
-          groups,
-          items,
-        },
-      }
-    }),
+        return {
+          ...cell,
+          ports: {
+            ...cell.ports,
+            groups,
+            items,
+          },
+        }
+      }),
   }
 }
 

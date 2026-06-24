@@ -9,6 +9,13 @@ import {
 } from '../edgeConnection'
 import type { GraphStrategy } from '../strategies/types'
 import { syncEdgeLabelFromData } from './edgeLabels'
+import {
+  beginPreConnection,
+  completePreConnection,
+  handlePreConnectionNodeRemoved,
+  updatePreConnection,
+} from './preConnection'
+import { isPreConnectionPreview } from './preConnectionData'
 
 export interface FlowGraphContextMenuState {
   visible: boolean
@@ -35,6 +42,9 @@ export const registerGraphEventHandlers = (
   graph: Graph,
   options: RegisterGraphEventHandlersOptions,
 ) => {
+  if (!options.readOnly && options.strategy.preConnectionRules) {
+    registerPreConnectionEvents(graph, options.strategy)
+  }
   registerChangeEvents(graph, options)
   registerEdgeLabelEvents(graph)
 
@@ -47,6 +57,30 @@ export const registerGraphEventHandlers = (
   registerKeyboardShortcuts(graph, options.readOnly)
 }
 
+const registerPreConnectionEvents = (graph: Graph, strategy: GraphStrategy) => {
+  graph.on('node:move', ({ node }: { node: Node }) => {
+    if (beginPreConnection(graph, strategy, node)) {
+      updatePreConnection(graph, strategy, node)
+    }
+  })
+
+  graph.on('node:moving', ({ node }: { node: Node }) => {
+    updatePreConnection(graph, strategy, node)
+  })
+
+  graph.on('node:moved', ({ node }: { node: Node }) => {
+    completePreConnection(graph, strategy, node)
+  })
+
+  graph.on('node:added', ({ node }: { node: Node }) => {
+    completePreConnection(graph, strategy, node)
+  })
+
+  graph.on('node:removed', ({ node }: { node: Node }) => {
+    handlePreConnectionNodeRemoved(graph, node)
+  })
+}
+
 const registerChangeEvents = (
   graph: Graph,
   { onChange, readOnly }: RegisterGraphEventHandlersOptions,
@@ -54,15 +88,21 @@ const registerChangeEvents = (
   if (!onChange || readOnly) return
 
   const updateData = () => onChange(toSerializableGraphJSON(graph))
+  const updateEdgeData = ({ edge }: { edge: Edge }) => {
+    if (!isPreConnectionPreview(edge)) updateData()
+  }
+  const updateCellData = ({ cell }: { cell: Cell }) => {
+    if (!isPreConnectionPreview(cell)) updateData()
+  }
   graph.on('node:change:position', updateData)
   graph.on('node:added', updateData)
   graph.on('node:removed', updateData)
-  graph.on('edge:added', updateData)
-  graph.on('edge:removed', updateData)
-  graph.on('edge:change:source', updateData)
-  graph.on('edge:change:target', updateData)
-  graph.on('edge:change:vertices', updateData)
-  graph.on('cell:change:data', updateData)
+  graph.on('edge:added', updateEdgeData)
+  graph.on('edge:removed', updateEdgeData)
+  graph.on('edge:change:source', updateEdgeData)
+  graph.on('edge:change:target', updateEdgeData)
+  graph.on('edge:change:vertices', updateEdgeData)
+  graph.on('cell:change:data', updateCellData)
 }
 
 const registerEdgeLabelEvents = (graph: Graph) => {
@@ -235,6 +275,8 @@ const registerPlugins = (graph: Graph) => {
   graph.use(new Selection({
     enabled: true,
     showNodeSelectionBox: true,
+    movable: false,
+    pointerEvents: 'none',
   }))
   graph.use(new Clipboard({
     enabled: true,

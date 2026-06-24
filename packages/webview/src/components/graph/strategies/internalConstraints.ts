@@ -39,6 +39,19 @@ import TruthTableControl from '../form-panel/controls/internalConstraints/TruthT
 import TestTimeProps from '../form-panel/controls/internalConstraints/TestTimeProps'
 import Action from '../form-panel/controls/internalConstraints/Action'
 
+const DISABLED_SOURCE_SHAPES = new Set([
+  'condition-node',
+  'comment-node',
+  'call-node',
+  'goto-node',
+])
+
+const DISABLED_TARGET_SHAPES = new Set([
+  'comment-node',
+  'call-node',
+  'start-node',
+])
+
 // 表单配置
 const formConfig: FormConfig = {
   // 画布表单
@@ -739,6 +752,11 @@ const formConfig: FormConfig = {
 
 const internalConstraintsStrategy: GraphStrategy = {
   ensureRequiredNodes: ensureInternalConstraintsRequiredNodes,
+  preConnectionRules: {
+    maxDistance: 200,
+    canUseSource: node => !DISABLED_SOURCE_SHAPES.has(node.shape),
+    canUseTarget: node => !DISABLED_TARGET_SHAPES.has(node.shape),
+  },
   sidebarItems: [
     {
       type: 'call',

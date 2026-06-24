@@ -1,5 +1,5 @@
 import React from 'react'
-import type { Graph } from '@antv/x6'
+import type { Graph, Node } from '@antv/x6'
 
 export interface SidebarItem {
   type: string
@@ -85,6 +85,12 @@ export interface EdgeRules {
 // 'direct'  : 直连节点模式，使用普通 source/target cell 连线，支持 orth router
 export type EdgeMode = 'sequence' | 'direct'
 
+export interface PreConnectionRules {
+  maxDistance?: number
+  canUseSource?: (node: Node) => boolean
+  canUseTarget?: (node: Node) => boolean
+}
+
 // 扩展后的策略类型
 export interface GraphStrategy {
   sidebarItems: SidebarItem[]
@@ -95,6 +101,8 @@ export interface GraphStrategy {
   formConfig?: FormConfig
   // 边规则配置（基于 Port 的连线，优先级最高）
   edgeRules?: EdgeRules
+  // 节点拖入或移动时的预连线规则
+  preConnectionRules?: PreConnectionRules
   // 无 edgeRules 时的连线模式，默认 'direct'
   // 'sequence' 专用于时序图的坐标连线逻辑
   edgeMode?: EdgeMode
