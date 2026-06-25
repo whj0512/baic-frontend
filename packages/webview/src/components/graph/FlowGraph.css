@@ -201,6 +201,16 @@
 
 /* 节点连线由 X6 port 拖拽处理，无需额外底部工具栏 */
 
+/* 节点包围盒外的装饰内容仅用于展示，不扩大 X6 节点本体命中区域。 */
+.graph-content-wrapper .x6-node .node-wrapper__badge,
+.graph-content-wrapper .x6-node .condition-node__branch-label,
+.graph-content-wrapper .x6-node .state-node__badge,
+.graph-content-wrapper .x6-node .testcase-node-wrapper__badge,
+.graph-content-wrapper .x6-node .testcase-node-wrapper__status-wrap,
+.graph-content-wrapper .x6-node .branch-node__badge {
+  pointer-events: none;
+}
+
 /* 右侧表单面板 wrapper */
 .form-panel-wrapper {
   display: flex;

@@ -129,6 +129,8 @@ const isHotPortId = (portId?: string | null) => {
   return Boolean(portId?.startsWith(HOT_PORT_PREFIX))
 }
 
+export const isConnectionHotPortId = isHotPortId
+
 const getHotPortSide = (portId?: string | null): HotPortSide | null => {
   if (!isHotPortId(portId)) return null
   return portId?.replace(HOT_PORT_PREFIX, '') as HotPortSide
@@ -142,13 +144,13 @@ const getHotPortRectAttrs = (node: Node, portId: string, visible: boolean) => {
   let y = -height / 2
 
   if (side === 'top') {
-    y = 0
-  } else if (side === 'bottom') {
     y = -HOT_EDGE_THICKNESS
+  } else if (side === 'bottom') {
+    y = 0
   } else if (side === 'left') {
-    x = 0
-  } else if (side === 'right') {
     x = -HOT_EDGE_THICKNESS
+  } else if (side === 'right') {
+    x = 0
   }
 
   return {

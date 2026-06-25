@@ -1,10 +1,22 @@
 import { Graph } from '@antv/x6'
 import type { Edge } from '@antv/x6'
 import {
+  isConnectionHotPortId,
   isSequenceEdgeMode,
   validateNodeConnection,
 } from '../edgeConnection'
 import type { GraphStrategy } from '../strategies/types'
+
+type GraphEventTarget = {
+  target: EventTarget | null
+}
+
+const getEventPortId = (event: GraphEventTarget) => {
+  const target = event.target
+  if (!(target instanceof Element)) return null
+
+  return target.getAttribute('port') || target.closest('[port]')?.getAttribute('port') || null
+}
 
 export const createFlowGraphOptions = (
   container: HTMLElement,
@@ -19,6 +31,20 @@ export const createFlowGraphOptions = (
     grid: { size: 10, visible: true },
     panning: true,
     mousewheel: { enabled: true, modifiers: ['ctrl', 'meta'] },
+    guard(event, view) {
+      const cell = view?.cell
+      if (!cell?.isNode?.()) return false
+
+      if (event.type === 'mouseout' || event.type === 'mouseleave') return false
+
+      const portId = getEventPortId(event)
+      if (isConnectionHotPortId(portId)) return false
+
+      if (typeof event.clientX !== 'number' || typeof event.clientY !== 'number') return false
+
+      const localPoint = view.graph.clientToLocal(event.clientX, event.clientY)
+      return !cell.getBBox().containsPoint(localPoint)
+    },
     interacting: !readOnly ? {
       nodeMovable: true,
       edgeMovable: (cellView: any) => {

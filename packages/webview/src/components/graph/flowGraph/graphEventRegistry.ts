@@ -129,12 +129,17 @@ const registerPortEvents = (
     ensureNodeConnectionPorts(node, strategy)
   })
 
-  graph.on('node:mouseenter', ({ node }: any) => {
+  const showConnectionHotArea = ({ node }: { node: Node }) => {
+    if (activeConnectionHotAreaNode?.id === node.id) return
+
     ensureNodeConnectionPorts(node, strategy)
     hideActiveConnectionHotArea(node)
     setNodeConnectionHotAreaVisible(node, true)
     activeConnectionHotAreaNode = node
-  })
+  }
+
+  graph.on('node:mouseenter', showConnectionHotArea)
+  graph.on('node:mousemove', showConnectionHotArea)
 
   graph.on('node:mouseleave', ({ node }: any) => {
     setNodeConnectionHotAreaVisible(node, false)
