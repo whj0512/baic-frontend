@@ -3,6 +3,7 @@ import type { Cell, Edge, Graph, Node } from '@antv/x6'
 import type { Dispatch, SetStateAction } from 'react'
 import {
   ensureNodeConnectionPorts,
+  ensureSequenceEdgeVerticesTool,
   finalizeNewEdgeConnection,
   setNodeConnectionHotAreaVisible,
   toSerializableGraphJSON,
@@ -257,14 +258,24 @@ const registerUiEvents = (
 
 const registerSequenceEdgeTools = (graph: Graph) => {
   graph.on('edge:mouseenter', ({ edge }: { edge: Edge }) => {
-    edge.addTools([
-      { name: 'source-arrowhead', args: { attrs: { fill: '#1890ff', stroke: '#fff', 'stroke-width': 2, r: 4 } } },
-      { name: 'target-arrowhead', args: { attrs: { fill: '#1890ff', stroke: '#fff', 'stroke-width': 2, r: 4 } } },
-    ])
+    ensureSequenceEdgeVerticesTool(edge)
+
+    if (!edge.hasTool('source-arrowhead')) {
+      edge.addTools(
+        { name: 'source-arrowhead', args: { attrs: { fill: '#1890ff', stroke: '#fff', 'stroke-width': 2, r: 4 } } },
+      )
+    }
+    if (!edge.hasTool('target-arrowhead')) {
+      edge.addTools(
+        { name: 'target-arrowhead', args: { attrs: { fill: '#1890ff', stroke: '#fff', 'stroke-width': 2, r: 4 } } },
+      )
+    }
   })
 
   graph.on('edge:mouseleave', ({ edge }: { edge: Edge }) => {
-    edge.removeTools()
+    edge.removeTool('vertices')
+    edge.removeTool('source-arrowhead')
+    edge.removeTool('target-arrowhead')
   })
 }
 

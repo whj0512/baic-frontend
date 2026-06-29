@@ -72,7 +72,7 @@ export const connectionHighlighting = {
       connectionHighlightKey: 'magnetAdsorbed',
       padding: 3,
       attrs: {
-        stroke: '#FFA500',
+        stroke: '#1890ff',
         strokeWidth: 2,
       },
     },

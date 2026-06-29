@@ -1,7 +1,9 @@
 import { Graph } from '@antv/x6'
 import type { Edge } from '@antv/x6'
 import {
+  connectionHighlighting,
   isSequenceEdgeMode,
+  registerConnectionHighlighters,
   validateNodeConnection,
 } from '../edgeConnection'
 import type { GraphStrategy } from '../strategies/types'
@@ -11,6 +13,8 @@ export const createFlowGraphOptions = (
   strategy: GraphStrategy,
   readOnly: boolean,
 ): ConstructorParameters<typeof Graph>[0] => {
+  registerConnectionHighlighters()
+
   const sequenceEdgeMode = isSequenceEdgeMode(strategy)
 
   return {
@@ -29,6 +33,7 @@ export const createFlowGraphOptions = (
       edgeLabelMovable: true,
     } : false,
     background: { color: '#f8f9fa' },
+    highlighting: connectionHighlighting,
     connecting: {
       allowBlank: sequenceEdgeMode,
       allowMulti: true,

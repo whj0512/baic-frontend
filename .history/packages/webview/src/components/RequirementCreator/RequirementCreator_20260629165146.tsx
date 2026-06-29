@@ -35,7 +35,7 @@ const SECTIONS: DimensionListSection<SectionKey>[] = [
     { key: 'interaction', dimensionCode: 'ESD', label: '与环境交互', desc: '基于UML中顺序图的概念，通过实体之间的交互序列，来刻画系统和外部实体之间的交互场景。' },
     { key: 'internalComposition', dimensionCode: 'BDD', label: '内部组成', desc: '描述系统内部模块、部件及其组成层级和静态结构关系。' },
     { key: 'moduleResponses', dimensionCode: 'ISD', label: '组成模块间的响应', desc: '描述内部组成模块之间的响应、调用顺序和协作行为。' },
-    { key: 'internalConstraints', dimensionCode: 'SC', label: '内部约束', desc: '通过状态机对系统内部的约束/状态迁移进行刻画。' },
+    { key: 'internalConstraints', dimensionCode: 'SC', label: '内部约束', desc: '描述系统内部状态、状态转换、约束条件和触发规则。' },
 ]
 
 function RequirementCreator({

@@ -1,0 +1,166 @@
+.dimension-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.dimension-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.dimension-item:hover {
+  border-color: #3b82f6;
+  background-color: #f0f9ff;
+}
+
+.dimension-item-left,
+.dimension-item-right {
+  display: flex;
+  align-items: center;
+}
+
+.dimension-item-left {
+  min-width: 0;
+  gap: 0.75rem;
+}
+
+.dimension-item-right {
+  flex-shrink: 0;
+  gap: 0.5rem;
+  margin-left: 0.75rem;
+}
+
+.dimension-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  min-width: 2.5rem;
+  text-align: center;
+}
+
+.dimension-tag.tag-IBD {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+
+.dimension-tag.tag-ESD {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.dimension-tag.tag-SC {
+  background-color: #fef3c7;
+  color: #b45309;
+}
+
+.dimension-tag.tag-BDD {
+  background-color: #f3e8ff;
+  color: #7c3aed;
+}
+
+.dimension-tag.tag-ISD {
+  background-color: #fce7f3;
+  color: #be185d;
+}
+
+.dimension-label {
+  min-width: 0;
+  font-size: 0.85rem;
+  color: #374151;
+  font-weight: 500;
+}
+
+.dimension-help-button {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: #9ca3af;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: help;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.dimension-help-button:hover,
+.dimension-help-button:focus-visible {
+  color: #2563eb;
+  background-color: #dbeafe;
+  outline: none;
+}
+
+.dimension-status {
+  font-size: 0.75rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.dimension-status.has-data {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.dimension-status.no-data {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+}
+
+.dimension-arrow {
+  font-size: 1.2rem;
+  color: #9ca3af;
+  line-height: 1;
+}
+
+@media (prefers-color-scheme: dark) {
+  .dimension-item {
+    background-color: #374151;
+    border-color: #4b5563;
+  }
+
+  .dimension-item:hover {
+    border-color: #60a5fa;
+    background-color: #1e3a5f;
+  }
+
+  .dimension-label {
+    color: #e5e7eb;
+  }
+
+  .dimension-help-button {
+    color: #6b7280;
+  }
+
+  .dimension-help-button:hover,
+  .dimension-help-button:focus-visible {
+    color: #93c5fd;
+    background-color: #1e3a8a;
+  }
+
+  .dimension-status.has-data {
+    background-color: #14532d;
+    color: #86efac;
+  }
+
+  .dimension-status.no-data {
+    background-color: #374151;
+    color: #6b7280;
+  }
+
+  .dimension-arrow {
+    color: #6b7280;
+  }
+}
