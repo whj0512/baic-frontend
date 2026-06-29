@@ -34,8 +34,8 @@ function Home() {
     }
   }
 
-  const handleProjectClick = (projectKey: string) => {
-    navigate(`/workspace/${projectKey}`)
+  const handleProjectClick = (project: Project) => {
+    navigate(`/workspace/${project.id || project.key}`)
   }
 
   const showSingleDeleteConfirm = (projectId: string, name: string) => {
@@ -84,7 +84,7 @@ function Home() {
   const filteredProjects = projects.filter(
     (project) =>
       project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (project.key || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (project.description || '').toLowerCase().includes(searchQuery.toLowerCase())
   )
 
@@ -135,7 +135,7 @@ function Home() {
                     <td className="actions-cell">
                       <button
                         className="action-btn view-btn"
-                        onClick={() => handleProjectClick(project.key)}
+                        onClick={() => handleProjectClick(project)}
                       >
                         查看
                       </button>

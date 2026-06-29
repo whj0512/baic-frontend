@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 import type { FormSchema, FormControl, ControlDependency } from '../strategies/types'
 import type { Graph, Cell } from '@antv/x6'
 import './FormPanel.css'
@@ -47,6 +47,24 @@ const shouldShowControl = (control: FormControl, data: Record<string, any>): boo
   // 没有任何依赖条件满足，使用控件默认的 hidden 值
   return !hidden
 }
+
+const fullWidthControlShapes = new Set([
+  'Action',
+  'Conditions',
+  'ConditionExpression',
+  'ControllerTimer',
+  'LocalVariableList',
+  'NodePorts',
+  'Observe',
+  'Params',
+  'PathCoverage',
+  'Script',
+  'TestLayer',
+  'TestTimeProps',
+  'TimeTolerance',
+  'TruthTable',
+  'VariableActionList',
+])
 
 const FormPanel: React.FC<Props> = ({ schema, controlMap, data, onUpdate, targetType, graph, selectedCell }) => {
   const [activeTab, setActiveTab] = useState(0)
@@ -122,22 +140,32 @@ const FormPanel: React.FC<Props> = ({ schema, controlMap, data, onUpdate, target
                   return null
                 }
 
+                const labelText = control.label ?? control.name
+                const isFullWidth = fullWidthControlShapes.has(control.shape)
+
                 return (
-                  <div key={control.name} className="form-panel-item">
-                    {control.label && (
+                  <div
+                    key={control.name}
+                    className={`form-panel-item ${labelText ? 'has-label' : 'no-label'} ${
+                      isFullWidth ? 'form-panel-item--full' : ''
+                    }`}
+                  >
+                    {labelText && (
                       <label className="form-panel-label">
-                        {control.label}
+                        {labelText}
                         {control.extra && <span className="form-panel-extra">{control.extra}</span>}
                       </label>
                     )}
-                    <Control
-                      value={data[control.name]}
-                      onChange={(value: any) => onUpdate(control.name, value)}
-                      onFieldUpdate={onUpdate}
-                      graph={graph}
-                      currentNodeId={selectedCell?.id}
-                      {...control}
-                    />
+                    <div className="form-panel-control">
+                      <Control
+                        value={data[control.name]}
+                        onChange={(value: any) => onUpdate(control.name, value)}
+                        onFieldUpdate={onUpdate}
+                        graph={graph}
+                        currentNodeId={selectedCell?.id}
+                        {...control}
+                      />
+                    </div>
                   </div>
                 )
               })}

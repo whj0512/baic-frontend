@@ -5,10 +5,17 @@ import { PRE_CONNECTION_PREVIEW_DATA_KEY } from './preConnectionData'
 
 const DEFAULT_MAX_DISTANCE = 200
 const MOVE_BATCH_NAME = 'pre-connection-move'
+const PREVIEW_FLOW_STYLE_ID = 'baic-pre-connection-preview-flow-style'
+const PREVIEW_FLOW_ANIMATION_NAME = 'baic-pre-connection-preview-flow'
 
 interface Point {
   x: number
   y: number
+}
+
+interface Bounds extends Point {
+  width: number
+  height: number
 }
 
 interface PreConnectionState {
@@ -26,6 +33,27 @@ interface BeginPreConnectionOptions {
 }
 
 const states = new WeakMap<Graph, PreConnectionState>()
+
+const ensurePreviewFlowStyle = () => {
+  if (typeof document === 'undefined' || document.getElementById(PREVIEW_FLOW_STYLE_ID)) {
+    return
+  }
+
+  const style = document.createElement('style')
+  style.id = PREVIEW_FLOW_STYLE_ID
+  style.textContent = `
+@keyframes ${PREVIEW_FLOW_ANIMATION_NAME} {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+`
+  document.head.appendChild(style)
+}
 
 const getFormalConnectedEdges = (graph: Graph, node: Node) => {
   return graph.getConnectedEdges(node).filter((edge) => {
@@ -76,9 +104,16 @@ const releaseState = (graph: Graph, state: PreConnectionState) => {
 const getTargetGeometry = (node: Node, center?: Point) => {
   const bbox = node.getBBox()
   const targetCenter = center || bbox.center
+  const bounds = {
+    x: center ? targetCenter.x - bbox.width / 2 : bbox.x,
+    y: center ? targetCenter.y - bbox.height / 2 : bbox.y,
+    width: bbox.width,
+    height: bbox.height,
+  }
 
   return {
     center: targetCenter,
+    bounds,
     top: {
       x: targetCenter.x,
       y: center ? targetCenter.y - bbox.height / 2 : bbox.y,
@@ -86,28 +121,57 @@ const getTargetGeometry = (node: Node, center?: Point) => {
   }
 }
 
+const getBoundsDistance = (a: Bounds, b: Bounds) => {
+  const aRight = a.x + a.width
+  const bRight = b.x + b.width
+  const aBottom = a.y + a.height
+  const bBottom = b.y + b.height
+  const dx = Math.max(b.x - aRight, a.x - bRight, 0)
+  const dy = Math.max(b.y - aBottom, a.y - bBottom, 0)
+
+  return Math.sqrt(dx * dx + dy * dy)
+}
+
+const getCenterDistance = (a: Bounds, b: Bounds) => {
+  const ax = a.x + a.width / 2
+  const ay = a.y + a.height / 2
+  const bx = b.x + b.width / 2
+  const by = b.y + b.height / 2
+  const dx = ax - bx
+  const dy = ay - by
+
+  return Math.sqrt(dx * dx + dy * dy)
+}
+
 const findNearestSource = (
   graph: Graph,
   strategy: GraphStrategy,
   targetNode: Node,
-  targetCenter: Point,
+  targetBounds: Bounds,
 ) => {
   const rules = strategy.preConnectionRules
   const maxDistance = rules?.maxDistance ?? DEFAULT_MAX_DISTANCE
   let nearestNode: Node | null = null
   let nearestDistance = Infinity
+  let nearestCenterDistance = Infinity
 
   graph.getNodes().forEach((node) => {
     if (node.id === targetNode.id || rules?.canUseSource?.(node) === false) return
 
-    const sourceCenter = node.getBBox().center
-    const dx = targetCenter.x - sourceCenter.x
-    const dy = targetCenter.y - sourceCenter.y
-    const distance = Math.sqrt(dx * dx + dy * dy)
+    const sourceBounds = node.getBBox()
+    const distance = getBoundsDistance(targetBounds, sourceBounds)
+    const centerDistance = getCenterDistance(targetBounds, sourceBounds)
 
-    if (distance < maxDistance && distance < nearestDistance) {
+    if (
+      distance < maxDistance &&
+      (
+        distance < nearestDistance ||
+        (distance === nearestDistance && centerDistance < nearestCenterDistance)
+      )
+    ) {
       nearestNode = node
       nearestDistance = distance
+      nearestCenterDistance = centerDistance
     }
   })
 
@@ -115,6 +179,8 @@ const findNearestSource = (
 }
 
 const createPreviewEdge = (graph: Graph, sourceNode: Node, target: Point) => {
+  ensurePreviewFlowStyle()
+
   return graph.addEdge({
     shape: 'edge',
     source: { cell: sourceNode.id },
@@ -126,7 +192,12 @@ const createPreviewEdge = (graph: Graph, sourceNode: Node, target: Point) => {
       line: {
         stroke: '#1568DD',
         strokeWidth: 2,
-        strokeDasharray: '5 5',
+        strokeDasharray: '10 6',
+        strokeDashoffset: 0,
+        strokeLinecap: 'round',
+        style: {
+          animation: `${PREVIEW_FLOW_ANIMATION_NAME} 0.8s linear infinite`,
+        },
         targetMarker: {
           name: 'block',
           width: 12,
@@ -156,7 +227,7 @@ const updatePreview = (
   }
 
   const target = getTargetGeometry(state.targetNode, center)
-  const sourceNode = findNearestSource(graph, strategy, state.targetNode, target.center)
+  const sourceNode = findNearestSource(graph, strategy, state.targetNode, target.bounds)
   if (!sourceNode) {
     removePreviewEdge(graph, state)
     return
@@ -214,6 +285,11 @@ const restoreFormalEdgeStyle = (edge: Edge, strategy: GraphStrategy) => {
     stroke: '#1890ff',
     strokeWidth: 2,
     strokeDasharray: '',
+    strokeDashoffset: '',
+    strokeLinecap: '',
+    style: {
+      animation: '',
+    },
     sourceMarker: strategy.defaultSourceMarker !== undefined
       ? strategy.defaultSourceMarker
       : undefined,

@@ -587,7 +587,7 @@ export const scheduleGraphConnectionViewRefresh = (graph: Graph, strategy: Graph
 const finalizeSequenceEdge = (graph: Graph, edge: Edge, sourceNode: Node, targetNode: Node) => {
   const sourceId = sourceNode.id
   const targetId = targetNode.id
-  const offsetY = countSequenceEdgesBetween(graph, edge, sourceId, targetId) * 40
+  const offsetY = countSequenceEdgesBetween(graph, edge, sourceId, targetId) * 80
   const edgeData = {
     ...edge.getData(),
     sourceId,

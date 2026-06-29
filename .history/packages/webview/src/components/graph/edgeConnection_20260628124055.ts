@@ -468,8 +468,8 @@ const countSequenceEdgesBetween = (graph: Graph, edge: Edge, sourceId: string, t
     const itemSourceId = source?.cell || data.sourceId
     const itemTargetId = target?.cell || data.targetId
 
-    return (itemSourceId === sourceId || itemTargetId === targetId) ||
-      (itemSourceId === targetId || itemTargetId === sourceId)
+    return (itemSourceId === sourceId && itemTargetId === targetId) ||
+      (itemSourceId === targetId && itemTargetId === sourceId)
   }).length
 }
 

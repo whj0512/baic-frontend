@@ -29,6 +29,7 @@ export type DimensionSectionConfig = {
 }
 
 export interface DimensionEditorProps {
+  draftProjectScope: string
   requirement: Requirement
   sectionKey: SectionKey
   onBack: () => void

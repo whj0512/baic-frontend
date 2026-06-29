@@ -1,20 +1,35 @@
 .internal-action-editor {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   width: 100%;
+  min-width: 0;
 }
 
-.internal-action-editor .ant-select {
-  min-width: 72px;
+.internal-action-editor > .ant-select,
+.internal-action-editor > .ant-input,
+.internal-action-editor > .ant-input-affix-wrapper {
+  min-width: 0;
+}
+
+.internal-action-editor > .ant-select-auto-complete {
+  flex: 1 1 140px;
+}
+
+.internal-action-editor > .ant-select:not(.ant-select-auto-complete) {
+  flex: 0 0 76px;
+  width: 76px;
+  min-width: 76px;
 }
 
 .internal-action-editor__func-args {
-  min-width: 120px;
+  flex: 1 1 140px;
+  min-width: 0;
 }
 
 .internal-action-editor__help {
+  flex: 0 0 auto;
   color: #8c8c8c;
   cursor: help;
 }
@@ -33,11 +48,10 @@
 }
 
 @media (max-width: 520px) {
-  .internal-action-editor {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .internal-action-editor .ant-select {
+  .internal-action-editor > .ant-select,
+  .internal-action-editor > .ant-input,
+  .internal-action-editor > .ant-input-affix-wrapper {
+    flex-basis: 100%;
     width: 100%;
   }
 }

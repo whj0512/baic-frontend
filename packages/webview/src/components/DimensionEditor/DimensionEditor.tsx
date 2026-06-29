@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Button, ConfigProvider, message } from 'antd'
+import { Button, ConfigProvider, message, Modal } from 'antd'
 import { ArrowLeftOutlined, SaveOutlined, DownloadOutlined, FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons'
 import FlowGraph, { type FlowGraphRef } from '../graph'
 import DslEditor from '../dsl-editor'
@@ -9,10 +9,17 @@ import { SECTION_CONFIG } from './dimensionEditorConfig'
 import { useDimensionEditorConversions } from './useDimensionEditorConversions'
 import { useDimensionEditorSnapshot } from './useDimensionEditorSnapshot'
 import { useUnsavedChangesGuard } from './useUnsavedChangesGuard'
-import type { DimensionEditorProps, SectionKey, ViewMode } from './types'
+import type { DimensionEditorProps, EditorSnapshot, SectionKey, ViewMode } from './types'
+import { cloneSerializableData, createEditorSnapshot } from './snapshot'
+import {
+  clearDimensionEditorDraft,
+  getDraftUserId,
+  readDimensionEditorDraft,
+  saveDimensionEditorDraft,
+} from '../../utils/editorDraftStorage'
 import './DimensionEditor.css'
 
-function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionEditorProps) {
+function DimensionEditor({ draftProjectScope, requirement, sectionKey, onBack, onSave }: DimensionEditorProps) {
   const config = SECTION_CONFIG[sectionKey]
   const modelStrategy = getModelStrategy(sectionKey)
 
@@ -36,6 +43,9 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
   const flowGraphRef = useRef<FlowGraphRef | null>(null)
   const pendingCanvasDataRef = useRef<Record<string, any> | null>(null)
   const editorGroupRef = useRef<HTMLDivElement | null>(null)
+  const draftPromptKeyRef = useRef('')
+  const restoredDraftRef = useRef(false)
+  const draftUserId = getDraftUserId()
 
   const {
     savedSnapshotRef,
@@ -77,6 +87,13 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
     setGraphError,
   })
 
+  const clearCurrentDraft = useCallback(() => {
+    if (!draftProjectScope) return
+
+    clearDimensionEditorDraft(draftProjectScope, draftUserId, requirement.id, sectionKey)
+    restoredDraftRef.current = false
+  }, [draftProjectScope, draftUserId, requirement.id, sectionKey])
+
   const {
     handleSave,
     handleContentChange,
@@ -105,6 +122,8 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
     setDslContent,
     setGraphData,
     viewMode,
+    onSnapshotSaved: clearCurrentDraft,
+    onDiscardUnsavedChanges: clearCurrentDraft,
   })
 
   const handleGraphChange = useCallback((data: object) => {
@@ -126,6 +145,100 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
     }
   }, [applyVisualView, convertDslToVisual])
 
+  const restoreDraftSnapshot = useCallback((snapshot: EditorSnapshot, restoredViewMode: ViewMode) => {
+    const nextGraphData = cloneSerializableData(snapshot.graphData)
+
+    restoredDraftRef.current = true
+    contentRef.current = snapshot.content
+    dslContentRef.current = snapshot.dslContent
+    graphDataRef.current = nextGraphData
+    pendingCanvasDataRef.current = null
+    setContent(snapshot.content)
+    setDslContent(snapshot.dslContent)
+    setGraphData(nextGraphData)
+    setViewMode(restoredViewMode)
+    flowGraphRef.current?.loadData(nextGraphData)
+  }, [
+    contentRef,
+    dslContentRef,
+    flowGraphRef,
+    graphDataRef,
+    pendingCanvasDataRef,
+    setContent,
+    setDslContent,
+    setGraphData,
+    setViewMode,
+  ])
+
+  const saveCurrentDraft = useCallback(() => {
+    if (!draftProjectScope) return
+
+    saveDimensionEditorDraft(draftProjectScope, draftUserId, requirement.id, sectionKey, {
+      baseRequirementUpdatedAt: requirement.updated_at,
+      viewMode,
+      snapshot: createEditorSnapshot(
+        contentRef.current,
+        dslContentRef.current,
+        graphDataRef.current,
+      ),
+    })
+  }, [draftProjectScope, draftUserId, requirement.id, requirement.updated_at, sectionKey, viewMode])
+
+  useEffect(() => {
+    if (!draftProjectScope) return
+
+    const promptKey = `${draftUserId}:${draftProjectScope}:${requirement.id}:${sectionKey}`
+    if (draftPromptKeyRef.current === promptKey) return
+    draftPromptKeyRef.current = promptKey
+
+    const draft = readDimensionEditorDraft(draftProjectScope, draftUserId, requirement.id, sectionKey)
+    if (!draft) return
+
+    const hasRemoteChanged = Boolean(
+      draft.baseRequirementUpdatedAt
+      && requirement.updated_at
+      && draft.baseRequirementUpdatedAt !== requirement.updated_at,
+    )
+
+    Modal.confirm({
+      title: '检测到未保存的维度编辑草稿',
+      content: hasRemoteChanged
+        ? '检测到本地草稿，但服务端数据可能已更新。是否仍恢复异常关闭前的编辑内容？'
+        : '是否恢复上次异常关闭前正在编辑的维度内容？',
+      okText: '恢复草稿',
+      cancelText: '丢弃草稿',
+      centered: true,
+      onOk: () => {
+        restoreDraftSnapshot(draft.snapshot, draft.viewMode)
+      },
+      onCancel: () => {
+        clearCurrentDraft()
+      },
+    })
+  }, [
+    clearCurrentDraft,
+    draftProjectScope,
+    draftUserId,
+    requirement.id,
+    requirement.updated_at,
+    restoreDraftSnapshot,
+    sectionKey,
+  ])
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return
+
+    const timer = setTimeout(saveCurrentDraft, 800)
+    return () => clearTimeout(timer)
+  }, [hasUnsavedChanges, saveCurrentDraft])
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return
+
+    window.addEventListener('beforeunload', saveCurrentDraft)
+    return () => window.removeEventListener('beforeunload', saveCurrentDraft)
+  }, [hasUnsavedChanges, saveCurrentDraft])
+
   useEffect(() => {
     if (viewMode !== 'visual') return
     const pending = pendingCanvasDataRef.current
@@ -145,6 +258,8 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
   }, [viewMode])
 
   useEffect(() => {
+    if (hasUnsavedChanges || restoredDraftRef.current) return
+
     const remoteGraph = (requirement[config.graphField] as object) || {}
     const remoteStr = JSON.stringify(remoteGraph)
     const localStr = JSON.stringify(graphDataRef.current)
@@ -156,9 +271,11 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
       updateSavedSnapshot({ graphData: remoteGraph })
       flowGraphRef.current?.loadData(remoteGraph)
     }
-  }, [requirement, config.graphField, updateSavedSnapshot])
+  }, [hasUnsavedChanges, requirement, config.graphField, updateSavedSnapshot])
 
   useEffect(() => {
+    if (hasUnsavedChanges || restoredDraftRef.current) return
+
     const remoteDsl = (requirement[config.dslField] as string) || ''
     if (remoteDsl && remoteDsl !== dslContentRef.current) {
       message.info('其他用户更新了 DSL 数据，已自动同步')
@@ -166,7 +283,7 @@ function DimensionEditor({ requirement, sectionKey, onBack, onSave }: DimensionE
       setDslContent(remoteDsl)
       updateSavedSnapshot({ dslContent: remoteDsl })
     }
-  }, [requirement, config.dslField, updateSavedSnapshot])
+  }, [hasUnsavedChanges, requirement, config.dslField, updateSavedSnapshot])
 
   const handleDownloadJSON = useCallback(() => {
     const graph = flowGraphRef.current?.getGraph()

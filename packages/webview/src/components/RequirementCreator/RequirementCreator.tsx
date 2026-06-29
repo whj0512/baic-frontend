@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { message, Tabs, Select } from 'antd'
 import { FormOutlined } from '@ant-design/icons'
 import { API_ENDPOINTS, authFetch } from '../../config/api'
+import type { CreateRequirementFormData } from '../../utils/editorDraftStorage'
 import './RequirementCreator.css'
 
 const CUSTOM_TYPE_KEY = '__custom__'
@@ -18,23 +19,10 @@ const isPresetReqType = (value?: string) =>
 // Types
 type SectionKey = 'environment' | 'interaction' | 'internalComposition' | 'moduleResponses' | 'internalConstraints';
 
-interface RelationItem {
-    reqId: number
-    relationType: string
-    reqLabel: string
-}
-
 interface RequirementCreatorProps {
     projectKey?: string
-    formData?: {
-        name: string
-        req_type: string
-        nl_text: string
-        relationships: RelationItem[]
-        sectionData: Record<string, any>
-        sectionDslData: Record<string, string>
-    }
-    onChange?: (data: any) => void
+    formData?: CreateRequirementFormData
+    onChange?: (data: CreateRequirementFormData) => void
     onSectionClick?: (sectionKey: SectionKey) => void
     onCancel?: () => void
     onSuccess?: () => void
@@ -76,7 +64,7 @@ function RequirementCreator({
     // Start with local, but prefer props
     const currentFormData = formData || localFormData
 
-    const updateFormData = (newData: any) => {
+    const updateFormData = (newData: CreateRequirementFormData) => {
         if (onChange) {
             onChange(newData)
         } else {

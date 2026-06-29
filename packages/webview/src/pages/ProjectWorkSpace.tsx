@@ -13,12 +13,20 @@ import ReqRelationShip from '../components/ReqRelationShip'
 import TestCaseOverview from '../components/TestCaseOverview'
 import { API_ENDPOINTS, authFetch } from '../config/api'
 import { useProjectSync } from '../hooks/useProjectSync'
+import {
+  clearDimensionEditorDraft,
+  clearRequirementCreateDraft,
+  getDraftUserId,
+  readRequirementCreateDraft,
+  saveRequirementCreateDraft,
+  type CreateRequirementFormData,
+} from '../utils/editorDraftStorage'
 
 // 中间区域视图类型
 type CenterView = 'overview' | 'editor' | 'create' | 'create-editor' | 'relationship' | 'test-case'
 type CreateCenterView = Extract<CenterView, 'create' | 'create-editor'>
 
-const createEmptyRequirementFormData = () => ({
+const createEmptyRequirementFormData = (): CreateRequirementFormData => ({
   name: '',
   nl_text: '',
   req_type: '',
@@ -26,6 +34,33 @@ const createEmptyRequirementFormData = () => ({
   sectionData: {} as Record<string, any>,
   sectionDslData: {} as Record<string, string>
 })
+
+const hasCreateDraftContent = (formData: CreateRequirementFormData) => (
+  Boolean(
+    formData.name.trim()
+    || formData.req_type.trim()
+    || formData.nl_text.trim()
+    || formData.relationships.length
+    || Object.keys(formData.sectionData).length
+    || Object.keys(formData.sectionDslData).length,
+  )
+)
+
+const hasRestorableCreateDraft = (
+  formData: CreateRequirementFormData,
+  view: CenterView,
+  section: SectionKey | null,
+) => (
+  hasCreateDraftContent(formData) || (view === 'create-editor' && Boolean(section))
+)
+
+const CREATE_SECTION_KEYS: SectionKey[] = [
+  'environment',
+  'interaction',
+  'internalComposition',
+  'moduleResponses',
+  'internalConstraints',
+]
 
 function ProjectWorkSpace() {
   const { projectKey } = useParams<{ projectKey: string }>()
@@ -47,6 +82,18 @@ function ProjectWorkSpace() {
   const createDraftViewRef = useRef<{ view: CreateCenterView; section: SectionKey | null }>({
     view: 'create', section: null
   })
+  const createDraftPromptKeyRef = useRef('')
+  const draftUserId = getDraftUserId()
+  const draftProjectScope = project?.id || projectKey || ''
+
+  const clearCreateFlowDrafts = () => {
+    if (!draftProjectScope) return
+
+    clearRequirementCreateDraft(draftProjectScope, draftUserId)
+    CREATE_SECTION_KEYS.forEach(sectionKey => {
+      clearDimensionEditorDraft(draftProjectScope, draftUserId, 'NEW', sectionKey)
+    })
+  }
 
   // 测试用例视图：当前展示的需求列表
   const [testCaseRequirements, setTestCaseRequirements] = useState<Requirement[]>([])
@@ -80,7 +127,7 @@ function ProjectWorkSpace() {
         if (!projRes.ok) throw new Error('获取项目列表失败')
         const projData = await projRes.json()
         const projects = Array.isArray(projData) ? projData : (projData.projects || [])
-        const currentProject = projects.find((p: any) => p.key === projectKey)
+        const currentProject = projects.find((p: any) => p.id === projectKey || p.key === projectKey)
 
         if (!currentProject) {
           message.error('未找到该项目')
@@ -239,6 +286,71 @@ function ProjectWorkSpace() {
   // 新建需求表单状态
   const [createFormData, setCreateFormData] = useState(createEmptyRequirementFormData)
 
+  useEffect(() => {
+    if (!draftProjectScope) return
+
+    const promptKey = `${draftUserId}:${draftProjectScope}`
+    if (createDraftPromptKeyRef.current === promptKey) return
+    createDraftPromptKeyRef.current = promptKey
+
+    const draft = readRequirementCreateDraft(draftProjectScope, draftUserId)
+    if (!draft || !hasRestorableCreateDraft(draft.formData, draft.view, draft.section)) return
+
+    Modal.confirm({
+      title: '检测到未完成的新建需求草稿',
+      content: '是否恢复上次异常关闭前正在编辑的新建需求内容？',
+      okText: '恢复草稿',
+      cancelText: '丢弃草稿',
+      centered: true,
+      onOk: () => {
+        setCreateFormData(draft.formData)
+        createDraftViewRef.current = { view: draft.view, section: draft.section }
+        setSelectedRequirement(null)
+        setEditingSection(draft.section)
+        setCenterView(draft.view === 'create-editor' && draft.section ? 'create-editor' : 'create')
+      },
+      onCancel: () => {
+        clearRequirementCreateDraft(draftProjectScope, draftUserId)
+        CREATE_SECTION_KEYS.forEach(sectionKey => {
+          clearDimensionEditorDraft(draftProjectScope, draftUserId, 'NEW', sectionKey)
+        })
+      },
+    })
+  }, [draftProjectScope, draftUserId])
+
+  useEffect(() => {
+    const shouldSaveDraft = hasRestorableCreateDraft(createFormData, centerView, editingSection)
+    if (!draftProjectScope || !shouldSaveDraft) return
+    if (centerView !== 'create' && centerView !== 'create-editor') return
+
+    const timer = setTimeout(() => {
+      saveRequirementCreateDraft(draftProjectScope, draftUserId, {
+        formData: createFormData,
+        view: centerView,
+        section: editingSection,
+      })
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [centerView, createFormData, draftProjectScope, draftUserId, editingSection])
+
+  useEffect(() => {
+    const shouldSaveDraft = hasRestorableCreateDraft(createFormData, centerView, editingSection)
+    if (!draftProjectScope || !shouldSaveDraft) return
+    if (centerView !== 'create' && centerView !== 'create-editor') return
+
+    const flushCreateDraft = () => {
+      saveRequirementCreateDraft(draftProjectScope, draftUserId, {
+        formData: createFormData,
+        view: centerView,
+        section: editingSection,
+      })
+    }
+
+    window.addEventListener('beforeunload', flushCreateDraft)
+    return () => window.removeEventListener('beforeunload', flushCreateDraft)
+  }, [centerView, createFormData, draftProjectScope, draftUserId, editingSection])
+
   const handleCreateRequirement = () => {
     const draftView = createDraftViewRef.current
     setSelectedRequirement(null)
@@ -248,6 +360,7 @@ function ProjectWorkSpace() {
 
   // 处理新建完成或取消
   const handleCreateFinish = () => {
+    clearCreateFlowDrafts()
     setCreateFormData(createEmptyRequirementFormData())
     createDraftViewRef.current = { view: 'create', section: null }
     setEditingSection(null)
@@ -263,6 +376,17 @@ function ProjectWorkSpace() {
 
   const handleBackToCreator = () => {
     createDraftViewRef.current = { view: 'create', section: null }
+    if (draftProjectScope) {
+      if (hasCreateDraftContent(createFormData)) {
+        saveRequirementCreateDraft(draftProjectScope, draftUserId, {
+          formData: createFormData,
+          view: 'create',
+          section: null,
+        })
+      } else {
+        clearCreateFlowDrafts()
+      }
+    }
     setEditingSection(null)
     setCenterView('create')
   }
@@ -502,6 +626,7 @@ function ProjectWorkSpace() {
           {centerView === 'editor' && currentRequirement && editingSection && (
             <DimensionEditor
               key={`${currentRequirement.id}-${editingSection}`}
+              draftProjectScope={draftProjectScope}
               requirement={currentRequirement}
               sectionKey={editingSection}
               onBack={handleBackToOverview}
@@ -522,6 +647,7 @@ function ProjectWorkSpace() {
 
           {centerView === 'create-editor' && editingSection && (
             <DimensionEditor
+              draftProjectScope={draftProjectScope}
               requirement={draftRequirement}
               sectionKey={editingSection}
               onBack={handleBackToCreator}

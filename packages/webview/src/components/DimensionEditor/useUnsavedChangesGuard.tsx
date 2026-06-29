@@ -42,6 +42,8 @@ interface UseUnsavedChangesGuardOptions {
   setDslContent: Dispatch<SetStateAction<string>>
   setGraphData: Dispatch<SetStateAction<object>>
   viewMode: ViewMode
+  onSnapshotSaved?: () => void
+  onDiscardUnsavedChanges?: () => void
 }
 
 export function useUnsavedChangesGuard({
@@ -67,6 +69,8 @@ export function useUnsavedChangesGuard({
   setDslContent,
   setGraphData,
   viewMode,
+  onSnapshotSaved,
+  onDiscardUnsavedChanges,
 }: UseUnsavedChangesGuardOptions) {
   const prepareSnapshotForSave = useCallback(async (): Promise<EditorSnapshot | null> => {
     const currentContent = contentRef.current
@@ -119,6 +123,7 @@ export function useUnsavedChangesGuard({
     if (requirement.id === 'NEW') {
       onSave?.(sectionKey, snapshot.graphData, snapshot.dslContent)
       markSnapshotSaved(snapshot)
+      onSnapshotSaved?.()
       message.success('暂存成功')
       return true
     }
@@ -146,6 +151,7 @@ export function useUnsavedChangesGuard({
 
       onSave?.(sectionKey, snapshot.graphData, snapshot.dslContent)
       markSnapshotSaved(snapshot)
+      onSnapshotSaved?.()
       message.success('保存成功')
       return true
     } catch (error: any) {
@@ -162,6 +168,7 @@ export function useUnsavedChangesGuard({
     dslContentRef,
     graphDataRef,
     markSnapshotSaved,
+    onSnapshotSaved,
     onSave,
     requirement.id,
     sectionKey,
@@ -212,8 +219,9 @@ export function useUnsavedChangesGuard({
 
   const continueWithoutSaving = useCallback(() => {
     restoreSavedSnapshot()
+    onDiscardUnsavedChanges?.()
     onBack()
-  }, [onBack, restoreSavedSnapshot])
+  }, [onBack, onDiscardUnsavedChanges, restoreSavedSnapshot])
 
   const handleGuardedBack = useCallback(() => {
     if (!hasUnsavedChanges) {

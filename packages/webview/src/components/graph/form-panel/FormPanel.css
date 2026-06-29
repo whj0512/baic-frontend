@@ -56,14 +56,43 @@
 }
 
 .form-panel-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   margin-bottom: 12px;
 }
 
-.form-panel-label {
+.form-panel-item.no-label {
   display: block;
-  margin-bottom: 4px;
+}
+
+.form-panel-item--full {
+  display: block;
+}
+
+.form-panel-label {
+  flex: 0 0 88px;
+  min-width: 0;
+  padding-top: 7px;
   font-size: 13px;
+  line-height: 18px;
   color: #333;
+  overflow-wrap: anywhere;
+}
+
+.form-panel-item--full .form-panel-label {
+  display: block;
+  padding-top: 0;
+  margin-bottom: 6px;
+}
+
+.form-panel-control {
+  flex: 1;
+  min-width: 0;
+}
+
+.form-panel-item--full .form-panel-control {
+  width: 100%;
 }
 
 .form-panel-extra {
