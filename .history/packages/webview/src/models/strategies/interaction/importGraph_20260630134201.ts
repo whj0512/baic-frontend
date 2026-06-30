@@ -238,14 +238,6 @@ const calculateFragmentSectionHeight = (scopeMetrics: Array<ScopeMetric | null>)
     return Math.max(...heightCandidates)
 }
 
-const centerFragmentHorizontalBounds = (left: number, right: number) => {
-    const contentWidth = right - left
-    const width = Math.max(FRAGMENT_DEFAULT_WIDTH, contentWidth)
-    const x = left - Math.max(0, width - contentWidth) / 2
-
-    return { x, width }
-}
-
 const calculateFragmentHorizontalBounds = (
     sections: FragmentSection[],
     componentPositionMap: Map<string, ComponentLayout>,
@@ -270,7 +262,10 @@ const calculateFragmentHorizontalBounds = (
     if (involvedComponents.length > 0) {
         const left = Math.min(...involvedComponents.map(component => component.x))
         const right = Math.max(...involvedComponents.map(component => component.x + component.width))
-        return centerFragmentHorizontalBounds(left, right)
+        return {
+            x: left,
+            width: Math.max(FRAGMENT_DEFAULT_WIDTH, right - left),
+        }
     }
 
     const scopedLayouts = scopedInteractions
@@ -281,7 +276,10 @@ const calculateFragmentHorizontalBounds = (
         const points = scopedLayouts.flatMap(layout => [layout.source.x, layout.target.x])
         const left = Math.min(...points) - COMPONENT_DEFAULT_WIDTH / 2
         const right = Math.max(...points) + COMPONENT_DEFAULT_WIDTH / 2
-        return centerFragmentHorizontalBounds(left, right)
+        return {
+            x: left,
+            width: Math.max(FRAGMENT_DEFAULT_WIDTH, right - left),
+        }
     }
 
     return {

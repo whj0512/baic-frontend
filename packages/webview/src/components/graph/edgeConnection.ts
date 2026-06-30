@@ -528,6 +528,7 @@ export const ensureSequenceEdgeVerticesTool = (edge: Edge) => {
     {
       name: 'vertices',
       args: {
+        modifiers: 'shift',
         attrs: {
           fill: '#1890ff',
           stroke: '#fff',

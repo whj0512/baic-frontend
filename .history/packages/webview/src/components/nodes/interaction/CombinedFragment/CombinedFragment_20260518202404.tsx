@@ -73,7 +73,7 @@ const CombinedFragment: FC<CombinedFragmentProps> = (props) => {
                 className="seq-fragment__tag"
                 style={{ borderColor: stroke, color: stroke }}
             >
-                {children || `${fragmentType}`}
+                {children || `${fragmentType} ${fragmentName}`}
             </div>
 
             {/* 首条件标签（显示在 tag 旁边） */}

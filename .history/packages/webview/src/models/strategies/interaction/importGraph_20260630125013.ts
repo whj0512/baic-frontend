@@ -70,7 +70,7 @@ type GraphCell = {
 
 const COMPONENT_START_X = 100
 const COMPONENT_Y = 100
-const COMPONENT_GAP = 320
+const COMPONENT_GAP = 200
 const COMPONENT_DEFAULT_WIDTH = 120
 const COMPONENT_DEFAULT_HEIGHT = 300
 const HEADER_HEIGHT = 50
@@ -78,12 +78,11 @@ const EDGE_START_Y_OFFSET = 80
 const EDGE_Y_GAP = 80
 
 const FRAGMENT_DEFAULT_X = 100
-const FRAGMENT_DEFAULT_WIDTH = 560
+const FRAGMENT_DEFAULT_WIDTH = 300
 const FRAGMENT_DEFAULT_HEIGHT = 120
 const FRAGMENT_TAG_HEIGHT = 28
 const FRAGMENT_MIN_GAP_Y = 5
 const FRAGMENT_BASE_Z_INDEX = -200
-const EDGE_Z_INDEX = 100
 
 type FragmentLayoutItem = {
     cell: GraphCell
@@ -238,14 +237,6 @@ const calculateFragmentSectionHeight = (scopeMetrics: Array<ScopeMetric | null>)
     return Math.max(...heightCandidates)
 }
 
-const centerFragmentHorizontalBounds = (left: number, right: number) => {
-    const contentWidth = right - left
-    const width = Math.max(FRAGMENT_DEFAULT_WIDTH, contentWidth)
-    const x = left - Math.max(0, width - contentWidth) / 2
-
-    return { x, width }
-}
-
 const calculateFragmentHorizontalBounds = (
     sections: FragmentSection[],
     componentPositionMap: Map<string, ComponentLayout>,
@@ -270,7 +261,10 @@ const calculateFragmentHorizontalBounds = (
     if (involvedComponents.length > 0) {
         const left = Math.min(...involvedComponents.map(component => component.x))
         const right = Math.max(...involvedComponents.map(component => component.x + component.width))
-        return centerFragmentHorizontalBounds(left, right)
+        return {
+            x: left,
+            width: Math.max(FRAGMENT_DEFAULT_WIDTH, right - left),
+        }
     }
 
     const scopedLayouts = scopedInteractions
@@ -281,7 +275,10 @@ const calculateFragmentHorizontalBounds = (
         const points = scopedLayouts.flatMap(layout => [layout.source.x, layout.target.x])
         const left = Math.min(...points) - COMPONENT_DEFAULT_WIDTH / 2
         const right = Math.max(...points) + COMPONENT_DEFAULT_WIDTH / 2
-        return centerFragmentHorizontalBounds(left, right)
+        return {
+            x: left,
+            width: Math.max(FRAGMENT_DEFAULT_WIDTH, right - left),
+        }
     }
 
     return {
@@ -502,7 +499,6 @@ const convertEdge = (interaction: Interaction): GraphCell => {
     return {
         id: interaction.id,
         shape: 'edge',
-        zIndex: EDGE_Z_INDEX,
         source: interaction.source,
         target: interaction.target,
         labels,

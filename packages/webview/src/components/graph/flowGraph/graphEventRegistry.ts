@@ -257,6 +257,24 @@ const registerUiEvents = (
 }
 
 const registerSequenceEdgeTools = (graph: Graph) => {
+  let previousConnectingHighlight: boolean | null = null
+
+  graph.on('edge:batch:start', ({ name }: any) => {
+    if (name !== 'move-arrowhead') return
+    if (previousConnectingHighlight !== null) return
+
+    previousConnectingHighlight = graph.options.connecting.highlight
+    graph.options.connecting.highlight = false
+  })
+
+  graph.on('edge:batch:stop', ({ name }: any) => {
+    if (name !== 'move-arrowhead') return
+    if (previousConnectingHighlight === null) return
+
+    graph.options.connecting.highlight = previousConnectingHighlight
+    previousConnectingHighlight = null
+  })
+
   graph.on('edge:mouseenter', ({ edge }: { edge: Edge }) => {
     ensureSequenceEdgeVerticesTool(edge)
 
