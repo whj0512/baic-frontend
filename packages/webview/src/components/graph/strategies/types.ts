@@ -91,6 +91,10 @@ export interface PreConnectionRules {
   canUseTarget?: (node: Node) => boolean
 }
 
+export interface SequenceConnectionConfig {
+  participantShapes: string[]
+}
+
 // 扩展后的策略类型
 export interface GraphStrategy {
   sidebarItems: SidebarItem[]
@@ -103,6 +107,8 @@ export interface GraphStrategy {
   edgeRules?: EdgeRules
   // 节点拖入或移动时的预连线规则
   preConnectionRules?: PreConnectionRules
+  // 时序图从生命线拖拽生成消息线的规则
+  sequenceConnection?: SequenceConnectionConfig
   // 无 edgeRules 时的连线模式，默认 'direct'
   // 'sequence' 专用于时序图的坐标连线逻辑
   edgeMode?: EdgeMode

@@ -2,6 +2,7 @@ import { Graph as X6Graph } from '@antv/x6'
 import type { Edge, Graph, Node } from '@antv/x6'
 import type { GraphStrategy } from './strategies/types'
 import { isPreConnectionPreview } from './flowGraph/preConnectionData'
+import { isSequenceConnectionPreview } from './flowGraph/sequenceConnectionData'
 
 type Terminal = {
   cell?: string
@@ -13,6 +14,12 @@ type Terminal = {
 type RawTerminal = Terminal | string | null | undefined
 
 type HotPortSide = 'top' | 'right' | 'bottom' | 'left'
+
+type SequenceEdgeGeometry = {
+  source: { x: number; y: number }
+  target: { x: number; y: number }
+  y?: number
+}
 
 const HOT_PORT_PREFIX = 'connection-hot-'
 const HOT_EDGE_THICKNESS = 10
@@ -77,6 +84,10 @@ export const connectionHighlighting = {
       },
     },
   },
+}
+
+export const connectionNoopHighlighting = {
+  name: CONNECTION_MAGNET_NOOP_HIGHLIGHTER,
 }
 
 const hotPortGroups = {
@@ -304,6 +315,8 @@ const ensureHotPorts = (node: Node) => {
 }
 
 export const ensureNodeConnectionPorts = (node: Node, strategy: GraphStrategy) => {
+  if (isSequenceEdgeMode(strategy)) return
+
   if (strategy.edgeRules) {
     ensureRulePortGroups(node, strategy)
     ensureRuleInitialPorts(node, strategy)
@@ -321,7 +334,7 @@ export const toSerializableGraphJSON = (graph: Graph) => {
   return {
     ...json,
     cells: json.cells
-      ?.filter((cell: any) => !isPreConnectionPreview(cell))
+      ?.filter((cell: any) => !isPreConnectionPreview(cell) && !isSequenceConnectionPreview(cell))
       .map((cell: any) => {
         if (!cell.ports) return cell
 
@@ -666,7 +679,13 @@ export const scheduleGraphConnectionViewRefresh = (graph: Graph, strategy: Graph
   })
 }
 
-const finalizeSequenceEdge = (graph: Graph, edge: Edge, sourceNode: Node, targetNode: Node) => {
+export const finalizeSequenceEdge = (
+  graph: Graph,
+  edge: Edge,
+  sourceNode: Node,
+  targetNode: Node,
+  geometry?: SequenceEdgeGeometry,
+) => {
   const sourceId = sourceNode.id
   const targetId = targetNode.id
   const offsetY = countSequenceEdgesBetween(graph, edge, sourceId, targetId) * 40
@@ -681,7 +700,7 @@ const finalizeSequenceEdge = (graph: Graph, edge: Edge, sourceNode: Node, target
   if (sourceId === targetId) {
     const bbox = sourceNode.getBBox()
     const rightX = bbox.x + bbox.width
-    const centerY = bbox.center.y + offsetY
+    const centerY = geometry?.y ?? geometry?.source.y ?? bbox.center.y + offsetY
     const loopOffset = 40
 
     edge.setSource({ x: rightX, y: centerY })
@@ -691,6 +710,15 @@ const finalizeSequenceEdge = (graph: Graph, edge: Edge, sourceNode: Node, target
       { x: rightX + loopOffset, y: centerY + 20 },
     ])
     edge.prop('router', null)
+    edge.prop('connector', {
+      name: 'rounded',
+      args: { radius: 8 },
+    })
+  } else if (geometry) {
+    edge.setSource(geometry.source)
+    edge.setTarget(geometry.target)
+    edge.prop('router', null)
+    edge.setVertices([])
   } else {
     const sourceCenter = sourceNode.getBBox().center
     const targetCenter = targetNode.getBBox().center

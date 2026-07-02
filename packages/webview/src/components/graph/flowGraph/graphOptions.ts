@@ -40,7 +40,7 @@ export const createFlowGraphOptions = (
       allowNode: true,
       allowEdge: false,
       allowLoop: sequenceEdgeMode,
-      highlight: true,
+      highlight: !sequenceEdgeMode,
       snap: {
         radius: 30,
       },

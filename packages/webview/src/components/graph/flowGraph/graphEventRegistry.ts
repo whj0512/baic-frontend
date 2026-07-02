@@ -2,9 +2,11 @@ import { Clipboard, History, Keyboard, Selection, Snapline, Transform } from '@a
 import type { Cell, Edge, Graph, Node } from '@antv/x6'
 import type { Dispatch, SetStateAction } from 'react'
 import {
+  connectionNoopHighlighting,
   ensureNodeConnectionPorts,
   ensureSequenceEdgeVerticesTool,
   finalizeNewEdgeConnection,
+  isSequenceEdgeMode,
   setNodeConnectionHotAreaVisible,
   toSerializableGraphJSON,
 } from '../edgeConnection'
@@ -17,6 +19,10 @@ import {
   updatePreConnection,
 } from './preConnection'
 import { isPreConnectionPreview } from './preConnectionData'
+import {
+  registerSequenceConnection,
+} from './sequenceConnection'
+import { isSequenceConnectionPreview } from './sequenceConnectionData'
 
 export interface FlowGraphContextMenuState {
   visible: boolean
@@ -45,6 +51,9 @@ export const registerGraphEventHandlers = (
 ) => {
   if (!options.readOnly && options.strategy.preConnectionRules) {
     registerPreConnectionEvents(graph, options.strategy)
+  }
+  if (!options.readOnly && options.strategy.sequenceConnection) {
+    registerSequenceConnection(graph, options.strategy, options.onChange)
   }
   registerChangeEvents(graph, options)
   registerEdgeLabelEvents(graph)
@@ -90,10 +99,10 @@ const registerChangeEvents = (
 
   const updateData = () => onChange(toSerializableGraphJSON(graph))
   const updateEdgeData = ({ edge }: { edge: Edge }) => {
-    if (!isPreConnectionPreview(edge)) updateData()
+    if (!isPreConnectionPreview(edge) && !isSequenceConnectionPreview(edge)) updateData()
   }
   const updateCellData = ({ cell }: { cell: Cell }) => {
-    if (!isPreConnectionPreview(cell)) updateData()
+    if (!isPreConnectionPreview(cell) && !isSequenceConnectionPreview(cell)) updateData()
   }
   graph.on('node:change:position', updateData)
   graph.on('node:added', updateData)
@@ -116,6 +125,7 @@ const registerPortEvents = (
   graph: Graph,
   { strategy, onChange }: RegisterGraphEventHandlersOptions,
 ) => {
+  const sequenceEdgeMode = isSequenceEdgeMode(strategy)
   let activeConnectionHotAreaNode: Node | null = null
 
   const hideActiveConnectionHotArea = (nextNode?: Node) => {
@@ -130,30 +140,32 @@ const registerPortEvents = (
     ensureNodeConnectionPorts(node, strategy)
   })
 
-  const showConnectionHotArea = ({ node }: { node: Node }) => {
-    if (activeConnectionHotAreaNode?.id === node.id) return
+  if (!sequenceEdgeMode) {
+    const showConnectionHotArea = ({ node }: { node: Node }) => {
+      if (activeConnectionHotAreaNode?.id === node.id) return
 
-    ensureNodeConnectionPorts(node, strategy)
-    hideActiveConnectionHotArea(node)
-    setNodeConnectionHotAreaVisible(node, true)
-    activeConnectionHotAreaNode = node
+      ensureNodeConnectionPorts(node, strategy)
+      hideActiveConnectionHotArea(node)
+      setNodeConnectionHotAreaVisible(node, true)
+      activeConnectionHotAreaNode = node
+    }
+
+    graph.on('node:mouseenter', showConnectionHotArea)
+    graph.on('node:mousemove', showConnectionHotArea)
+
+    graph.on('node:mouseleave', ({ node }: any) => {
+      setNodeConnectionHotAreaVisible(node, false)
+      if (activeConnectionHotAreaNode?.id === node.id) {
+        activeConnectionHotAreaNode = null
+      }
+    })
+
+    graph.on('node:removed', ({ node }: any) => {
+      if (activeConnectionHotAreaNode?.id === node.id) {
+        activeConnectionHotAreaNode = null
+      }
+    })
   }
-
-  graph.on('node:mouseenter', showConnectionHotArea)
-  graph.on('node:mousemove', showConnectionHotArea)
-
-  graph.on('node:mouseleave', ({ node }: any) => {
-    setNodeConnectionHotAreaVisible(node, false)
-    if (activeConnectionHotAreaNode?.id === node.id) {
-      activeConnectionHotAreaNode = null
-    }
-  })
-
-  graph.on('node:removed', ({ node }: any) => {
-    if (activeConnectionHotAreaNode?.id === node.id) {
-      activeConnectionHotAreaNode = null
-    }
-  })
 
   graph.on('edge:connected', ({ edge, isNew }: { edge: Edge; isNew: boolean }) => {
     if (!isNew) return
@@ -258,21 +270,87 @@ const registerUiEvents = (
 
 const registerSequenceEdgeTools = (graph: Graph) => {
   let previousConnectingHighlight: boolean | null = null
+  let previousConnectingSnap: typeof graph.options.connecting.snap | null = null
+  let previousConnectionCandidates: Pick<
+    typeof graph.options.connecting,
+    'allowNode' | 'allowPort'
+  > | null = null
+  let previousConnectionHighlighting: Pick<
+    typeof graph.options.highlighting,
+    'nodeAvailable' | 'magnetAvailable' | 'magnetAdsorbed'
+  > | null = null
+
+  const suppressConnectionHighlighting = () => {
+    if (previousConnectionHighlighting !== null) return
+
+    previousConnectionHighlighting = {
+      nodeAvailable: graph.options.highlighting.nodeAvailable,
+      magnetAvailable: graph.options.highlighting.magnetAvailable,
+      magnetAdsorbed: graph.options.highlighting.magnetAdsorbed,
+    }
+
+    graph.options.highlighting.nodeAvailable = connectionNoopHighlighting
+    graph.options.highlighting.magnetAvailable = connectionNoopHighlighting
+    graph.options.highlighting.magnetAdsorbed = connectionNoopHighlighting
+  }
+
+  const restoreConnectionHighlighting = () => {
+    if (previousConnectionHighlighting === null) return
+
+    graph.options.highlighting.nodeAvailable = previousConnectionHighlighting.nodeAvailable
+    graph.options.highlighting.magnetAvailable = previousConnectionHighlighting.magnetAvailable
+    graph.options.highlighting.magnetAdsorbed = previousConnectionHighlighting.magnetAdsorbed
+    previousConnectionHighlighting = null
+  }
+
+  const suppressConnectionCandidates = () => {
+    if (previousConnectionCandidates !== null) return
+
+    previousConnectionCandidates = {
+      allowNode: graph.options.connecting.allowNode,
+      allowPort: graph.options.connecting.allowPort,
+    }
+
+    graph.options.connecting.allowNode = false
+    graph.options.connecting.allowPort = false
+  }
+
+  const restoreConnectionCandidates = () => {
+    if (previousConnectionCandidates === null) return
+
+    graph.options.connecting.allowNode = previousConnectionCandidates.allowNode
+    graph.options.connecting.allowPort = previousConnectionCandidates.allowPort
+    previousConnectionCandidates = null
+  }
 
   graph.on('edge:batch:start', ({ name }: any) => {
     if (name !== 'move-arrowhead') return
-    if (previousConnectingHighlight !== null) return
+    if (previousConnectingHighlight === null) {
+      previousConnectingHighlight = graph.options.connecting.highlight
+      graph.options.connecting.highlight = false
+    }
+    if (previousConnectingSnap === null) {
+      previousConnectingSnap = graph.options.connecting.snap
+      graph.options.connecting.snap = false
+    }
 
-    previousConnectingHighlight = graph.options.connecting.highlight
-    graph.options.connecting.highlight = false
+    suppressConnectionHighlighting()
+    suppressConnectionCandidates()
   })
 
   graph.on('edge:batch:stop', ({ name }: any) => {
     if (name !== 'move-arrowhead') return
-    if (previousConnectingHighlight === null) return
+    restoreConnectionCandidates()
+    restoreConnectionHighlighting()
 
-    graph.options.connecting.highlight = previousConnectingHighlight
-    previousConnectingHighlight = null
+    if (previousConnectingHighlight !== null) {
+      graph.options.connecting.highlight = previousConnectingHighlight
+      previousConnectingHighlight = null
+    }
+    if (previousConnectingSnap !== null) {
+      graph.options.connecting.snap = previousConnectingSnap
+      previousConnectingSnap = null
+    }
   })
 
   graph.on('edge:mouseenter', ({ edge }: { edge: Edge }) => {

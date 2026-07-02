@@ -1,4 +1,5 @@
 import { type FC, type ReactNode, useEffect } from 'react';
+import type { Graph } from '@antv/x6';
 import BaseLifeline from '../common/BaseLifeline';
 import './Actor.css';
 
@@ -6,12 +7,13 @@ interface ActorProps {
     width?: number;
     height?: number;
     stroke?: string;
+    graph?: Graph;
     node?: any;
     children?: ReactNode;
 }
 
 const Actor: FC<ActorProps> = (props) => {
-    const { width: propWidth, height: propHeight, stroke: propStroke, node, children } = props;
+    const { width: propWidth, height: propHeight, stroke: propStroke, graph, node, children } = props;
     const nodeData = node?.getData?.() || {};
     const nodeSize = node?.getSize?.() || {};
 
@@ -77,6 +79,8 @@ const Actor: FC<ActorProps> = (props) => {
             headerContent={headerContent}
             headerHeight={headerHeight}
             tailOffset={20}
+            graph={graph}
+            node={node}
         />
     );
 };

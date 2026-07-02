@@ -1,4 +1,5 @@
 import { type FC, type ReactNode, useEffect } from 'react';
+import type { Graph } from '@antv/x6';
 import BaseLifeline from '../common/BaseLifeline';
 import './BaseObject.css';
 
@@ -9,13 +10,14 @@ interface BaseObjectProps {
     /** 样式配置 */
     stroke?: string;
     fill?: string;
+    graph?: Graph;
     node?: any;
     /** 子内容 */
     children?: ReactNode;
 }
 
 const BaseObject: FC<BaseObjectProps> = (props) => {
-    const { width: propWidth, height: propHeight, stroke: propStroke, fill: propFill, node, children } = props;
+    const { width: propWidth, height: propHeight, stroke: propStroke, fill: propFill, graph, node, children } = props;
     const nodeData = node?.getData?.() || {};
     const nodeSize = node?.getSize?.() || {};
 
@@ -63,6 +65,8 @@ const BaseObject: FC<BaseObjectProps> = (props) => {
             className="seq-lifeline"
             headerContent={headerContent}
             headerHeight={headerHeight}
+            graph={graph}
+            node={node}
         />
     );
 };

@@ -17,6 +17,9 @@ const moduleResponsesStrategy: GraphStrategy = {
   sidebarItems: sequenceSidebarItems,
   registerNodes: registerSequenceNodes,
   edgeMode: 'sequence',
+  sequenceConnection: {
+    participantShapes: ['seq-object-node', 'seq-actor-node'],
+  },
   formConfig: sequenceFormConfig,
 }
 

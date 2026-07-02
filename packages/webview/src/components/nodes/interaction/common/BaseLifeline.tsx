@@ -1,4 +1,6 @@
-import { type FC, type ReactNode } from 'react';
+import { type FC, type PointerEvent as ReactPointerEvent, type ReactNode, useCallback } from 'react';
+import type { Graph, Node } from '@antv/x6';
+import { beginSequenceConnection } from '../../../graph/flowGraph/sequenceConnection';
 import './BaseLifeline.css';
 
 interface BaseLifelineProps {
@@ -9,10 +11,20 @@ interface BaseLifelineProps {
     headerContent: ReactNode;
     headerHeight: number;
     tailOffset?: number; // default: 0
+    graph?: Graph;
+    node?: Node;
 }
 
 const BaseLifeline: FC<BaseLifelineProps> = (props) => {
-    const { width, height, stroke, className = '', headerContent, headerHeight, tailOffset = 0 } = props;
+    const { width, height, stroke, className = '', headerContent, headerHeight, tailOffset = 0, graph, node } = props;
+
+    const handleLinePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+        if (!graph || !node) return;
+        if (beginSequenceConnection(graph, node, event.nativeEvent)) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    }, [graph, node]);
 
     return (
         <div
@@ -25,6 +37,7 @@ const BaseLifeline: FC<BaseLifelineProps> = (props) => {
             {/* 生命线（虚线） */}
             <div
                 className="seq-base-lifeline__line"
+                onPointerDown={handleLinePointerDown}
                 style={{
                     height: height - headerHeight - tailOffset,
                     borderLeftColor: stroke,

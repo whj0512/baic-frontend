@@ -18,6 +18,7 @@ import {
   disposeFlowGraphStencil,
 } from './stencil'
 import { cancelPreConnection } from './preConnection'
+import { cancelSequenceConnection } from './sequenceConnection'
 
 interface UseFlowGraphInstanceOptions {
   sectionKey: string
@@ -93,6 +94,7 @@ export const useFlowGraphInstance = ({
       graphRef.current = null
 
       cancelPreConnection(graph)
+      cancelSequenceConnection(graph)
 
       setTimeout(() => {
         disposeFlowGraphStencil(currentStencil, graph)

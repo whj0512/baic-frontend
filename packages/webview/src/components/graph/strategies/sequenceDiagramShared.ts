@@ -8,6 +8,7 @@
 import { register } from '@antv/x6-react-shape'
 import type { FormConfig, SidebarItem } from './types'
 import ObjectNode from '../../nodes/interaction/BaseObject'
+import ActorNode from '../../nodes/interaction/Actor'
 import CombinedFragmentNode from '../../nodes/interaction/CombinedFragment'
 import Params from '../form-panel/controls/interaction/Params'
 import Conditions from '../form-panel/controls/interaction/Conditions'
@@ -17,6 +18,10 @@ export const registerSequenceNodes = () => {
   register({
     shape: 'seq-object-node',
     component: ObjectNode,
+  })
+  register({
+    shape: 'seq-actor-node',
+    component: ActorNode,
   })
   register({
     shape: 'seq-fragment-node',

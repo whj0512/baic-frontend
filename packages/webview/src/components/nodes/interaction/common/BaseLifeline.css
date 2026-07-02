@@ -15,7 +15,19 @@
 
 /* 生命线虚线基础样式 */
 .seq-base-lifeline__line {
+    position: relative;
     width: 0;
     border-left: 2px dashed #4a90d9;
     flex-shrink: 0;
+    cursor: crosshair;
+    touch-action: none;
+}
+
+.seq-base-lifeline__line::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -6px;
+    width: 12px;
 }
