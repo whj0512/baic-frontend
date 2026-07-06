@@ -41,6 +41,23 @@
   background-color: #2563eb;
 }
 
+.secondary-btn {
+  background-color: #ffffff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s, border-color 0.2s;
+  font-size: 0.9rem;
+}
+
+.secondary-btn:hover {
+  background-color: #f9fafb;
+  border-color: #9ca3af;
+}
+
 /* Search */
 .home-search {
   margin-bottom: 0.5rem;
@@ -254,6 +271,17 @@
 
   .project-key-badge {
     background-color: #2563eb;
+  }
+
+  .secondary-btn {
+    background-color: #1f2937;
+    border-color: #4b5563;
+    color: #e5e7eb;
+  }
+
+  .secondary-btn:hover {
+    background-color: #374151;
+    border-color: #6b7280;
   }
 
   .project-name {

@@ -838,7 +838,7 @@ const internalConstraintsStrategy: GraphStrategy = {
       label: 'start',
       shape: 'start-node',
       color: '#e6f7ff',
-      tooltip: '表示流程的起点',
+      tooltip: '流程起点节点',
       defaultAttrs: {
         data: {
           stroke: '#333',
@@ -851,7 +851,7 @@ const internalConstraintsStrategy: GraphStrategy = {
       label: 'state',
       shape: 'state-node',
       color: '#e6f7ff',
-      tooltip: '表示流程中的一个状态',
+      tooltip: '表示流程中的状态或阶段',
       defaultAttrs: {
         width: 120,
         height: 80,
@@ -866,7 +866,7 @@ const internalConstraintsStrategy: GraphStrategy = {
       label: 'then',
       shape: 'then-node',
       color: '#e6f7ff',
-      tooltip: '这是一个中转节点',
+      tooltip: '承接上一条件或动作后的后续流程',
       defaultAttrs: {
         data: {
           stroke: '#333',
@@ -879,7 +879,7 @@ const internalConstraintsStrategy: GraphStrategy = {
       label: 'truth table',
       shape: 'truth-node',
       color: '#e6f7ff',
-      tooltip: '用于定义输入与输出之间的逻辑关系',
+      tooltip: '使用真值表定义条件组合和期望结果',
       defaultAttrs: {
         width: 120,
         height: 60,

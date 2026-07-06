@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Modal, message, Spin } from 'antd'
 import { API_ENDPOINTS, authFetch } from '../config/api'
+import EntityManagement from './EntityManagement'
 import './Home.css'
 import type { Project } from '../models/Project'
 
@@ -11,6 +12,7 @@ function Home() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [showEntityManagement, setShowEntityManagement] = useState(false)
 
   useEffect(() => {
     fetchProjects()
@@ -88,12 +90,19 @@ function Home() {
       (project.description || '').toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  if (showEntityManagement) {
+    return <EntityManagement onBack={() => setShowEntityManagement(false)} />
+  }
+
   return (
     <div className="home-content-wrapper">
       {/* 页面标题 */}
       <div className="home-header">
         <h2>项目总览</h2>
         <div className="home-actions">
+          <button className="secondary-btn" onClick={() => setShowEntityManagement(true)}>
+            实体管理
+          </button>
           <button className="create-btn" onClick={() => navigate('/create-project')}>
             新建项目
           </button>

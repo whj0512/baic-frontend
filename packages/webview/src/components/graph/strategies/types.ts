@@ -6,6 +6,7 @@ export interface SidebarItem {
   label: string
   shape: string
   color?: string
+  tooltip?: string
   defaultAttrs?: Record<string, any>
   render?: React.ReactNode
 }

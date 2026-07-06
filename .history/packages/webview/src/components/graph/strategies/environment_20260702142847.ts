@@ -266,7 +266,6 @@ const environmentStrategy: GraphStrategy = {
       label: 'Functional Module',
       shape: 'functional-module-node',
       color: '#ffffffff',
-      tooltip: '功能模块实体',
       defaultAttrs: {
         width: 80,
         height: 120,
@@ -279,7 +278,6 @@ const environmentStrategy: GraphStrategy = {
       label: 'Control Unit',
       shape: 'control-unit-node',
       color: '#ffffffff',
-      tooltip: '控制单元实体',
       defaultAttrs: {
         width: 80,
         height: 120,
@@ -292,7 +290,6 @@ const environmentStrategy: GraphStrategy = {
       label: 'Machine',
       shape: 'machine-node',
       color: '#ffffffff',
-      tooltip: '当前建模的对象',
       defaultAttrs: {
         width: 80,
         height: 120,

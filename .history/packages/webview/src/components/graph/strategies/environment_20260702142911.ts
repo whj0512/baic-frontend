@@ -292,7 +292,7 @@ const environmentStrategy: GraphStrategy = {
       label: 'Machine',
       shape: 'machine-node',
       color: '#ffffffff',
-      tooltip: '当前建模的对象',
+      
       defaultAttrs: {
         width: 80,
         height: 120,

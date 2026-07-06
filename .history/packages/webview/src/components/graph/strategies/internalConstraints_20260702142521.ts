@@ -879,7 +879,7 @@ const internalConstraintsStrategy: GraphStrategy = {
       label: 'truth table',
       shape: 'truth-node',
       color: '#e6f7ff',
-      tooltip: '用于定义输入与输出之间的逻辑关系',
+      tooltip: '使用真值表定义条件组合和期望结果',
       defaultAttrs: {
         width: 120,
         height: 60,

@@ -49,7 +49,6 @@ export const sequenceSidebarItems: SidebarItem[] = [
     label: '组合片段',
     shape: 'seq-fragment-node',
     color: '#ffffffff',
-    tooltip: '用于表示条件分支、循环、并行等交互逻辑',
     defaultAttrs: {
       width: 200,
       height: 120,
