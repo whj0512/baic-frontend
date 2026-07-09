@@ -3,6 +3,7 @@ import environmentStrategy from './environment'
 import interactionStrategy from './interaction'
 import internalCompositionStrategy from './internalComposition'
 import internalConstraintsStrategy from './internalConstraints'
+import dialogMapStrategy from './dialogMap'
 
 const strategies: Record<string, ModelStrategy> = {
   environment: environmentStrategy,
@@ -10,6 +11,7 @@ const strategies: Record<string, ModelStrategy> = {
   internalComposition: internalCompositionStrategy,
   moduleResponses: interactionStrategy,
   internalConstraints: internalConstraintsStrategy,
+  dialogMap: dialogMapStrategy,
 }
 
 // Default fallback（空实现）

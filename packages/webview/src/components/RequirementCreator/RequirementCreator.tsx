@@ -3,7 +3,9 @@ import { message, Tabs, Select } from 'antd'
 import { FormOutlined } from '@ant-design/icons'
 import { API_ENDPOINTS, authFetch } from '../../config/api'
 import type { CreateRequirementFormData } from '../../utils/editorDraftStorage'
-import DimensionList, { type DimensionListSection } from '../DimensionList'
+import DimensionList from '../DimensionList'
+import type { SectionKey } from '../DimensionEditor/types'
+import { getRequirementSections } from '../DimensionList/requirementSections'
 import './RequirementCreator.css'
 
 const CUSTOM_TYPE_KEY = '__custom__'
@@ -18,9 +20,6 @@ const PRESET_REQ_TYPES = [
 const isPresetReqType = (value?: string) =>
     !value || PRESET_REQ_TYPES.some(option => option.value === value)
 
-// Types
-type SectionKey = 'environment' | 'interaction' | 'internalComposition' | 'moduleResponses' | 'internalConstraints';
-
 interface RequirementCreatorProps {
     projectKey?: string
     formData?: CreateRequirementFormData
@@ -29,15 +28,6 @@ interface RequirementCreatorProps {
     onCancel?: () => void
     onSuccess?: () => void
 }
-
-// Sections Config (from RequirementOverview/CreateRequirement)
-const SECTIONS: DimensionListSection<SectionKey>[] = [
-    { key: 'environment', dimensionCode: 'IBD', label: '所处环境', desc: '对系统所属的环境组成进行刻画，描述外部存在的实体以及这些实体之间存在的交互。' },
-    { key: 'interaction', dimensionCode: 'ESD', label: '与环境交互', desc: '基于UML中顺序图的概念，通过实体之间的交互序列，来刻画系统和外部实体之间的交互场景。' },
-    { key: 'internalComposition', dimensionCode: 'BDD', label: '内部组成', desc: '描述系统内部模块、部件及其组成层级和静态结构关系。' },
-    { key: 'moduleResponses', dimensionCode: 'ISD', label: '组成模块间的响应', desc: '描述内部组成模块之间的响应、调用顺序和协作行为。' },
-    { key: 'internalConstraints', dimensionCode: 'SC', label: '内部约束', desc: '通过状态机对系统内部的约束/状态迁移进行刻画。' },
-]
 
 function RequirementCreator({
     projectKey,
@@ -65,6 +55,10 @@ function RequirementCreator({
 
     // Start with local, but prefer props
     const currentFormData = formData || localFormData
+    const sections = getRequirementSections(currentFormData.req_type)
+    const sectionTitle = sections.length === 1 && sections[0].key === 'dialogMap'
+        ? '会话图定义'
+        : '五维模型定义'
 
     const updateFormData = (newData: CreateRequirementFormData) => {
         if (onChange) {
@@ -225,10 +219,10 @@ function RequirementCreator({
                 {/* Dimensions - Placeholder for creation view */}
                 <div className="creator-section">
                     <div className="section-header">
-                        <span className="section-title">五维模型定义</span>
+                        <span className="section-title">{sectionTitle}</span>
                     </div>
                     <DimensionList
-                        sections={SECTIONS}
+                        sections={sections}
                         isSectionDefined={(section) => Boolean(currentFormData.sectionData?.[section.key])}
                         onSectionClick={(section) => onSectionClick?.(section.key)}
                     />

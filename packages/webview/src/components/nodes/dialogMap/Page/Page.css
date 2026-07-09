@@ -1,0 +1,110 @@
+.dialog-page-node {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-width: 120px;
+  min-height: 80px;
+  overflow: visible;
+  user-select: none;
+  background: var(--dialog-page-fill, #f3f4f6);
+  border: 2px solid var(--dialog-page-stroke, #2563eb);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.dialog-page-node__header {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 12px;
+  overflow: hidden;
+  color: #1f2937;
+  font-weight: 600;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: rgba(37, 99, 235, 0.08);
+  border-bottom: 1px solid var(--dialog-page-stroke, #2563eb);
+}
+
+.dialog-page-node__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-sizing: border-box;
+  min-width: 100%;
+  padding: 6px;
+}
+
+.dialog-page-node__comment {
+  color: #4b5563;
+  line-height: 1.4;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.dialog-page-node__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.dialog-page-node__row {
+  box-sizing: border-box;
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  border-radius: 4px;
+  padding: 2px 4px;
+  line-height: 1.4;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.dialog-page-node__badge {
+  position: absolute;
+  right: 10px;
+  bottom: -9px;
+  z-index: 10;
+  padding: 0 4px;
+  background: var(--dialog-page-fill, #f3f4f6);
+  border-radius: 2px;
+}
+
+.dialog-page-node__badge-text {
+  color: var(--dialog-page-stroke, #2563eb);
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.dialog-page-node__stencil {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.dialog-page-node__stencil-text {
+  width: 100%;
+  overflow: hidden;
+  color: #1f2937;
+  font-size: 12px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dialog-page-node__stencil-badge {
+  position: absolute;
+  right: 4px;
+  bottom: 2px;
+  color: var(--dialog-page-stroke, #2563eb);
+  font-size: 10px;
+  font-style: italic;
+  font-weight: 600;
+}

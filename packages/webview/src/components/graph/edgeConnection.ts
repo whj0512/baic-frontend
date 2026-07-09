@@ -188,6 +188,11 @@ export const isSequenceEdgeMode = (strategy: GraphStrategy) => {
   return !strategy.edgeRules && strategy.edgeMode === 'sequence'
 }
 
+const withDefaultEdgeData = (strategy: GraphStrategy, data: Record<string, any> = {}) => ({
+  ...(strategy.getDefaultEdgeData?.() || {}),
+  ...data,
+})
+
 const getPortGroup = (node: Node, portId?: string | null) => {
   if (!portId) return undefined
   return node.getPorts().find((port) => port.id === portId)?.group
@@ -579,7 +584,7 @@ const finalizeRuleEdge = (graph: Graph, strategy: GraphStrategy, edge: Edge, sou
   edge.setSource({ cell: sourceNode.id, port: sourcePortId })
   edge.setTarget({ cell: targetNode.id, port: targetPortId })
   edge.setData({
-    ...edge.getData(),
+    ...withDefaultEdgeData(strategy, edge.getData()),
     sourceOutput: sourcePortId,
   })
   applyConditionLabel(edge, sourcePortId)

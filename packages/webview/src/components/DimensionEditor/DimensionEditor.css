@@ -63,6 +63,11 @@
   color: #be185d;
 }
 
+.dimension-code.tag-DialogMap {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
 /* Content */
 .dimension-editor-content {
   flex: 1;

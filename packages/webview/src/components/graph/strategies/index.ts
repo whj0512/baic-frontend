@@ -4,6 +4,7 @@ import interactionStrategy from './interaction'
 import internalCompositionStrategy from './internalComposition'
 import moduleResponsesStrategy from './moduleResponses'
 import internalConstraintsStrategy from './internalConstraints'
+import dialogMapStrategy from './dialogMap'
 import testcaseViewStrategy from './testcaseView'
 
 const strategies: Record<string, GraphStrategy> = {
@@ -12,6 +13,7 @@ const strategies: Record<string, GraphStrategy> = {
   internalComposition: internalCompositionStrategy,
   moduleResponses: moduleResponsesStrategy,
   internalConstraints: internalConstraintsStrategy,
+  dialogMap: dialogMapStrategy,
   testcaseView: testcaseViewStrategy,
 }
 

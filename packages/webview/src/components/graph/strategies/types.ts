@@ -117,6 +117,8 @@ export interface GraphStrategy {
   defaultSourceMarker?: string | Record<string, any> | null
   // 边默认箭头类型
   defaultEdgeMarker?: string | Record<string, any> | null
+  // 边默认业务数据
+  getDefaultEdgeData?: () => Record<string, any>
   // 拖拽面板布局配置
   stencilLayoutOptions?: any
   stencilGraphWidth?: number

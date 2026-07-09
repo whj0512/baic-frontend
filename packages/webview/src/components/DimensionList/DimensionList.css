@@ -72,6 +72,11 @@
   color: #be185d;
 }
 
+.dimension-tag.tag-DialogMap {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
 .dimension-label {
   min-width: 0;
   font-size: 0.85rem;

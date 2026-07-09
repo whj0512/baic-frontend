@@ -75,6 +75,14 @@ export function useUnsavedChangesGuard({
   const prepareSnapshotForSave = useCallback(async (): Promise<EditorSnapshot | null> => {
     const currentContent = contentRef.current
 
+    if (!config.graphField || !config.dslField) {
+      return createEditorSnapshot(
+        currentContent,
+        dslContentRef.current,
+        graphDataRef.current,
+      )
+    }
+
     if (viewMode === 'dsl') {
       const currentDslContent = dslContentRef.current
       if (!currentDslContent.trim()) {
@@ -105,6 +113,8 @@ export function useUnsavedChangesGuard({
   }, [
     applyDslView,
     applyVisualView,
+    config.dslField,
+    config.graphField,
     contentRef,
     convertDslToVisual,
     convertGraphToDsl,
@@ -121,10 +131,18 @@ export function useUnsavedChangesGuard({
     ),
   ): Promise<boolean> => {
     if (requirement.id === 'NEW') {
-      onSave?.(sectionKey, snapshot.graphData, snapshot.dslContent)
+      onSave?.(sectionKey, snapshot.graphData, snapshot.dslContent, snapshot)
       markSnapshotSaved(snapshot)
       onSnapshotSaved?.()
       message.success('暂存成功')
+      return true
+    }
+
+    if (!config.graphField || !config.dslField) {
+      onSave?.(sectionKey, snapshot.graphData, snapshot.dslContent, snapshot)
+      markSnapshotSaved(snapshot)
+      onSnapshotSaved?.()
+      message.success('保存成功')
       return true
     }
 
@@ -149,7 +167,7 @@ export function useUnsavedChangesGuard({
         throw new Error(errorData.detail || '保存失败')
       }
 
-      onSave?.(sectionKey, snapshot.graphData, snapshot.dslContent)
+      onSave?.(sectionKey, snapshot.graphData, snapshot.dslContent, snapshot)
       markSnapshotSaved(snapshot)
       onSnapshotSaved?.()
       message.success('保存成功')

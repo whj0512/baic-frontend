@@ -47,6 +47,7 @@ export const createFlowGraphOptions = (
       createEdge(this: Graph) {
         return this.createEdge({
           shape: 'edge',
+          data: strategy.getDefaultEdgeData?.(),
           attrs: {
             line: {
               stroke: '#1890ff',

@@ -20,12 +20,13 @@ export type SectionKey =
   | 'internalComposition'
   | 'moduleResponses'
   | 'internalConstraints'
+  | 'dialogMap'
 
 export type DimensionSectionConfig = {
   dimensionCode: string
   label: string
-  graphField: keyof Requirement
-  dslField: keyof Requirement
+  graphField?: keyof Requirement
+  dslField?: keyof Requirement
 }
 
 export interface DimensionEditorProps {
@@ -33,5 +34,5 @@ export interface DimensionEditorProps {
   requirement: Requirement
   sectionKey: SectionKey
   onBack: () => void
-  onSave?: (sectionKey: SectionKey, graphData: object, dslText: string) => void
+  onSave?: (sectionKey: SectionKey, graphData: object, dslText: string, snapshot?: EditorSnapshot) => void
 }

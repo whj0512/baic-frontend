@@ -22,14 +22,18 @@ import './DimensionEditor.css'
 function DimensionEditor({ draftProjectScope, requirement, sectionKey, onBack, onSave }: DimensionEditorProps) {
   const config = SECTION_CONFIG[sectionKey]
   const modelStrategy = getModelStrategy(sectionKey)
+  const draftUserId = getDraftUserId()
+  const isDialogMap = sectionKey === 'dialogMap'
 
-  const initialGraphData = (requirement[config.graphField] as object) || {}
-  const initialDslContent = (requirement[config.dslField] as string) || ''
+  const initialGraphData = (config.graphField ? (requirement[config.graphField] as object) : (requirement as any).graph_DialogMap)
+    || {}
+  const initialDslContent = (config.dslField ? (requirement[config.dslField] as string) : (requirement as any).dsl_DialogMap)
+    || ''
   const initialContent = requirement.nl_text || ''
 
   const [content, setContent] = useState(initialContent)
   const [graphData, setGraphData] = useState(initialGraphData)
-  const [viewMode, setViewMode] = useState<ViewMode>('dsl')
+  const [viewMode, setViewMode] = useState<ViewMode>(() => (isDialogMap ? 'visual' : 'dsl'))
   const [dslContent, setDslContent] = useState(initialDslContent)
   const [dslLoading, setDslLoading] = useState(false)
   const [dslError, setDslError] = useState<string | undefined>()
@@ -45,7 +49,6 @@ function DimensionEditor({ draftProjectScope, requirement, sectionKey, onBack, o
   const editorGroupRef = useRef<HTMLDivElement | null>(null)
   const draftPromptKeyRef = useRef('')
   const restoredDraftRef = useRef(false)
-  const draftUserId = getDraftUserId()
 
   const {
     savedSnapshotRef,
@@ -88,11 +91,12 @@ function DimensionEditor({ draftProjectScope, requirement, sectionKey, onBack, o
   })
 
   const clearCurrentDraft = useCallback(() => {
+    if (isDialogMap) return
     if (!draftProjectScope) return
 
     clearDimensionEditorDraft(draftProjectScope, draftUserId, requirement.id, sectionKey)
     restoredDraftRef.current = false
-  }, [draftProjectScope, draftUserId, requirement.id, sectionKey])
+  }, [draftProjectScope, draftUserId, isDialogMap, requirement.id, sectionKey])
 
   const {
     handleSave,
@@ -171,6 +175,7 @@ function DimensionEditor({ draftProjectScope, requirement, sectionKey, onBack, o
   ])
 
   const saveCurrentDraft = useCallback(() => {
+    if (isDialogMap) return
     if (!draftProjectScope) return
 
     saveDimensionEditorDraft(draftProjectScope, draftUserId, requirement.id, sectionKey, {
@@ -182,9 +187,10 @@ function DimensionEditor({ draftProjectScope, requirement, sectionKey, onBack, o
         graphDataRef.current,
       ),
     })
-  }, [draftProjectScope, draftUserId, requirement.id, requirement.updated_at, sectionKey, viewMode])
+  }, [draftProjectScope, draftUserId, isDialogMap, requirement.id, requirement.updated_at, sectionKey, viewMode])
 
   useEffect(() => {
+    if (isDialogMap) return
     if (!draftProjectScope) return
 
     const promptKey = `${draftUserId}:${draftProjectScope}:${requirement.id}:${sectionKey}`
@@ -223,6 +229,7 @@ function DimensionEditor({ draftProjectScope, requirement, sectionKey, onBack, o
     requirement.updated_at,
     restoreDraftSnapshot,
     sectionKey,
+    isDialogMap,
   ])
 
   useEffect(() => {
@@ -258,6 +265,7 @@ function DimensionEditor({ draftProjectScope, requirement, sectionKey, onBack, o
   }, [viewMode])
 
   useEffect(() => {
+    if (!config.graphField) return
     if (hasUnsavedChanges || restoredDraftRef.current) return
 
     const remoteGraph = (requirement[config.graphField] as object) || {}
@@ -274,6 +282,7 @@ function DimensionEditor({ draftProjectScope, requirement, sectionKey, onBack, o
   }, [hasUnsavedChanges, requirement, config.graphField, updateSavedSnapshot])
 
   useEffect(() => {
+    if (!config.dslField) return
     if (hasUnsavedChanges || restoredDraftRef.current) return
 
     const remoteDsl = (requirement[config.dslField] as string) || ''

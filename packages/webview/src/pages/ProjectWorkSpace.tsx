@@ -48,11 +48,31 @@ const hasCreateDraftContent = (formData: CreateRequirementFormData) => (
 
 const hasRestorableCreateDraft = (
   formData: CreateRequirementFormData,
-  view: CenterView,
+  view: CreateCenterView,
   section: SectionKey | null,
 ) => (
   hasCreateDraftContent(formData) || (view === 'create-editor' && Boolean(section))
 )
+
+const getPersistableCreateDraft = (
+  formData: CreateRequirementFormData,
+  view: CreateCenterView,
+  section: SectionKey | null,
+) => {
+  const { dialogMap: _dialogMapGraph, ...sectionData } = formData.sectionData
+  const { dialogMap: _dialogMapDsl, ...sectionDslData } = formData.sectionDslData
+  const nextSection = section === 'dialogMap' ? null : section
+
+  return {
+    formData: {
+      ...formData,
+      sectionData,
+      sectionDslData,
+    },
+    view: view === 'create-editor' && section === 'dialogMap' ? 'create' : view,
+    section: nextSection,
+  }
+}
 
 const CREATE_SECTION_KEYS: SectionKey[] = [
   'environment',
@@ -60,6 +80,7 @@ const CREATE_SECTION_KEYS: SectionKey[] = [
   'internalComposition',
   'moduleResponses',
   'internalConstraints',
+  'dialogMap',
 ]
 
 function ProjectWorkSpace() {
@@ -319,15 +340,17 @@ function ProjectWorkSpace() {
   }, [draftProjectScope, draftUserId])
 
   useEffect(() => {
-    const shouldSaveDraft = hasRestorableCreateDraft(createFormData, centerView, editingSection)
-    if (!draftProjectScope || !shouldSaveDraft) return
     if (centerView !== 'create' && centerView !== 'create-editor') return
+
+    const draft = getPersistableCreateDraft(createFormData, centerView, editingSection)
+    const shouldSaveDraft = hasRestorableCreateDraft(draft.formData, draft.view, draft.section)
+    if (!draftProjectScope || !shouldSaveDraft) return
 
     const timer = setTimeout(() => {
       saveRequirementCreateDraft(draftProjectScope, draftUserId, {
-        formData: createFormData,
-        view: centerView,
-        section: editingSection,
+        formData: draft.formData,
+        view: draft.view,
+        section: draft.section,
       })
     }, 500)
 
@@ -335,15 +358,17 @@ function ProjectWorkSpace() {
   }, [centerView, createFormData, draftProjectScope, draftUserId, editingSection])
 
   useEffect(() => {
-    const shouldSaveDraft = hasRestorableCreateDraft(createFormData, centerView, editingSection)
-    if (!draftProjectScope || !shouldSaveDraft) return
     if (centerView !== 'create' && centerView !== 'create-editor') return
+
+    const draft = getPersistableCreateDraft(createFormData, centerView, editingSection)
+    const shouldSaveDraft = hasRestorableCreateDraft(draft.formData, draft.view, draft.section)
+    if (!draftProjectScope || !shouldSaveDraft) return
 
     const flushCreateDraft = () => {
       saveRequirementCreateDraft(draftProjectScope, draftUserId, {
-        formData: createFormData,
-        view: centerView,
-        section: editingSection,
+        formData: draft.formData,
+        view: draft.view,
+        section: draft.section,
       })
     }
 
@@ -377,11 +402,12 @@ function ProjectWorkSpace() {
   const handleBackToCreator = () => {
     createDraftViewRef.current = { view: 'create', section: null }
     if (draftProjectScope) {
-      if (hasCreateDraftContent(createFormData)) {
+      const draft = getPersistableCreateDraft(createFormData, 'create', null)
+      if (hasCreateDraftContent(draft.formData)) {
         saveRequirementCreateDraft(draftProjectScope, draftUserId, {
-          formData: createFormData,
-          view: 'create',
-          section: null,
+          formData: draft.formData,
+          view: draft.view,
+          section: draft.section,
         })
       } else {
         clearCreateFlowDrafts()
@@ -422,12 +448,14 @@ function ProjectWorkSpace() {
     graph_BDD: createFormData.sectionData.internalComposition,
     graph_ISD: createFormData.sectionData.moduleResponses,
     graph_SC: createFormData.sectionData.internalConstraints,
+    graph_DialogMap: createFormData.sectionData.dialogMap,
     // Map section DSL data to requirement DSL fields
     dsl_IBD: createFormData.sectionDslData.environment,
     dsl_ESD: createFormData.sectionDslData.interaction,
     dsl_BDD: createFormData.sectionDslData.internalComposition,
     dsl_ISD: createFormData.sectionDslData.moduleResponses,
     dsl_SC: createFormData.sectionDslData.internalConstraints,
+    dsl_DialogMap: createFormData.sectionDslData.dialogMap,
   } as Requirement // Cast as we might be missing some required fields but sufficient for editor
 
   // 类型显示名称映射

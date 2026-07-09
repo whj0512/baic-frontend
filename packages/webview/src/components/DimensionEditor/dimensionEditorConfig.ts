@@ -6,4 +6,5 @@ export const SECTION_CONFIG: Record<SectionKey, DimensionSectionConfig> = {
   internalComposition: { dimensionCode: 'BDD', label: '内部组成', graphField: 'graph_BDD', dslField: 'dsl_BDD' },
   moduleResponses: { dimensionCode: 'ISD', label: '组成模块间的响应', graphField: 'graph_ISD', dslField: 'dsl_ISD' },
   internalConstraints: { dimensionCode: 'SC', label: '内部约束', graphField: 'graph_SC', dslField: 'dsl_SC' },
+  dialogMap: { dimensionCode: 'DialogMap', label: '会话图' },
 }

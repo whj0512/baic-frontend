@@ -4,7 +4,9 @@ import { CloseOutlined, EditOutlined, SaveOutlined } from '@ant-design/icons'
 import type { Requirement } from '../../models/Requirement'
 import type { RequirementVersion } from '../../models/RequirementVersion'
 import { API_ENDPOINTS, authFetch } from '../../config/api'
-import DimensionList, { type DimensionListSection } from '../DimensionList'
+import DimensionList from '../DimensionList'
+import type { SectionKey } from '../DimensionEditor/types'
+import { getRequirementSections } from '../DimensionList/requirementSections'
 import './RequirementOverview.css'
 
 const CUSTOM_TYPE_KEY = '__custom__'
@@ -19,28 +21,12 @@ const PRESET_REQ_TYPES = [
 const isPresetReqType = (value?: string) =>
     !value || PRESET_REQ_TYPES.some(option => option.value === value)
 
-// 与 CreateRequirement.tsx 保持一致的 SectionKey
-type SectionKey = 'environment' | 'interaction' | 'internalComposition' | 'moduleResponses' | 'internalConstraints'
-
 interface RequirementOverviewProps {
   requirement: Requirement | null
   versions: RequirementVersion[]
   projectKey: string
   onSectionClick?: (sectionKey: SectionKey, sectionLabel: string) => void
 }
-
-type RequirementSection = DimensionListSection<SectionKey> & {
-  graphField: keyof Requirement
-  dslField: keyof Requirement
-}
-
-const SECTIONS: RequirementSection[] = [
-  { key: 'environment', dimensionCode: 'IBD', label: '所处环境', desc: '对系统所属的环境组成进行刻画，描述外部存在的实体以及这些实体之间存在的交互。', graphField: 'graph_IBD', dslField: 'dsl_IBD' },
-  { key: 'interaction', dimensionCode: 'ESD', label: '与环境交互', desc: '基于UML中顺序图的概念，通过实体之间的交互序列，来刻画系统和外部实体之间的交互场景。', graphField: 'graph_ESD', dslField: 'dsl_ESD' },
-  { key: 'internalComposition', dimensionCode: 'BDD', label: '内部组成', desc: '描述系统内部模块、部件及其组成层级和静态结构关系。', graphField: 'graph_BDD', dslField: 'dsl_BDD' },
-  { key: 'moduleResponses', dimensionCode: 'ISD', label: '组成模块间的响应', desc: '描述内部组成模块之间的响应、调用顺序和协作行为。', graphField: 'graph_ISD', dslField: 'dsl_ISD' },
-  { key: 'internalConstraints', dimensionCode: 'SC', label: '内部约束', desc: '通过状态机对系统内部的约束/状态迁移进行刻画。', graphField: 'graph_SC', dslField: 'dsl_SC' },
-]
 
 interface OverviewEditForm {
   name: string
@@ -90,6 +76,10 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
   }, [requirement, isEditing])
 
   const displayRequirement = localRequirement || requirement
+  const sections = getRequirementSections(isEditing ? editForm.req_type : displayRequirement?.type)
+  const sectionTitle = sections.length === 1 && sections[0].key === 'dialogMap'
+    ? '会话图'
+    : '五维模型'
   // 格式化日期
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -111,10 +101,19 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
   }
 
   // 检查 section 是否有数据
-  const hasSectionData = (graphField: keyof Requirement) => {
+  const hasSectionData = (field: keyof Requirement) => {
     if (!displayRequirement) return false
-    const data = displayRequirement[graphField]
+    const data = displayRequirement[field]
     return data !== undefined && data !== null
+  }
+
+  const isSectionDefined = (section: (typeof sections)[number]) => {
+    if (section.key === 'dialogMap') {
+      return false
+    }
+
+    const field = section.dslField || section.graphField
+    return field ? hasSectionData(field) : false
   }
 
   const handleEdit = () => {
@@ -336,11 +335,11 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
         {/* 五维模型列表 */}
         <div className="overview-section">
           <div className="section-header">
-            <span className="section-title">五维模型</span>
+            <span className="section-title">{sectionTitle}</span>
           </div>
           <DimensionList
-            sections={SECTIONS}
-            isSectionDefined={(section) => hasSectionData(section.dslField || section.graphField)}
+            sections={sections}
+            isSectionDefined={isSectionDefined}
             onSectionClick={(section) => handleSectionClick(section.key, section.label)}
           />
         </div>
