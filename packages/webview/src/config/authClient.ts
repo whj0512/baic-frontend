@@ -15,12 +15,15 @@ type WebviewToExtensionMessage =
   | { type: 'auth:login'; payload: { email: string } }
   | { type: 'auth:logout' }
   | { type: 'clipboard:readText'; payload: { requestId: string } }
+  | { type: 'installation:get'; payload: { requestId: string } }
 
 type ExtensionToWebviewMessage =
   | { type: 'auth:state'; payload: AuthSnapshot }
   | { type: 'auth:error'; payload: { message: string } }
   | { type: 'clipboard:text'; payload: { requestId: string; text: string } }
   | { type: 'clipboard:error'; payload: { requestId: string; message: string } }
+  | { type: 'installation:id'; payload: { requestId: string; installationId: string } }
+  | { type: 'installation:error'; payload: { requestId: string; message: string } }
 
 type AuthListener = (snapshot: AuthSnapshot) => void
 
@@ -35,6 +38,7 @@ declare global {
 }
 
 const AUTH_CHANGE_EVENT = 'baic-auth-change'
+const BROWSER_INSTALLATION_ID_KEY = 'baic.sourceInstallationId'
 
 let vscodeApi: VsCodeApi | null | undefined
 let authSnapshot: AuthSnapshot = createInitialSnapshot()
@@ -48,6 +52,11 @@ const pendingWaiters = new Set<{
 }>()
 const pendingClipboardReads = new Map<string, {
   resolve: (text: string) => void
+  reject: (error: Error) => void
+  timer: ReturnType<typeof setTimeout>
+}>()
+const pendingInstallationReads = new Map<string, {
+  resolve: (installationId: string) => void
   reject: (error: Error) => void
   timer: ReturnType<typeof setTimeout>
 }>()
@@ -145,6 +154,30 @@ export function readExtensionClipboardText(): Promise<string> {
 
     pendingClipboardReads.set(requestId, { resolve, reject, timer })
     postToExtension({ type: 'clipboard:readText', payload: { requestId } })
+  })
+}
+
+export function getSourceInstallationId(): Promise<string> {
+  if (!isExtensionAuthMode()) {
+    const existing = localStorage.getItem(BROWSER_INSTALLATION_ID_KEY)
+    if (existing) return Promise.resolve(existing)
+
+    const installationId = createUuid()
+    localStorage.setItem(BROWSER_INSTALLATION_ID_KEY, installationId)
+    return Promise.resolve(installationId)
+  }
+
+  attachExtensionMessageListener()
+
+  return new Promise((resolve, reject) => {
+    const requestId = createRequestId()
+    const timer = setTimeout(() => {
+      pendingInstallationReads.delete(requestId)
+      reject(new Error('获取本地安装标识超时'))
+    }, 5000)
+
+    pendingInstallationReads.set(requestId, { resolve, reject, timer })
+    postToExtension({ type: 'installation:get', payload: { requestId } })
   })
 }
 
@@ -274,6 +307,22 @@ function attachExtensionMessageListener(): void {
         message.payload.requestId,
         new Error(message.payload.message),
       )
+      return
+    }
+
+    if (message.type === 'installation:id') {
+      resolveInstallationRead(
+        message.payload.requestId,
+        message.payload.installationId,
+      )
+      return
+    }
+
+    if (message.type === 'installation:error') {
+      rejectInstallationRead(
+        message.payload.requestId,
+        new Error(message.payload.message),
+      )
     }
   })
 }
@@ -317,8 +366,36 @@ function rejectClipboardRead(requestId: string, error: Error): void {
   pending.reject(error)
 }
 
+function resolveInstallationRead(requestId: string, installationId: string): void {
+  const pending = pendingInstallationReads.get(requestId)
+  if (!pending) return
+
+  clearTimeout(pending.timer)
+  pendingInstallationReads.delete(requestId)
+  pending.resolve(installationId)
+}
+
+function rejectInstallationRead(requestId: string, error: Error): void {
+  const pending = pendingInstallationReads.get(requestId)
+  if (!pending) return
+
+  clearTimeout(pending.timer)
+  pendingInstallationReads.delete(requestId)
+  pending.reject(error)
+}
+
 function createRequestId(): string {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+function createUuid(): string {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, character => {
+    const random = Math.floor(Math.random() * 16)
+    const value = character === 'x' ? random : (random & 0x3) | 0x8
+    return value.toString(16)
+  })
 }
 
 window.addEventListener('storage', (event) => {

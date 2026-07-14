@@ -9,29 +9,20 @@ const monarchTokensProviders: languages.IMonarchLanguage = {
 
     // Node type keywords (top-level declarations)
     nodeKeywords: [
-        'Graph', 'State', 'Condition', 'Call', 'GraphRef',
-        'Comment', 'Start', 'Then', 'TruthTable', 'Goto', 'Transition',
+        'Statechart', 'State', 'Condition', 'Call', 'Start', 'Transition',
     ],
 
     // Property keywords (used inside node bodies)
     propertyKeywords: [
-        'type', 'desc',
-        'forward_propagation', 'tolerance_type', 'tolerance_value',
-        'pre_think_time', 'post_think_time',
-        'during_actions', 'normal_test_actions', 'dynamic_test_actions',
-        'condition', 'yes', 'no',
+        'loop', 'condition', 'from', 'to',
+        'during_actions', 'yes', 'no',
         'params', 'in', 'out', 'script', 'enable_inverse', 'inverse_script',
-        'time_related_step', 'time_related_duration',
-        'graph_id', 'return_value', 'has_return_value',
-        'comment', 'friendNode',
-        'header', 'body', 'targetNode', 'list',
-        'from', 'to', 'loop',
-        'pre_think', 'post_think', 'express',
+        'pre_think', 'post_think', 'express', 'type',
         'label', 'value',
     ],
 
-    // Type values & booleans
-    typeValues: ['request', 'testcase', 'true', 'false'],
+    // Boolean values
+    typeValues: ['true', 'false'],
 
     // Brackets & delimiters
     brackets: [
@@ -44,6 +35,10 @@ const monarchTokensProviders: languages.IMonarchLanguage = {
             // Whitespace
             [/\s+/, 'white'],
 
+            // Comments
+            [/\/\/.*/, 'comment'],
+            [/\/\*/, 'comment', '@comment'],
+
             // Strings (double-quoted)
             [/"([^"\\]|\\.)*"/, 'string'],
             // Strings (single-quoted, just in case)
@@ -55,10 +50,10 @@ const monarchTokensProviders: languages.IMonarchLanguage = {
 
             // Delimiters
             [/[[\]{}]/, '@brackets'],
-            [/[,:]/, 'delimiter'],
+            [/[,:;]/, 'delimiter'],
 
             // Identifiers & keywords
-            [/[a-zA-Z_][\w\-()]*/, {
+            [/[a-zA-Z\u4e00-\u9fa50-9_][a-zA-Z\u4e00-\u9fa50-9_\-()\/%]*/, {
                 cases: {
                     '@nodeKeywords': 'keyword',
                     '@propertyKeywords': 'attribute',
@@ -66,6 +61,11 @@ const monarchTokensProviders: languages.IMonarchLanguage = {
                     '@default': 'identifier',
                 },
             }],
+        ],
+        comment: [
+            [/[^\/*]+/, 'comment'],
+            [/\*\//, 'comment', '@pop'],
+            [/[\/*]/, 'comment']
         ],
     },
 };
@@ -88,6 +88,7 @@ const theme: editor.IStandaloneThemeData = {
         { token: 'delimiter.square', foreground: 'FFD700' },               // square brackets – gold
         { token: 'delimiter.curly', foreground: 'DA70D6' },               // curly brackets – orchid
         { token: 'white', foreground: 'D4D4D4' },
+        { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },
     ],
     colors: {
         'editor.background': '#1E1E1E',
@@ -143,68 +144,38 @@ const nodeCompletionProvider: languages.CompletionItemProvider = {
 
         const suggestions: languages.CompletionItem[] = [
             makeSnippet(
-                'Graph',
-                'Graph ${1:name}\n  type ${2|request,testcase|}\n  desc "${3:description}"\n$0',
-                '创建 Graph 声明',
+                'Statechart',
+                'Statechart ${1:name} {\n  $0\n}',
+                '创建 Statechart 声明',
                 range,
             ),
             makeSnippet(
                 'State',
-                'State ${1:name}\n  desc "${2:description}"\n$0',
+                'State ${1:name} {\n  $0\n};',
                 '创建 State 节点',
                 range,
             ),
             makeSnippet(
                 'Condition',
-                'Condition ${1:name}\n  desc "${2:description}"\n  condition : "${3:expression}"\n$0',
+                'Condition ${1:name} {\n  condition : "${2:expression}"\n  $0\n};',
                 '创建 Condition 节点',
                 range,
             ),
             makeSnippet(
                 'Call',
-                'Call ${1:name}\n  desc "${2:description}"\n  script : "${3:script_path}"\n$0',
+                'Call ${1:name} {\n  $0\n};',
                 '创建 Call 节点',
                 range,
             ),
             makeSnippet(
-                'GraphRef',
-                'GraphRef ${1:name}\n  desc "${2:description}"\n  graph_id : "${3:ref_id}"\n$0',
-                '创建 GraphRef 节点',
-                range,
-            ),
-            makeSnippet(
-                'Comment',
-                'Comment ${1:name}\n  desc "${2:description}"\n  comment : "${3:text}"\n$0',
-                '创建 Comment 节点',
-                range,
-            ),
-            makeSnippet(
                 'Start',
-                'Start ${1:name}\n  desc "${2:description}"\n$0',
+                'Start ${1:name};',
                 '创建 Start 节点',
                 range,
             ),
             makeSnippet(
-                'Then',
-                'Then ${1:name}\n  desc "${2:description}"\n$0',
-                '创建 Then 节点',
-                range,
-            ),
-            makeSnippet(
-                'TruthTable',
-                'TruthTable ${1:name}\n  desc "${2:description}"\n  header : [${3:"col1", "col2"}]\n$0',
-                '创建 TruthTable 节点',
-                range,
-            ),
-            makeSnippet(
-                'Goto',
-                'Goto ${1:name}\n  desc "${2:description}"\n  friendNode : ${3:targetNodeName}\n$0',
-                '创建 Goto 节点',
-                range,
-            ),
-            makeSnippet(
                 'Transition',
-                'Transition ${1:name}\n  desc "${2:description}"\n  from : ${3:sourceNode}\n  to : ${4:targetNode}\n$0',
+                'Transition ${1:name} {\n  $0\n  from : ${2:sourceNode}\n  to : ${3:targetNode}\n};',
                 '创建 Transition 连接',
                 range,
             ),
@@ -227,21 +198,9 @@ const propertyCompletionProvider: languages.CompletionItemProvider = {
             endColumn: word.endColumn,
         };
 
-        // Common properties available in most node types
-        const commonProps: languages.CompletionItem[] = [
-            makeKeyword('desc', '描述 (通用属性)', range),
-            makeKeyword('tolerance_type', '时间偏差类型', range),
-            makeKeyword('tolerance_value', '时间偏差值', range),
-        ];
-
         // State-specific properties
         const stateProps: languages.CompletionItem[] = [
-            makeKeyword('forward_propagation', 'State: 前向传播', range),
-            makeKeyword('pre_think_time', 'State: 前置思考时间', range),
-            makeKeyword('post_think_time', 'State: 后置思考时间', range),
             makeKeyword('during_actions', 'State: 持续动作列表', range),
-            makeKeyword('normal_test_actions', 'State: 常规测试动作列表', range),
-            makeKeyword('dynamic_test_actions', 'State: 动态测试动作列表', range),
         ];
 
         // Condition-specific properties
@@ -259,15 +218,6 @@ const propertyCompletionProvider: languages.CompletionItemProvider = {
             makeKeyword('script', 'Call: 脚本路径', range),
             makeKeyword('enable_inverse', 'Call: 启用逆向', range),
             makeKeyword('inverse_script', 'Call: 逆向脚本', range),
-            makeKeyword('time_related_step', 'Call: 时间相关步长', range),
-            makeKeyword('time_related_duration', 'Call: 时间相关持续时间', range),
-        ];
-
-        // GraphRef-specific properties
-        const graphRefProps: languages.CompletionItem[] = [
-            makeKeyword('graph_id', 'GraphRef: 引用的图 ID', range),
-            makeKeyword('return_value', 'GraphRef: 返回值', range),
-            makeKeyword('has_return_value', 'GraphRef: 是否有返回值', range),
         ];
 
         // Transition-specific properties
@@ -277,34 +227,12 @@ const propertyCompletionProvider: languages.CompletionItemProvider = {
             makeKeyword('loop', 'Transition: 循环次数', range),
         ];
 
-        // Goto-specific properties
-        const gotoProps: languages.CompletionItem[] = [
-            makeKeyword('friendNode', 'Goto: 目标友好节点', range),
-        ];
-
-        // Comment-specific properties
-        const commentProps: languages.CompletionItem[] = [
-            makeKeyword('comment', 'Comment: 注释文本', range),
-        ];
-
-        // TruthTable-specific properties
-        const truthTableProps: languages.CompletionItem[] = [
-            makeKeyword('header', 'TruthTable: 表头', range),
-            makeKeyword('body', 'TruthTable: 表体', range),
-            makeKeyword('targetNode', 'TruthTable 行: 目标节点', range),
-            makeKeyword('list', 'TruthTable 行: 布尔值列表', range),
-        ];
-
-        // Graph-level properties
-        const graphProps: languages.CompletionItem[] = [
-            makeKeyword('type', 'Graph: 图类型 (request/testcase)', range),
-        ];
-
         // ActionItem properties
         const actionProps: languages.CompletionItem[] = [
             makeKeyword('pre_think', 'ActionItem: 前置思考', range),
             makeKeyword('post_think', 'ActionItem: 后置思考', range),
             makeKeyword('express', 'ActionItem: 表达式', range),
+            makeKeyword('type', 'ActionItem: 类型', range),
         ];
 
         // Param properties
@@ -313,26 +241,18 @@ const propertyCompletionProvider: languages.CompletionItemProvider = {
             makeKeyword('value', 'Param: 值', range),
         ];
 
-        // Boolean / type value completions
+        // Boolean value completions
         const valueProps: languages.CompletionItem[] = [
             makeKeyword('true', '布尔值: 真', range),
             makeKeyword('false', '布尔值: 假', range),
-            makeKeyword('request', 'GraphType: 请求', range),
-            makeKeyword('testcase', 'GraphType: 测试用例', range),
         ];
 
         return {
             suggestions: [
-                ...commonProps,
                 ...stateProps,
                 ...conditionProps,
                 ...callProps,
-                ...graphRefProps,
                 ...transitionProps,
-                ...gotoProps,
-                ...commentProps,
-                ...truthTableProps,
-                ...graphProps,
                 ...actionProps,
                 ...paramProps,
                 ...valueProps,

@@ -36,6 +36,7 @@ export const API_ENDPOINTS = {
   dslToRbgBDD: `${SERVICE_BASE_URL}/dsl-to-rbg/BDD`,
   rbgToDslESD: `${SERVICE_BASE_URL}/rbg-to-dsl/ESD`,
   dslToRbgESD: `${SERVICE_BASE_URL}/dsl-to-rbg/ESD`,
+  dslToRbgISD: `${SERVICE_BASE_URL}/dsl-to-rbg/ISD`,
 
   // 将自然语言转换为 DSL
   nlToDsl: `${SERVICE_BASE_URL}/nl-to-dsl`,
@@ -45,6 +46,8 @@ export const API_ENDPOINTS = {
   login: `${SERVICE_BASE_URL}/login`,
   // 项目管理
   projects: `${SERVICE_BASE_URL}/projects`,
+  projectSnapshot: (projectId: string) =>
+    `${SERVICE_BASE_URL}/projects/${encodeURIComponent(projectId)}/snapshot?schema_version=1`,
   // 需求管理
   requirements: `${SERVICE_BASE_URL}/requirements`,
   // 单条需求操作（GET / PUT / DELETE）
@@ -143,7 +146,7 @@ export async function authFetch(
 
 /**
  * 根据维度代码获取对应的 dslToRbg 端点。
- * - IBD / BDD / ESD / ISD 使用各自的类型化端点（ISD 复用 ESD）
+ * - IBD / BDD / ESD / ISD 使用各自的类型化端点
  * - SC 使用通用端点
  */
 export function getDslToRbgEndpoint(dimensionCode: string): string {
@@ -151,8 +154,37 @@ export function getDslToRbgEndpoint(dimensionCode: string): string {
     case 'IBD': return API_ENDPOINTS.dslToRbgIBD
     case 'BDD': return API_ENDPOINTS.dslToRbgBDD
     case 'ESD': return API_ENDPOINTS.dslToRbgESD
-    case 'ISD': return API_ENDPOINTS.dslToRbgESD // ISD 与 ESD 共用
+    case 'ISD': return API_ENDPOINTS.dslToRbgISD
     default: return API_ENDPOINTS.dslToRbg     // SC 等使用通用端点
+  }
+}
+
+/**
+ * 构建 DSL 转图请求。
+ * ESD / ISD 的场景转换依赖 IBD 环境 DSL，因此使用组合 JSON 请求；其他维度继续发送原始 DSL 文本。
+ */
+export function createDslToRbgRequest(
+  dimensionCode: string,
+  dsl: string,
+  ibdDsl = '',
+): Pick<RequestInit, 'headers' | 'body'> & { endpoint: string } {
+  const endpoint = getDslToRbgEndpoint(dimensionCode)
+
+  if (dimensionCode === 'ESD' || dimensionCode === 'ISD') {
+    return {
+      endpoint,
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify({
+        environment_dsl: ibdDsl,
+        scenario_dsl: dsl,
+      }),
+    }
+  }
+
+  return {
+    endpoint,
+    headers: { 'Content-Type': 'text/plain' },
+    body: dsl,
   }
 }
 

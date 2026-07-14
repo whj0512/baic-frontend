@@ -1,5 +1,5 @@
 EnvironmentView:
-    (elements+=Element)*
+    'Environment' '{' (elements+=Element)* '}'
 ;
 
 Element: Component | Connector ;
@@ -24,10 +24,12 @@ ComponentType:
 ;
 
 Interaction:
-    'Interaction' name=ID '{' data=ID '}' ';'
+    'Interaction' name=ID '{' interactionItem = InteractionItem '}' ';'
 ;
 
-PortDirection: "In" | "Out" ;
+InteractionItem: Signal | Event ;
+Signal: 'Signal' data=ID ;
+Event: 'Event' data=ID ;
 
 ID: /[\u4e00-\u9fa5a-zA-Z0-9_\/][\u4e00-\u9fa5a-zA-Z0-9_\-()\/]*/;
 

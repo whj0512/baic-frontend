@@ -78,6 +78,7 @@ function DimensionEditor({ draftProjectScope, requirement, sectionKey, onBack, o
     config,
     modelStrategy,
     viewMode,
+    ibdDsl: requirement.dsl_IBD || '',
     flowGraphRef,
     dslContentRef,
     graphDataRef,

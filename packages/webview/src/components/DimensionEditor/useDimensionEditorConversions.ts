@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { ModelStrategy } from '../../models/strategies'
 import type { FlowGraphRef } from '../graph'
-import { getDslToRbgEndpoint, getRbgToDslEndpoint } from '../../config/api'
+import { createDslToRbgRequest, getRbgToDslEndpoint } from '../../config/api'
 import type { ConvertedVisualData, DimensionSectionConfig, ViewMode } from './types'
 
 type MutableRef<T> = {
@@ -17,6 +17,7 @@ interface UseDimensionEditorConversionsOptions {
   config: DimensionSectionConfig
   modelStrategy: ModelStrategy
   viewMode: ViewMode
+  ibdDsl: string
   flowGraphRef: MutableRef<FlowGraphRef | null>
   dslContentRef: MutableRef<string>
   graphDataRef: MutableRef<object>
@@ -33,6 +34,7 @@ export function useDimensionEditorConversions({
   config,
   modelStrategy,
   viewMode,
+  ibdDsl,
   flowGraphRef,
   dslContentRef,
   graphDataRef,
@@ -88,12 +90,11 @@ export function useDimensionEditorConversions({
     setDslError(undefined)
 
     try {
-      const response = await fetch(getDslToRbgEndpoint(config.dimensionCode), {
+      const request = createDslToRbgRequest(config.dimensionCode, sourceDsl, ibdDsl)
+      const response = await fetch(request.endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain',
-        },
-        body: sourceDsl,
+        headers: request.headers,
+        body: request.body,
       })
 
       if (!response.ok) {
@@ -112,7 +113,7 @@ export function useDimensionEditorConversions({
     } finally {
       setDslLoading(false)
     }
-  }, [config.dimensionCode, dslContentRef, graphDataRef, modelStrategy, setDslError, setDslLoading])
+  }, [config.dimensionCode, dslContentRef, graphDataRef, ibdDsl, modelStrategy, setDslError, setDslLoading])
 
   const applyDslView = useCallback((nextDslContent: string, options: ApplyViewOptions = {}) => {
     const { switchView = true } = options

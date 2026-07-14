@@ -66,10 +66,16 @@ function CreateProject() {
     <div className="create-project-wrapper">
       <div className="create-project-header">
         <h2>新建项目</h2>
+        <p>为项目设置名称和简要说明，创建后可继续在工作区完善需求。</p>
       </div>
 
       <form className="create-project-form" onSubmit={handleSubmit}>
-        <div className="form-group">
+        <div className="create-project-form-intro">
+          <span className="create-project-form-kicker">基本信息</span>
+          <p>项目名称用于识别与检索，建议使用简洁明确的名称。</p>
+        </div>
+
+        <div className="create-project-field">
           <label htmlFor="name">项目名称 <span className="required">*</span></label>
           <input
             type="text"
@@ -83,7 +89,7 @@ function CreateProject() {
           />
         </div>
 
-        <div className="form-group">
+        <div className="create-project-field">
           <label htmlFor="description">项目描述</label>
           <textarea
             id="description"

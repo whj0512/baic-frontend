@@ -22,12 +22,15 @@ export function getRuntimeConfig(
   const config = vscode.workspace.getConfiguration('baic')
 
   return {
+    appTarget: 'local',
     apiBaseUrl:
       override?.apiBaseUrl ??
       config.get<string>('apiBaseUrl', 'http://localhost:8000'),
     projectWsBaseUrl:
       override?.projectWsBaseUrl ??
       config.get<string>('projectWsBaseUrl', 'ws://localhost:8000'),
+    platformApiBaseUrl: config.get<string>('platformApiBaseUrl', ''),
+    platformWebBaseUrl: config.get<string>('platformWebBaseUrl', ''),
     lspWs: {
       internalConstraints: config.get<string>(
         'lspWs.internalConstraints',
@@ -53,6 +56,7 @@ export function getConnectSources(config: RuntimeConfig): string[] {
   return [
     getOrigin(config.apiBaseUrl),
     getOrigin(config.projectWsBaseUrl),
+    getOrigin(config.platformApiBaseUrl),
     getOrigin(config.lspWs.internalConstraints),
     getOrigin(config.lspWs.environment),
     getOrigin(config.lspWs.interaction),

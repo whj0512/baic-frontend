@@ -1,4 +1,5 @@
 import * as vscode from 'vscode'
+import { randomUUID } from 'crypto'
 
 import { AuthService } from './auth'
 import { BackendServiceManager } from './backendService'
@@ -11,6 +12,7 @@ import { getErrorMessage } from './utils'
 import { getWebviewHtml } from './webviewHtml'
 
 let activeBackendService: BackendServiceManager | undefined
+const INSTALLATION_ID_KEY = 'baic.sourceInstallationId'
 
 export function activate(context: vscode.ExtensionContext): void {
   const authService = new AuthService(context.secrets, context.extensionUri)
@@ -57,7 +59,13 @@ export function activate(context: vscode.ExtensionContext): void {
       panel.onDidDispose(() => panels.delete(panel))
 
       panel.webview.onDidReceiveMessage((message: WebviewToExtensionMessage) => {
-        void handleWebviewMessage(message, panel.webview, authService, backendService)
+        void handleWebviewMessage(
+          message,
+          panel.webview,
+          authService,
+          backendService,
+          context.globalState,
+        )
       })
 
       panel.webview.html = getWebviewHtml(
@@ -155,6 +163,7 @@ async function handleWebviewMessage(
   webview: vscode.Webview,
   authService: AuthService,
   backendService: BackendServiceManager,
+  globalState: vscode.Memento,
 ): Promise<void> {
   try {
     switch (message.type) {
@@ -190,11 +199,39 @@ async function handleWebviewMessage(
           },
         })
         return
+
+      case 'installation:get': {
+        let installationId = globalState.get<string>(INSTALLATION_ID_KEY)
+        if (!installationId) {
+          installationId = randomUUID()
+          await globalState.update(INSTALLATION_ID_KEY, installationId)
+        }
+
+        postToWebview(webview, {
+          type: 'installation:id',
+          payload: {
+            requestId: message.payload.requestId,
+            installationId,
+          },
+        })
+        return
+      }
     }
   } catch (error) {
     if (message.type === 'clipboard:readText') {
       postToWebview(webview, {
         type: 'clipboard:error',
+        payload: {
+          requestId: message.payload.requestId,
+          message: getErrorMessage(error),
+        },
+      })
+      return
+    }
+
+    if (message.type === 'installation:get') {
+      postToWebview(webview, {
+        type: 'installation:error',
         payload: {
           requestId: message.payload.requestId,
           message: getErrorMessage(error),

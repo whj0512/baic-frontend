@@ -111,18 +111,21 @@ wscat -c "ws://127.0.0.1:8000/ws/projects/default?token=<your_jwt_here>"
 ---
 
 ## 2. POST /dsl-to-rbg
-- 用途：把 DSL 文本解析并转换成 rbg（JSON 表示）。
+- 用途：将 Statechart DSL 文本解析并转换成状态图 rbg JSON（使用 `Requirement.dsl_to_json`）。
 - URL：`POST /dsl-to-rbg`
 - 请求头：
   - `Content-Type` 可为 `text/plain`（服务器直接读取原始 body 并以 UTF-8 解码）。
 - 请求体（body）：原始 DSL 文本（UTF-8），例如：
 
 ```text
-Graph GotoFromTest type request desc "GotoFromTest"
-Start START
-Goto GOTO friendNode:STATE0
-State STATE0
-Transition START2GOTO from:START to:GOTO
+Statechart Demo {
+    Start begin;
+    State running {};
+    Transition startRun {
+        from: begin
+        to: running
+    };
+}
 ```
 
 - curl 示例：
@@ -132,20 +135,23 @@ curl -X POST http://127.0.0.1:8000/dsl-to-rbg -H "Content-Type: text/plain" --da
 ```
 
 - 成功响应（200）：
-  JSON：rbg 格式数据（由 `GraphConverter.convert_model_to_rbg` 返回）。示例结构（示例化、实际字段依实现而不同）：
+  JSON：状态图 rbg 格式数据（由 `Requirement.dsl_to_json` 返回）。示例结构：
 
 ```json
 {
-  "name": "GotoFromTest",
-  "type": "request",
+  "id": "...",
+  "name": "Demo",
+  "desc": "",
+  "graph_type": "request",
   "nodes": [],
-  "transitions": []
+  "transitions": [],
+  "_ast": {}
 }
 ```
 
 - 常见错误：
-  - 400：请求 body 为空或无法解析 DSL（返回 `{"error":"..."}`）
-  - 500：内部异常（返回 `{"error":"exception message"}`）
+  - 400：请求 body 为空
+  - 500：DSL 无法解析或发生内部异常（返回 `{"error":"exception message"}`）
 
 ---
 
@@ -154,21 +160,24 @@ curl -X POST http://127.0.0.1:8000/dsl-to-rbg -H "Content-Type: text/plain" --da
 - URL：`POST /rbg-to-dsl`
 - 请求头：
   - 必须：`Content-Type: application/json`
-- 请求体（JSON）：rbg JSON（格式由 `convert_model_to_rbg` 产生），例如：
+- 请求体（JSON）：状态图 rbg JSON（例如由 `/dsl-to-rbg` 产生），例如：
 
 ```json
 {
-  "name": "GotoFromTest",
-  "type": "request",
+  "id": "...",
+  "name": "Demo",
+  "desc": "",
+  "graph_type": "request",
   "nodes": [],
-  "transitions": []
+  "transitions": [],
+  "_ast": {}
 }
 ```
 
 - curl 示例：
 
 ```bash
-curl -X POST http://127.0.0.1:8000/rbg-to-dsl -H "Content-Type: application/json" -d '{ "name":"GotoFromTest", "type":"request" }'
+curl -X POST http://127.0.0.1:8000/rbg-to-dsl -H "Content-Type: application/json" -d @statechart.json
 ```
 
 - 成功响应（200）：
@@ -180,9 +189,9 @@ curl -X POST http://127.0.0.1:8000/rbg-to-dsl -H "Content-Type: application/json
 
 ---
 
-## 新增：图形转换的细化端点（IBD / BDD / ESD）
+## 图形转换的细化端点（IBD / BDD / ESD / ISD）
 下面这些端点用于在不同图类型之间做 DSL 文本与 rbg(JSON) 的互转，行为和返回格式与上面 `/dsl-to-rbg`、`/rbg-to-dsl` 保持一致，但限定了图类型与后端实现模块（例如 `environment.py`/`composition.py`/`scenario.py`）。
-注：ISD与ESD用同一套接口
+注：ISD 与 ESD 使用同一套 Scenario 模型和转换算法，同时提供 `/ESD`、`/ISD` 两组路由；现有前端也可以继续将 ISD 请求发送到 ESD 路由。
 
 ### 3.a POST /dsl-to-rbg/IBD
 - 用途：将 IBD（内部块图）DSL 文本转换为 IBD 类型的 rbg JSON（使用 `environment.dsl_to_json`）。
@@ -192,11 +201,13 @@ curl -X POST http://127.0.0.1:8000/rbg-to-dsl -H "Content-Type: application/json
 - 请求体（body）：IBD DSL 文本（UTF-8），例如：
 
 ```text
-Device Sensor;
-Controller Ctrl;
-Connect from Sensor to Ctrl {
-    Interaction send { value }
-};
+Environment {
+    Device Sensor;
+    Controller Ctrl;
+    Connect from Sensor to Ctrl {
+        Interaction send { Signal value };
+    };
+}
 ```
 
 - curl 示例：
@@ -254,7 +265,7 @@ curl -X POST http://127.0.0.1:8000/rbg-to-dsl/IBD -H "Content-Type: application/
 - 请求体（body）：CompositionView DSL 文本，例如：
 
 ```text
-MyMachine {
+MyMachine Composition {
     FunctionalModule ModA;
     FunctionalModule ModB;
 }
@@ -307,64 +318,106 @@ curl -X POST http://127.0.0.1:8000/rbg-to-dsl/BDD -H "Content-Type: application/
 
 ---
 
-### 3.e POST /dsl-to-rbg/ESD
-- 用途：将 ESD（外部顺序图 / Scenario DSL）文本转换为 ESD rbg JSON（使用 `scenario.dsl_to_json`）。
-- URL：`POST /dsl-to-rbg/ESD`
-- 请求头：
-  - `Content-Type` 可为 `text/plain`
-- 请求体（body）：Scenario DSL 文本，例如：
+### 3.e POST /dsl-to-rbg/ESD、POST /dsl-to-rbg/ISD
+- 用途：将 Environment DSL 与 Scenario DSL 转换为 ESD/ISD rbg JSON（使用 `scenario.dsl_to_json(environment_dsl, scenario_dsl)`）。当前 Scenario 转换算法必须同时获得环境定义和场景定义。
+- URL：
+  - ESD：`POST /dsl-to-rbg/ESD`
+  - ISD：`POST /dsl-to-rbg/ISD`
+- 推荐请求头：
+  - `Content-Type: application/json; charset=utf-8`
+- 推荐请求体（JSON）：
+  - `environment_dsl` (string) — 必填，Environment DSL 文本。
+  - `scenario_dsl` (string) — 必填，Scenario DSL 文本。
+  - `dsl` (string) — `scenario_dsl` 的兼容别名；两者同时存在时优先使用 `scenario_dsl`。
 
-```text
-Scenario 主场景 {
-    Message from A to B : "ping():void";
+```json
+{
+  "environment_dsl": "Environment {\n  Machine M;\n  Device D;\n  Connect from M to D {\n    Interaction ping { Signal payload };\n  };\n}",
+  "scenario_dsl": "Scenario Demo {\n  Interaction ping;\n  while (ready) {\n    Interaction ping;\n  }\n}"
 }
 ```
 
-- curl 示例：
+- curl 示例（JSON 文件中保存上述请求体）：
 
 ```bash
-curl -X POST http://127.0.0.1:8000/dsl-to-rbg/ESD -H "Content-Type: text/plain" --data-binary @scenario.dsl
+curl -X POST http://127.0.0.1:8000/dsl-to-rbg/ESD -H "Content-Type: application/json; charset=utf-8" --data-binary @esd-request.json
+```
+
+- 兼容的纯文本请求：
+  - 可使用 `Content-Type: text/plain; charset=utf-8`，body 只发送 Scenario DSL。
+  - 可通过 `X-Requirement-Id: <requirement_id>` 指定已保存需求；后端从该需求的 `dsl_IBD` 读取 Environment DSL。
+  - 未提供 `X-Requirement-Id` 时，后端会尝试按完整 Scenario DSL 或唯一的 Scenario 名称匹配 SQLite 最新需求版本，并读取同一记录的 `dsl_IBD`。
+  - 现有前端将 ISD 发送到 `/dsl-to-rbg/ESD` 时，后端会依次匹配 `dsl_ESD`、`dsl_ISD`。
+  - 尚未保存且数据库中无法匹配的 Scenario 不能只发送纯文本，因为后端无法推导交互的发送方、接收方和消息类型；此时必须使用推荐的组合 JSON 请求。
+
+```bash
+curl -X POST http://127.0.0.1:8000/dsl-to-rbg/ESD -H "Content-Type: text/plain; charset=utf-8" -H "X-Requirement-Id: <requirement_id>" --data-binary @scenario.dsl
 ```
 
 - 成功响应（200）：
-  JSON：ESD rbg 格式数据（由 `scenario.dsl_to_json` 返回），示例：
+  JSON：包含当前 Scenario 算法使用的 `children` 层级结构，以及兼容现有前端的 `interactions`、`interactionRelations` 和 `components`。
 
 ```json
 {
   "id": "...",
-  "desc": "",
+  "name": "Demo",
   "graph_type": "ESD",
+  "children": [ ... ],
+  "components": [ ... ],
+  "_ast": { ... },
   "interactions": [ ... ],
-  "interfaceRelations": [ ... ],
-  "components": [ ... ]
+  "interactionRelations": [ ... ]
 }
 ```
 
+- 字段兼容说明：
+  - `children` 保存 `if`、`while`、并行块等场景的真实嵌套结构。
+  - `_ast` 用于保留场景名称、注释和原始顺序；需要无损往返时不应删除。
+  - `interactions`、`interactionRelations`、`components` 是为现有前端保留的兼容字段。
 - 常见错误：
-  - 400：请求体为空或 DSL 解析失败
-  - 500：内部异常
+  - 400：请求体为空或请求 JSON 不是对象。
+  - 400：缺少 Environment DSL，返回 `{"error":"Environment DSL is required by the current Scenario model", ...}`。
+  - 400：Environment DSL 或 Scenario DSL 解析失败，返回 `{"error":"Failed to parse ESD DSL: ..."}`。
+  - 500：其他内部异常。
 
 ---
 
-### 3.f POST /rbg-to-dsl/ESD
-- 用途：将 ESD rbg JSON 转回 Scenario DSL 文本（使用 `scenario.json_to_dsl`）。
-- URL：`POST /rbg-to-dsl/ESD`
+### 3.f POST /rbg-to-dsl/ESD、POST /rbg-to-dsl/ISD
+- 用途：将 ESD/ISD rbg JSON 转回 Scenario DSL 文本（使用 `scenario.json_to_dsl`）。接口层同时兼容新的 `children` 格式和现有前端的 `interactions`/`interactionRelations` 格式。
+- URL：
+  - ESD：`POST /rbg-to-dsl/ESD`
+  - ISD：`POST /rbg-to-dsl/ISD`
 - 请求头：
-  - 必须：`Content-Type: application/json`
-- 请求体（JSON）：ESD rbg JSON（例如由 `scenario.dsl_to_json` 产生）
+  - 必须：`Content-Type: application/json; charset=utf-8`
+- 请求体（JSON）：直接发送 `/dsl-to-rbg/ESD` 或 `/dsl-to-rbg/ISD` 返回的完整 JSON 对象。不要包装为 `{"data": {...}}`，也不要把整个 JSON 再编码为字符串。
 - curl 示例：
 
 ```bash
-curl -X POST http://127.0.0.1:8000/rbg-to-dsl/ESD -H "Content-Type: application/json" -d @esd.json
+curl -X POST http://127.0.0.1:8000/rbg-to-dsl/ESD -H "Content-Type: application/json; charset=utf-8" --data-binary @esd.json
 ```
 
 - 成功响应（200）：
-  Plain text（Scenario DSL 文本），Content-Type: `text/plain`
+  Plain text（仅 Scenario DSL 文本），Content-Type: `text/plain`。
 
+```text
+Scenario Demo {
+    Interaction ping;
+    while (ready) {
+        Interaction ping;
+    }
+}
+```
+
+- 返回范围说明：
+  - 本接口只返回 `Scenario {...}`，不会同时返回 `Environment {...}`，这是 `scenario.json_to_dsl` 的当前输出契约。
+  - Environment DSL 应通过 `/rbg-to-dsl/IBD` 转换对应 IBD JSON，或从需求记录的 `dsl_IBD` 获取。
+  - ESD JSON 仅包含场景使用到的环境派生信息，不能无损重建原始 Environment DSL 中的全部组件、连接和注释。
+  - 若要保留嵌套结构和注释，应直接回传完整响应，并保留其中的 `children` 和 `_ast`；只发送前端兼容字段可能无法完整恢复嵌套关系和注释。
 - 常见错误：
-  - 400：Content-Type 非 `application/json` 或 JSON 无法解析（服务会尝试返回详细的 JSONDecodeError 信息）
-  - 400：转换失败时返回 `{"error":"Failed to convert ESD JSON to DSL: ..."}`
-  - 500：其他内部异常
+  - 400：Content-Type 非 `application/json`，返回 `{"error":"Expected application/json content type"}`。
+  - 400：JSON 无法解析，返回包含行号、列号和请求体预览的错误信息。
+  - 400：转换失败时返回 `{"error":"Failed to convert ESD JSON to DSL: ..."}`。
+  - 500：其他内部异常。
 
 ---
 

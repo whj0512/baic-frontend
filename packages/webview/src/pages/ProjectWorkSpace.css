@@ -176,6 +176,16 @@
   background-color: #2563eb;
 }
 
+.workspace-publish-button {
+  color: #0f766e;
+  font-weight: 500;
+}
+
+.workspace-publish-button:hover {
+  color: #115e59 !important;
+  background-color: #ccfbf1 !important;
+}
+
 .btn-icon:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -209,10 +219,14 @@
 .requirement-list {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
   padding: 0.5rem;
 }
 
 .requirement-item {
+  box-sizing: border-box;
+  max-width: 100%;
   padding: 0.75rem;
   padding-right: 4rem;
   border: 1px solid #e5e7eb;
@@ -259,6 +273,7 @@
   font-size: 0.8rem;
   color: #374151;
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .requirement-delete-button {
@@ -709,6 +724,15 @@
 
   .panel-header h3 {
     color: #f3f4f6;
+  }
+
+  .workspace-publish-button {
+    color: #5eead4;
+  }
+
+  .workspace-publish-button:hover {
+    color: #99f6e4 !important;
+    background-color: #134e4a !important;
   }
 
   .tree-node:hover {

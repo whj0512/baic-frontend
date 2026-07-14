@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button, message, Spin, Badge, Modal, Collapse } from 'antd'
 import type { CollapseProps } from 'antd'
-import { ShareAltOutlined, ArrowLeftOutlined, ExperimentOutlined } from '@ant-design/icons'
+import { ShareAltOutlined, ArrowLeftOutlined, CloudUploadOutlined, ExperimentOutlined } from '@ant-design/icons'
 import './ProjectWorkSpace.css'
 import type { Requirement } from '../models/Requirement'
 import type { RequirementVersion } from '../models/RequirementVersion'
@@ -11,6 +11,7 @@ import DimensionEditor from '../components/DimensionEditor'
 import RequirementCreator from '../components/RequirementCreator/RequirementCreator'
 import ReqRelationShip from '../components/ReqRelationShip'
 import TestCaseOverview from '../components/TestCaseOverview'
+import PublishProjectDialog from '../components/PublishProjectDialog'
 import { API_ENDPOINTS, authFetch } from '../config/api'
 import { useProjectSync } from '../hooks/useProjectSync'
 import {
@@ -21,6 +22,7 @@ import {
   saveRequirementCreateDraft,
   type CreateRequirementFormData,
 } from '../utils/editorDraftStorage'
+import type { Project } from '../models/Project'
 
 // 中间区域视图类型
 type CenterView = 'overview' | 'editor' | 'create' | 'create-editor' | 'relationship' | 'test-case'
@@ -88,7 +90,7 @@ function ProjectWorkSpace() {
   const navigate = useNavigate()
 
   // 状态
-  const [project, setProject] = useState<any>(null)
+  const [project, setProject] = useState<Project | null>(null)
   const [requirementVersions, setRequirementVersions] = useState<RequirementVersion[]>([])
   const [loading, setLoading] = useState(false)
   const [loadingVersions, setLoadingVersions] = useState(false)
@@ -130,6 +132,7 @@ function ProjectWorkSpace() {
   const [rightCollapsed, setRightCollapsed] = useState(false)
 
   const [deleting, setDeleting] = useState(false)
+  const [showPublishDialog, setShowPublishDialog] = useState(false)
 
   const restorePreviousCenterView = () => {
     const prev = prevViewStateRef.current
@@ -592,6 +595,16 @@ function ProjectWorkSpace() {
             </h3>
           </div>
           <div style={{ display: 'flex', gap: 4 }}>
+            <Button
+              type="text"
+              size="small"
+              icon={<CloudUploadOutlined />}
+              className="workspace-publish-button"
+              disabled={!project}
+              onClick={() => setShowPublishDialog(true)}
+            >
+              发布
+            </Button>
             <button
               className="btn-icon"
               title="新建需求"
@@ -743,6 +756,11 @@ function ProjectWorkSpace() {
           )}
         </div>
       )}
+      <PublishProjectDialog
+        open={showPublishDialog}
+        project={project}
+        onClose={() => setShowPublishDialog(false)}
+      />
     </div>
   )
 }

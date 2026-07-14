@@ -85,6 +85,16 @@
           "default": "ws://localhost:8000",
           "description": "Base WebSocket URL for project synchronization."
         },
+        "baic.platformApiBaseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Base URL for publishing local project snapshots to the remote platform."
+        },
+        "baic.platformWebBaseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Browser URL for opening published projects on the remote platform."
+        },
         "baic.lspWs.internalConstraints": {
           "type": "string",
           "default": "ws://127.0.0.1:3000",
