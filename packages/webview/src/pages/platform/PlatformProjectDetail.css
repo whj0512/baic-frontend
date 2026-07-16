@@ -1,0 +1,148 @@
+.platform-workspace.workspace-container,
+.platform-workspace .workspace-left,
+.platform-workspace .workspace-center,
+.platform-workspace .workspace-right {
+  height: calc(100vh - 52px);
+}
+
+.platform-project-panel-header {
+  min-height: 61px;
+  box-sizing: border-box;
+}
+
+.platform-project-title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.platform-project-title .ant-btn {
+  flex-shrink: 0;
+  padding-inline: 4px;
+}
+
+.platform-project-title > div {
+  min-width: 0;
+}
+
+.platform-project-title h3 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.platform-project-title span {
+  display: block;
+  margin-top: 0.15rem;
+  color: #6b7280;
+  font-size: 0.72rem;
+}
+
+.platform-readonly-lock {
+  color: #64748b;
+}
+
+.platform-workspace .requirement-item {
+  padding-right: 0.75rem;
+}
+
+.platform-workspace .requirement-type-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.platform-project-footer {
+  gap: 0.65rem;
+}
+
+.platform-project-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #4b5563;
+  font-size: 0.78rem;
+}
+
+.platform-project-source {
+  overflow: hidden;
+  color: #6b7280;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.platform-project-footer-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.platform-version-header .ant-btn {
+  color: #3b82f6;
+}
+
+.platform-version-item {
+  width: 100%;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.platform-version-item.current {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.12);
+}
+
+.platform-version-item .version-desc {
+  line-height: 1.45;
+}
+
+.platform-version-summary {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .platform-workspace.workspace-container {
+    height: calc(100vh - 52px);
+    overflow-y: auto;
+  }
+
+  .platform-workspace .workspace-left,
+  .platform-workspace .workspace-right {
+    height: 240px;
+  }
+
+  .platform-workspace .workspace-center {
+    height: 520px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .platform-project-title span,
+  .platform-project-meta-row,
+  .platform-project-source {
+    color: #9ca3af;
+  }
+
+  .platform-readonly-lock {
+    color: #cbd5e1;
+  }
+
+  .platform-version-item.current {
+    border-color: #60a5fa;
+    background-color: #1e3a5f;
+  }
+
+  .platform-version-summary {
+    border-top-color: #374151;
+    background-color: #111827;
+  }
+}

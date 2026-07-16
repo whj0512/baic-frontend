@@ -72,7 +72,7 @@ const DslEditor: React.FC<DslEditorProps> = ({
 
   // LSP connection lifecycle — connect when editor is mounted and lsp config exists
   useEffect(() => {
-    if (!lsp || !isEditorMounted || !editorRef.current || !monacoRef.current) return
+    if (readOnly || !lsp || !isEditorMounted || !editorRef.current || !monacoRef.current) return
 
     const conn = connectLsp(
       lsp.wsUrl,
@@ -87,7 +87,7 @@ const DslEditor: React.FC<DslEditorProps> = ({
       conn.dispose()
       lspRef.current = null
     }
-  }, [lsp, languageId, isEditorMounted])
+  }, [lsp, languageId, isEditorMounted, readOnly])
 
   if (loading) {
     return (
@@ -129,6 +129,8 @@ const DslEditor: React.FC<DslEditorProps> = ({
         language={languageId}
         options={{
           readOnly,
+          domReadOnly: readOnly,
+          readOnlyMessage: { value: '远程快照为只读内容' },
           hover: { above: false },
         }}
       />

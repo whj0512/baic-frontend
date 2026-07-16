@@ -1,0 +1,142 @@
+.platform-filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.platform-filter-row .home-search {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.platform-status-select {
+  width: 150px;
+}
+
+.platform-table-scroll {
+  flex: 1;
+  overflow: auto;
+}
+
+.platform-table-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.platform-status-badge,
+.platform-deduplicated-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.platform-status-badge.active,
+.platform-status-badge.succeeded {
+  color: #047857;
+  background-color: #d1fae5;
+}
+
+.platform-status-badge.archived {
+  color: #4b5563;
+  background-color: #e5e7eb;
+}
+
+.platform-status-badge.processing {
+  color: #1d4ed8;
+  background-color: #dbeafe;
+}
+
+.platform-status-badge.failed {
+  color: #b91c1c;
+  background-color: #fee2e2;
+}
+
+.platform-status-badge.deduplicated,
+.platform-deduplicated-badge {
+  color: #7c3aed;
+  background-color: #ede9fe;
+}
+
+.archive-action-btn {
+  color: #d97706;
+}
+
+.archive-action-btn:hover {
+  color: #b45309;
+  text-decoration: underline;
+}
+
+.restore-action-btn {
+  color: #059669;
+}
+
+.restore-action-btn:hover {
+  color: #047857;
+  text-decoration: underline;
+}
+
+.platform-mono {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+
+.platform-error-text {
+  color: #b91c1c;
+  max-width: 280px;
+}
+
+.platform-delete-confirm-copy {
+  margin: 0 0 0.75rem;
+  color: #4b5563;
+  line-height: 1.6;
+}
+
+.platform-delete-confirm-copy strong {
+  color: #111827;
+}
+
+@media (max-width: 768px) {
+  .platform-filter-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .platform-status-select {
+    width: 100%;
+  }
+
+  .platform-table-scroll {
+    min-width: 900px;
+  }
+
+  .home-list-container {
+    overflow-x: auto;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .platform-table-footer {
+    border-top-color: #374151;
+  }
+
+  .platform-mono {
+    color: #9ca3af;
+  }
+
+  .platform-delete-confirm-copy {
+    color: #d1d5db;
+  }
+
+  .platform-delete-confirm-copy strong {
+    color: #f9fafb;
+  }
+}

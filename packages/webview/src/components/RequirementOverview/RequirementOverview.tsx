@@ -26,6 +26,7 @@ interface RequirementOverviewProps {
   versions: RequirementVersion[]
   projectKey: string
   onSectionClick?: (sectionKey: SectionKey, sectionLabel: string) => void
+  readOnly?: boolean
 }
 
 interface OverviewEditForm {
@@ -46,7 +47,13 @@ const createEditForm = (requirement: Requirement): OverviewEditForm => ({
   nl_text: requirement.nl_text || '',
 })
 
-function RequirementOverview({ requirement, versions, projectKey, onSectionClick }: RequirementOverviewProps) {
+function RequirementOverview({
+  requirement,
+  versions,
+  projectKey,
+  onSectionClick,
+  readOnly = false,
+}: RequirementOverviewProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [localRequirement, setLocalRequirement] = useState<Requirement | null>(requirement)
@@ -117,7 +124,7 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
   }
 
   const handleEdit = () => {
-    if (!displayRequirement) return
+    if (!displayRequirement || readOnly) return
     const form = createEditForm(displayRequirement)
     setEditForm(form)
     setIsCustomType(!isPresetReqType(form.req_type))
@@ -136,7 +143,7 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
   }
 
   const handleSave = async () => {
-    if (!displayRequirement) return
+    if (!displayRequirement || readOnly) return
 
     const name = editForm.name.trim()
     const reqType = editForm.req_type.trim()
@@ -209,7 +216,7 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
           <h2>需求概览</h2>
           <div className="overview-header-actions">
             <span className="overview-badge">项目: {projectKey}</span>
-            {isEditing ? (
+            {readOnly ? null : isEditing ? (
               <>
                 <Button size="small" icon={<CloseOutlined />} onClick={handleCancelEdit} disabled={saving}>
                   取消

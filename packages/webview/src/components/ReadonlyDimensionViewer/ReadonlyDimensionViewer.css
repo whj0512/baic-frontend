@@ -1,0 +1,75 @@
+.readonly-dimension-content {
+  overflow: hidden;
+  padding: 1rem;
+}
+
+.readonly-viewer-title,
+.readonly-viewer-actions,
+.readonly-viewer-badge {
+  display: flex;
+  align-items: center;
+}
+
+.readonly-viewer-title {
+  gap: 0.35rem;
+}
+
+.readonly-viewer-title .ant-btn {
+  padding-inline: 4px;
+}
+
+.readonly-viewer-actions {
+  gap: 0.5rem;
+}
+
+.readonly-viewer-badge {
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  color: #475569;
+  background-color: #e2e8f0;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.readonly-editor-group {
+  flex: 1;
+  min-height: 0;
+}
+
+.readonly-editor-group .editor-view-tab {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font-family: inherit;
+}
+
+.readonly-editor-group .editor-view-tab.active {
+  border-bottom-color: #3b82f6;
+}
+
+.readonly-editor-group .editor-canvas-container {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.readonly-editor-group .editor-canvas-container > .ant-empty {
+  margin: auto;
+}
+
+.readonly-editor-group .dsl-editor,
+.readonly-editor-group .flow-graph-container {
+  width: 100%;
+  height: 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+  .readonly-viewer-badge {
+    color: #cbd5e1;
+    background-color: #334155;
+  }
+}

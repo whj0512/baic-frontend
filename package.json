@@ -7,9 +7,11 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace @baic/webview",
+    "dev:platform": "npm run dev:platform --workspace @baic/webview",
     "build": "npm run build:webview && npm run build:extension",
     "build:debug-extension": "npm run build:webview && npm run build:extension",
     "build:webview": "npm run build --workspace @baic/webview",
+    "build:platform": "npm run build:platform --workspace @baic/webview",
     "build:extension": "npm run build --workspace packages/extension",
     "lint": "npm run lint --workspace @baic/webview",
     "preview": "npm run preview --workspace @baic/webview"
