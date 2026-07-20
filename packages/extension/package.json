@@ -2,7 +2,7 @@
   "name": "requirements-management-extension",
   "displayName": "BAIC Requirements Management",
   "description": "BAIC requirements management inside VS Code.",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "publisher": "baic",
   "engines": {
     "vscode": "^1.90.0"

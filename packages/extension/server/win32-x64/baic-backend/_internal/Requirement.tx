@@ -1,24 +1,14 @@
-Graph:
-    "Graph" name=ID
-    ("type" graphType=GraphType)
-    ("desc" desc=STRING)?
-    (nodes+=Node | transitions+=Transition)*
-;
-
-GraphType:
-    request='request' | testcase='testcase'
+Statechart:
+    "Statechart" name=ID '{'
+        (nodes+=Node | transitions+=Transition)*
+    '}'
 ;
 
 Node:
     StateNode
     | ConditionNode
     | CallNode
-    | GraphRefNode
-    | CommentNode
     | StartNode
-    | ThenNode
-    | TruthTableNode
-    | GotoNode
 ;
 
 
@@ -34,13 +24,6 @@ StringList:
 BooleanList:
     "[" (boolean+=BOOLEAN ("," boolean+=BOOLEAN)*)* "]";
 
-TableRow:
-    '{'
-        "targetNode" ':' targetNode=[Node]
-        "list" ':' booleanList=BooleanList
-    '}'
-;
-
 ActionItemList:
     "[" (actions+=ActionItem ("," actions+=ActionItem)*)* "]";
 
@@ -55,14 +38,12 @@ ActionItem:
 
 
 Transition:
-    "Transition" name=ID
-    ("desc" desc=STRING)?
+    "Transition" name=ID '{'
     ("loop" loopTimes=INT)?
-    ("tolerance_type" ":" toleranceType=STRING)?
-    ("tolerance_value" ":" toleranceValue=INT)?
     ("condition" ":" condition=STRING)?
     ("from" ":" source=[Node])
     ("to" ":" target=[Node])
+    '}' ';'
 ;
 
 BOOLEAN:
@@ -70,42 +51,28 @@ BOOLEAN:
 ;
 
 StateNode:
-    'State' name=ID
-    ("desc" desc=STRING)?
-    ("forward_propagation" ":" forwardPropagation=BOOLEAN)?
-    ("tolerance_type" ":" toleranceType=STRING)?
-    ("tolerance_value" ":" toleranceValue=INT)?
-    ("pre_think_time" ":" preThink=INT)?
-    ("post_think_time" ":" postThink=INT)?
-    ("during_actions" ":" duringActions=ActionItemList)?
-    ("normal_test_actions" ":" normalTestActions=ActionItemList)?
-    ("dynamic_test_actions" ":" dynamicTestActions=ActionItemList)?
+    'State' name=ID '{'
+        ("during_actions" ":" duringActions=ActionItemList)?
+    '}' ';'
 ;
 
 ConditionNode:
-    'Condition' name=ID
-    ("desc" desc=STRING)?
-    ("tolerance_type" ":" toleranceType=STRING)?
-    ("tolerance_value" ":" toleranceValue=INT)?
+    'Condition' name=ID '{'
     ("condition" ":" condition=STRING)
     ("yes" ":" branchYes=[Transition])?
     ("no" ":" branchNo=[Transition])?
-
+    '}' ';'
 ;
 
 CallNode:
-    'Call' name=ID
-    ("desc" desc=STRING)?
+    'Call' name=ID '{'
     ("params" ":" params=ParamList)?
     ("in" ":" inList=StringList)?
     ("out" ":" outList=StringList)?
     ("script" ":" script=STRING)?
     ("enable_inverse" ":" enableInverse=BOOLEAN)?
     ("inverse_script" ":" inverseScript=STRING)?
-    ("tolerance_type" ":" toleranceType=STRING)?
-    ("tolerance_value" ":" toleranceValue=INT)?
-    ("time_related_step" ":" timeRelatedStep=FLOAT)?
-    ("time_related_duration" ":" timeRelatedDuration=FLOAT)?
+    '}' ';'
 ;
 
 Number:
@@ -113,47 +80,13 @@ Number:
 ;
 
 
-CommentNode:
-    'Comment' name=ID
-    ("desc" desc=STRING)?
-    ("comment" ":" comment=STRING)?
-;
-
-GraphRefNode:
-    'GraphRef' name=ID
-    ("desc" desc=STRING)?
-    ("graph_id" ":" graphId=STRING)?
-    ("params" ":" params=ParamList)?
-    ("return_value" ":" returnVal=STRING)?
-    ("has_return_value" ":" hasReturnVal=BOOLEAN)?
-;
-
 StartNode:
-    'Start' name=ID
-    ("desc" desc=STRING)?
+    'Start' name=ID ';'
 ;
 
-ThenNode:
-    'Then' name=ID
-    ("desc" desc=STRING)?
-;
 
-GotoNode:
-    'Goto' name=ID
-    ("desc" desc=STRING)?
-    "friendNode" ":" friendNode=[Node]
-;
-
-TruthTableNode:
-    'TruthTable' name=ID
-    ("desc" desc=STRING)?
-    ("header" ':' tableHeader=StringList)?
-    ("body" ':' tableBody+=TableRow*)?
-;
-
-ID: /[a-zA-Z0-9_\u4e00-\u9fa5][a-zA-Z0-9_\-()\u4e00-\u9fa5]*/;
+ID: /[\u4e00-\u9fa5a-zA-Z0-9_][\u4e00-\u9fa5a-zA-Z0-9_\-()\/%]*/;
 Comment:
     /\/\/.*$/
     | /\/\*[\s\S]*?\*\//
 ;
-

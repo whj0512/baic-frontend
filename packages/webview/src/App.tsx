@@ -2,12 +2,8 @@ import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router
 import MainLayout from './layouts/MainLayout'
 import PlatformLayout from './layouts/PlatformLayout'
 import Home from './pages/Home'
-import Login from './pages/Login'
-import Register from './pages/Register'
 import ProjectWorkSpace from './pages/ProjectWorkSpace'
 import CreateProject from './pages/CreateProject'
-import AuthCallback from './pages/AuthCallback'
-import AuthFailure from './pages/AuthFailure'
 import PlatformHome from './pages/platform/PlatformHome'
 import PlatformProjectDetail from './pages/platform/PlatformProjectDetail'
 import PlatformUploads from './pages/platform/PlatformUploads'
@@ -19,19 +15,13 @@ function LocalApp() {
   return (
     <HashRouter>
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/auth-callback" element={<AuthCallback />} />
-        <Route path="/auth-failure" element={<AuthFailure />} />
-
-        {/* Authenticated Routes wrapped in MainLayout */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/workspace/:projectKey" element={<ProjectWorkSpace />} />
           <Route path="/create-project" element={<CreateProject />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/auth-callback" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </HashRouter>
   )

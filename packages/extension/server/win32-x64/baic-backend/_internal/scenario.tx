@@ -1,5 +1,3 @@
-ExternalInteractionView: scenarios+=Scenario* ;
-
 Scenario:
     'Scenario' name=ID '{'
         interactions+=Interaction*
@@ -13,16 +11,9 @@ Interaction:
     | ParallelInteraction
 ;
 
-AtomicInteraction:
-    message=Message ';'
-;
+AtomicInteraction: message=Message ';' ;
 
-Message:
-    'Message'
-    'from' sender=ID
-    'to' receiver=ID
-    ':' label=STRING
-;
+Message: 'Interaction' content=ID ;
 
 SelectionInteraction:
     ifBranch=IfBranch
@@ -64,24 +55,59 @@ ParallelBlock:
     '}'
 ;
 
+Expression:
+    assignmentExpression=AssignmentExpression;
 
-Expression: AssignmentExpression;
+AssignmentExpression:
+    left=LogicalExpression ('=' right=AssignmentExpression)?;
 
-AssignmentExpression: LogicalExpression ('=' AssignmentExpression)?;
+LogicalExpression:
+    left=ComparisonExpression (ops+=LogicalOp right+=ComparisonExpression)*;
 
-LogicalExpression: ComparisonExpression (('and' | 'or') ComparisonExpression)*;
+LogicalOp: 'and' | 'or';
 
-ComparisonExpression: AdditiveExpression (('==' | '!=' | '<' | '>' | '<=' | '>=') AdditiveExpression)*;
+ComparisonExpression:
+    (has_not?='not')? left=AdditiveExpression
+    (ops+=CompOp right+=AdditiveExpression)*;
 
-AdditiveExpression: MultiplicativeExpression (('+' | '-') MultiplicativeExpression)*;
+CompOp: '>=' | '<=' | '==' | '!=' | '>' | '<' | 'in';
 
-MultiplicativeExpression: UnaryExpression (('*' | '/') UnaryExpression)*;
+AdditiveExpression:
+    left=MultiplicativeExpression (ops+=AddOp right+=MultiplicativeExpression)*;
 
-UnaryExpression: ('!' | '-')? Primary;
+AddOp: '+' | '-';
 
-Primary: INT | FLOAT | BOOL | STRING | ID | '(' Expression ')';
+MultiplicativeExpression:
+    left=UnaryExpression (ops+=MulOp right+=UnaryExpression)*;
 
-ID: /[\u4e00-\u9fa5a-zA-Z_\/][\u4e00-\u9fa5a-zA-Z0-9_\-\/]*/;
+MulOp: '*' | '/';
+
+UnaryExpression:
+    (op=UnaryOp)? primary=Primary;
+
+UnaryOp: '-';
+
+Primary:
+    func=FunctionCall
+  | list=ListLiteral
+  | num=Number
+  | bool=BOOLEAN
+  | str=STRING
+  | id=ID
+  | '(' inner=Expression ')';
+
+FunctionCall:
+    name=ID '(' (args+=Expression (',' args+=Expression)*)? ')';
+
+ListLiteral:
+    '[' (elements+=Expression (',' elements+=Expression)*)? ']';
+
+// lexer
+Number: /[0-9]+(\.[0-9]+)?/;
+BOOLEAN: /true|false/;
+
+
+ID: !('and'|'or'|'not') /[\u4e00-\u9fa5a-zA-Z0-9_][\u4e00-\u9fa5a-zA-Z0-9_\-()\/%]*/;
 
 Comment:
     /\/\/.*$/
