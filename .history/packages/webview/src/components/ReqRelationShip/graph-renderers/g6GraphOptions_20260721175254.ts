@@ -1,19 +1,15 @@
 import type { Graph, GraphOptions, IPointerEvent, LayoutOptions } from '@antv/g6'
 
 const G6_ZOOM_CANVAS_KEY = 'req-relationship-zoom-canvas'
-const G6_LAYOUT_ANIMATION_DURATION = 480
 
 export type G6ElementClickHandler = (event: IPointerEvent) => void
 
 const G6_GRAPH_OPTIONS: Omit<GraphOptions, 'container' | 'data' | 'behaviors'> = {
   autoResize: true,
-  autoFit: 'view',
+  autoFit: 'center',
   zoomRange: [0.05, 2],
   padding: 56,
-  animation: {
-    duration: G6_LAYOUT_ANIMATION_DURATION,
-    easing: 'ease-in-out',
-  },
+  animation: false,
   layout: createG6RadialLayoutOptions(null),
   transforms: [
     {
@@ -33,16 +29,12 @@ const G6_GRAPH_OPTIONS: Omit<GraphOptions, 'container' | 'data' | 'behaviors'> =
   ],
 }
 
-export function createG6RadialLayoutOptions(
-  focusNode: string | null,
-  animation = false,
-): LayoutOptions {
+export function createG6RadialLayoutOptions(focusNode: string | null): LayoutOptions {
   return {
     type: 'radial',
     focusNode,
-    animation,
     linkDistance: 200,
-    unitRadius: 200,
+    unitRadius: 100,
     preventOverlap: true,
     nodeSize: 48,
     nodeSpacing: 96,
@@ -87,13 +79,14 @@ function createG6Behaviors(
       type: 'focus-element',
       enable: (event) => event.target.type === 'node',
     },
-    {
-      type: 'click-select',
-      degree: 1,
-      state: 'active',
-      neighborState: 'neighborActive',
-      onClick: onElementClick,
-    },
+    // {
+    //   type: 'click-select',
+    //   degree: 1,
+    //   state: 'active',
+    //   neighborState: 'neighborActive',
+    //   unselectedState: 'inactive',
+    //   onClick: onElementClick,
+    // },
   ]
 }
 

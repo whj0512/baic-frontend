@@ -5,9 +5,9 @@ import type { GraphData } from '@antv/g6'
 import type { Requirement } from '../../models/Requirement'
 import type {
   GraphDBGraphDepth,
-  GraphDBGraphMeta,
   GraphDBGraphOrigin,
   GraphDBGraphRequest,
+  GraphDBGraphResponse,
 } from '../../models/GraphDBGraph'
 import { fetchGraphDBGraph } from '../../config/graphdbGraph'
 import AntvG6GraphRenderer from './graph-renderers/AntvG6GraphRenderer'
@@ -23,7 +23,7 @@ interface ReqRelationShipProps {
 type EdgeLabelMode = 'auto' | 'show' | 'hide'
 
 const DEFAULT_GRAPH_REQUEST: GraphDBGraphRequest = {
-  root: "http://example.org/requirement-ontology#418-UserReq001",
+  root: "",
   depth: 1,
   origin: 'all',
   node_limit: 200,
@@ -70,130 +70,57 @@ const GRAPH_LEGEND = (
       <span className="req-relationship-legend__edge req-relationship-legend__edge--both" />
       显式且推理
     </span>
-    <span className="req-relationship-legend__hint">单击查看属性，双击节点继续展开</span>
+    <span className="req-relationship-legend__hint">点击节点或连线可在右侧查看属性</span>
   </div>
 )
 
 function ReqRelationShip({ requirements, onBack }: ReqRelationShipProps) {
   const [loading, setLoading] = useState(false)
   const [graphRendering, setGraphRendering] = useState(false)
-  const [layoutAnimating, setLayoutAnimating] = useState(false)
-  const [graphData, setGraphData] = useState<GraphData>({ nodes: [], edges: [] })
-  const [latestMeta, setLatestMeta] = useState<GraphDBGraphMeta | null>(null)
+  const [graphResponse, setGraphResponse] = useState<GraphDBGraphResponse | null>(null)
+  const [appliedRequest, setAppliedRequest] = useState<GraphDBGraphRequest | null>(null)
   const [queryError, setQueryError] = useState<string | null>(null)
-  const [focusNode, setFocusNode] = useState<string | null>(null)
-  const [expandingNodeId, setExpandingNodeId] = useState<string | null>(null)
-  const [expandedRootCount, setExpandedRootCount] = useState(0)
-  const [isTruncated, setIsTruncated] = useState(false)
   const [draftRoot, setDraftRoot] = useState<string>()
   const [draftDepth, setDraftDepth] = useState<GraphDBGraphDepth>(1)
   const [draftOrigin, setDraftOrigin] = useState<GraphDBGraphOrigin>('all')
   const [edgeLabelMode, setEdgeLabelMode] = useState<EdgeLabelMode>('auto')
-  const replaceAbortControllerRef = useRef<AbortController | null>(null)
-  const expandAbortControllerRef = useRef<AbortController | null>(null)
-  const replaceRequestSequenceRef = useRef(0)
-  const expandRequestSequenceRef = useRef(0)
-  const expandedRootsRef = useRef<Set<string>>(new Set())
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const requestSequenceRef = useRef(0)
 
   const treeData = useMemo(() => buildRequirementTreeData(requirements), [requirements])
-  const edgeCount = graphData.edges?.length || 0
-  const nodeCount = graphData.nodes?.length || 0
-  const isDenseGraph = edgeCount > DENSE_GRAPH_EDGE_LIMIT
+  const isDenseGraph = (graphResponse?.edges.length || 0) > DENSE_GRAPH_EDGE_LIMIT
   const showEdgeLabels = edgeLabelMode === 'show' || (edgeLabelMode === 'auto' && !isDenseGraph)
-  const focusNodeName = useMemo(
-    () => getNodeDisplayName(graphData, focusNode),
-    [focusNode, graphData],
-  )
-  const expandingNodeName = useMemo(
-    () => getNodeDisplayName(graphData, expandingNodeId),
-    [expandingNodeId, graphData],
+  const graphData = useMemo<GraphData>(
+    () => buildReadableGraphData(graphResponse),
+    [graphResponse],
   )
 
-  const cancelExpansion = useCallback(() => {
-    expandRequestSequenceRef.current += 1
-    expandAbortControllerRef.current?.abort()
-    expandAbortControllerRef.current = null
-    setExpandingNodeId(null)
-  }, [])
-
-  const runReplaceQuery = useCallback(async (request: GraphDBGraphRequest) => {
-    replaceAbortControllerRef.current?.abort()
-    cancelExpansion()
+  const runQuery = useCallback(async (request: GraphDBGraphRequest) => {
+    abortControllerRef.current?.abort()
 
     const controller = new AbortController()
-    const requestSequence = replaceRequestSequenceRef.current + 1
-    replaceRequestSequenceRef.current = requestSequence
-    replaceAbortControllerRef.current = controller
+    const requestSequence = requestSequenceRef.current + 1
+    requestSequenceRef.current = requestSequence
+    abortControllerRef.current = controller
     setLoading(true)
     setQueryError(null)
 
     try {
       const response = await fetchGraphDBGraph(request, controller.signal)
-      if (requestSequence !== replaceRequestSequenceRef.current) return
+      if (requestSequence !== requestSequenceRef.current) return
 
-      const canonicalRoot = response.meta.root || request.root || null
-      const nextExpandedRoots = new Set<string>()
-      if (canonicalRoot) nextExpandedRoots.add(canonicalRoot)
-
-      expandedRootsRef.current = nextExpandedRoots
-      setGraphData(buildReadableGraphData(response))
-      setLatestMeta(response.meta)
-      setFocusNode(canonicalRoot)
-      setExpandedRootCount(nextExpandedRoots.size)
-      setIsTruncated(isMetaTruncated(response.meta))
+      setGraphResponse(response)
+      setAppliedRequest(request)
     } catch (error: unknown) {
-      if (isAbortError(error) || requestSequence !== replaceRequestSequenceRef.current) return
+      if (isAbortError(error) || requestSequence !== requestSequenceRef.current) return
 
       const errorMessage = error instanceof Error ? error.message : '获取需求关系失败'
       setQueryError(errorMessage)
     } finally {
-      if (requestSequence === replaceRequestSequenceRef.current) {
+      if (requestSequence === requestSequenceRef.current) {
         setLoading(false)
-        if (replaceAbortControllerRef.current === controller) {
-          replaceAbortControllerRef.current = null
-        }
-      }
-    }
-  }, [cancelExpansion])
-
-  const runExpandQuery = useCallback(async (root: string) => {
-    expandAbortControllerRef.current?.abort()
-
-    const controller = new AbortController()
-    const requestSequence = expandRequestSequenceRef.current + 1
-    expandRequestSequenceRef.current = requestSequence
-    expandAbortControllerRef.current = controller
-    setExpandingNodeId(root)
-    setQueryError(null)
-
-    try {
-      const response = await fetchGraphDBGraph({
-        ...DEFAULT_GRAPH_REQUEST,
-        root,
-      }, controller.signal)
-      if (requestSequence !== expandRequestSequenceRef.current) return
-
-      const canonicalRoot = response.meta.root || root
-      const nextExpandedRoots = new Set(expandedRootsRef.current)
-      nextExpandedRoots.add(canonicalRoot)
-      expandedRootsRef.current = nextExpandedRoots
-
-      setExpandingNodeId(null)
-      setGraphData((current) => mergeGraphData(current, buildReadableGraphData(response)))
-      setLatestMeta(response.meta)
-      setFocusNode(canonicalRoot)
-      setExpandedRootCount(nextExpandedRoots.size)
-      setIsTruncated((current) => current || isMetaTruncated(response.meta))
-    } catch (error: unknown) {
-      if (isAbortError(error) || requestSequence !== expandRequestSequenceRef.current) return
-
-      const errorMessage = error instanceof Error ? error.message : '展开节点关系失败'
-      setQueryError(errorMessage)
-    } finally {
-      if (requestSequence === expandRequestSequenceRef.current) {
-        setExpandingNodeId((current) => current === root ? null : current)
-        if (expandAbortControllerRef.current === controller) {
-          expandAbortControllerRef.current = null
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null
         }
       }
     }
@@ -202,50 +129,31 @@ function ReqRelationShip({ requirements, onBack }: ReqRelationShipProps) {
   useEffect(() => {
     // 延迟到当前任务结束，避免 React StrictMode 在开发环境重复发起首屏请求。
     const initialQueryTimer = window.setTimeout(() => {
-      void runReplaceQuery({ ...DEFAULT_GRAPH_REQUEST })
+      void runQuery({ ...DEFAULT_GRAPH_REQUEST })
     }, 0)
 
     return () => {
       window.clearTimeout(initialQueryTimer)
-      replaceRequestSequenceRef.current += 1
-      expandRequestSequenceRef.current += 1
-      replaceAbortControllerRef.current?.abort()
-      expandAbortControllerRef.current?.abort()
-      replaceAbortControllerRef.current = null
-      expandAbortControllerRef.current = null
+      requestSequenceRef.current += 1
+      abortControllerRef.current?.abort()
+      abortControllerRef.current = null
     }
-  }, [runReplaceQuery])
+  }, [runQuery])
 
   const handleRefresh = useCallback(() => {
-    void runReplaceQuery({
+    void runQuery({
       ...DEFAULT_GRAPH_REQUEST,
       root: draftRoot || null,
       depth: draftRoot ? draftDepth : 1,
       origin: draftOrigin,
     })
-  }, [draftDepth, draftOrigin, draftRoot, runReplaceQuery])
+  }, [draftDepth, draftOrigin, draftRoot, runQuery])
 
-  const handleNodeDoubleClick = useCallback((nodeId: string) => {
-    if (loading || expandingNodeId === nodeId) return
-
-    if (expandedRootsRef.current.has(nodeId)) {
-      cancelExpansion()
-      setFocusNode(nodeId)
-      return
-    }
-
-    void runExpandQuery(nodeId)
-  }, [cancelExpansion, expandingNodeId, loading, runExpandQuery])
-
-  const handleGraphRenderStateChange = useCallback((rendering: boolean, animated: boolean) => {
-    setGraphRendering(rendering)
-    setLayoutAnimating(rendering && animated)
-  }, [])
-
-  const hasGraphData = nodeCount > 0
+  const meta = graphResponse?.meta
+  const hasGraphData = Boolean(graphResponse?.nodes.length)
+  const isTruncated = Boolean(meta?.truncated || meta?.propertiesTruncated)
   const busy = loading || graphRendering
-  const showLoadingOverlay = loading || (graphRendering && !layoutAnimating)
-  const emptyText = queryError && !latestMeta ? '关系图加载失败' : '没有符合条件的关系数据'
+  const emptyText = queryError && !graphResponse ? '关系图加载失败' : '没有符合条件的关系数据'
 
   return (
     <div className="req-relationship-container">
@@ -312,12 +220,11 @@ function ReqRelationShip({ requirements, onBack }: ReqRelationShipProps) {
 
       <div className="req-relationship-status">
         <div className="req-relationship-status__metrics">
-          {latestMeta ? (
+          {meta ? (
             <>
-              <span>节点 <strong>{nodeCount}</strong></span>
-              <span>关系 <strong>{edgeCount}</strong></span>
-              <span>{focusNode ? `当前中心：${focusNodeName}` : '受限全局概览'}</span>
-              <span>已查询根节点 <strong>{expandedRootCount}</strong></span>
+              <span>节点 <strong>{meta.nodeCount}</strong></span>
+              <span>关系 <strong>{meta.edgeCount}</strong></span>
+              <span>{appliedRequest?.root ? `聚焦：${appliedRequest.root}` : '受限全局概览'}</span>
             </>
           ) : (
             <span>尚未加载关系图</span>
@@ -332,9 +239,6 @@ function ReqRelationShip({ requirements, onBack }: ReqRelationShipProps) {
               结果已截断，请聚焦需求或降低深度
             </span>
           )}
-          <span className="req-relationship-status__expanding" aria-live="polite">
-            {expandingNodeId ? `正在展开：${expandingNodeName}` : ''}
-          </span>
         </div>
         {GRAPH_LEGEND}
       </div>
@@ -345,10 +249,8 @@ function ReqRelationShip({ requirements, onBack }: ReqRelationShipProps) {
             <AntvG6GraphRenderer
               graphData={graphData}
               edgeLabelsVisible={showEdgeLabels}
-              focusNode={focusNode}
-              expandingNodeId={expandingNodeId}
-              onNodeDoubleClick={handleNodeDoubleClick}
-              onRenderStateChange={handleGraphRenderStateChange}
+              focusNode={meta?.root || null}
+              onRenderStateChange={setGraphRendering}
             />
           ) : (
             !busy && <div className="empty-tip">{emptyText}</div>
@@ -365,7 +267,7 @@ function ReqRelationShip({ requirements, onBack }: ReqRelationShipProps) {
             />
           )}
 
-          {showLoadingOverlay && (
+          {busy && (
             <div className="req-relationship-loading-overlay">
               <Spin size="large" />
               <span>{loading ? '正在查询关系数据' : '正在整理图布局'}</span>
@@ -377,10 +279,12 @@ function ReqRelationShip({ requirements, onBack }: ReqRelationShipProps) {
   )
 }
 
-function buildReadableGraphData(graphResponse: GraphData): GraphData {
+function buildReadableGraphData(graphResponse: GraphDBGraphResponse | null): GraphData {
+  if (!graphResponse) return { nodes: [], edges: [] }
+
   return {
-    nodes: graphResponse.nodes || [],
-    edges: (graphResponse.edges || []).map((edge) => {
+    nodes: graphResponse.nodes,
+    edges: graphResponse.edges.map((edge) => {
       const style = isRecord(edge.style) ? edge.style : {}
       const data = isRecord(edge.data) ? edge.data : {}
       const labelText = getString(style.labelText)
@@ -396,49 +300,6 @@ function buildReadableGraphData(graphResponse: GraphData): GraphData {
       } as NonNullable<GraphData['edges']>[number]
     }),
   }
-}
-
-function mergeGraphData(current: GraphData, incoming: GraphData): GraphData {
-  return {
-    nodes: mergeElementsById(current.nodes || [], incoming.nodes || []),
-    edges: mergeElementsById(current.edges || [], incoming.edges || []),
-  }
-}
-
-function mergeElementsById<T extends { id: string }>(current: T[], incoming: T[]): T[] {
-  const merged = [...current]
-  const indexById = new Map(current.map((element, index) => [element.id, index]))
-
-  incoming.forEach((element) => {
-    const existingIndex = indexById.get(element.id)
-    if (existingIndex === undefined) {
-      indexById.set(element.id, merged.length)
-      merged.push(element)
-      return
-    }
-
-    merged[existingIndex] = element
-  })
-
-  return merged
-}
-
-function getNodeDisplayName(graphData: GraphData, nodeId: string | null) {
-  if (!nodeId) return ''
-
-  const node = (graphData.nodes || []).find((item) => item.id === nodeId)
-  if (!node) return nodeId
-
-  const data = isRecord(node.data) ? node.data : {}
-  const style = isRecord(node.style) ? node.style : {}
-  return getString(data.name)
-    || getString(data.identifier)
-    || getString(style.labelText)
-    || nodeId
-}
-
-function isMetaTruncated(meta: GraphDBGraphMeta) {
-  return meta.truncated || meta.propertiesTruncated
 }
 
 function isAbortError(error: unknown) {

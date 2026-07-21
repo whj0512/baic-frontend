@@ -70,12 +70,56 @@
   background: white;
 }
 
-.antv-g6-graph-container {
+.antv-g6-graph-stage {
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+}
+
+.antv-g6-graph-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   contain: strict;
+}
+
+.antv-g6-node-loading-indicator {
+  position: absolute;
+  z-index: 2;
+  box-sizing: border-box;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.antv-g6-node-loading-indicator[hidden] {
+  display: none;
+}
+
+.antv-g6-node-loading-indicator__ring {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  border: var(--req-relationship-loading-line-width, 3px) solid rgba(22, 119, 255, 0.22);
+  border-top-color: #1677ff;
+  border-right-color: #1677ff;
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(22, 119, 255, 0.26);
+  animation: req-relationship-node-loading 0.8s linear infinite;
+}
+
+@keyframes req-relationship-node-loading {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .antv-g6-node-loading-indicator__ring {
+    animation-duration: 1.8s;
+  }
 }
 
 .g6-properties-panel {
@@ -253,6 +297,11 @@
   border-radius: 999px;
   background: #e6f4ff;
   color: #0958d9;
+}
+
+.req-relationship-status__expanding {
+  color: #1677ff;
+  font-weight: 500;
 }
 
 .req-relationship-legend {
