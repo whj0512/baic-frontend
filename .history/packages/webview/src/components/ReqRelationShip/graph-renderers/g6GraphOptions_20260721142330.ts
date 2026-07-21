@@ -6,7 +6,7 @@ export type G6ElementClickHandler = (event: IPointerEvent) => void
 
 const G6_GRAPH_OPTIONS: Omit<GraphOptions, 'container' | 'data' | 'behaviors'> = {
   autoResize: true,
-  autoFit: 'center',
+  autoFit: 'view',
   zoomRange: [0.05, 2],
   padding: 56,
   animation: false,

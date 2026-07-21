@@ -18,6 +18,7 @@ const NODE_PRIMARY_PANEL_KEYS = [
 ]
 const EDGE_PRIMARY_PANEL_KEYS = [
   'predicate',
+  'origin',
   'isExplicit',
   'isInferred',
 ]

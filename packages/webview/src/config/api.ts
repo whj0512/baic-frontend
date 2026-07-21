@@ -25,7 +25,7 @@ export const API_ENDPOINTS = {
     `${SERVICE_BASE_URL}/projects/${encodeURIComponent(projectId)}/snapshot?schema_version=1`,
   requirements: `${SERVICE_BASE_URL}/requirements`,
   requirementById: (id: string) => `${SERVICE_BASE_URL}/requirements/${id}`,
-  dependency: `${SERVICE_BASE_URL}/dependency`,
+  graphdbGraph: `${SERVICE_BASE_URL}/graphdb/graph`,
 }
 
 // Kept as a stable application-wide request entry point, without auth behavior.

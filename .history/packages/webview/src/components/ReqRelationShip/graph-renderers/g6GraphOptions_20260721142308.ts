@@ -6,7 +6,7 @@ export type G6ElementClickHandler = (event: IPointerEvent) => void
 
 const G6_GRAPH_OPTIONS: Omit<GraphOptions, 'container' | 'data' | 'behaviors'> = {
   autoResize: true,
-  autoFit: 'center',
+  autoFit: 'view',
   zoomRange: [0.05, 2],
   padding: 56,
   animation: false,
@@ -34,10 +34,10 @@ export function createG6RadialLayoutOptions(focusNode: string | null): LayoutOpt
     type: 'radial',
     focusNode,
     linkDistance: 200,
-    unitRadius: 100,
+    unitRadius: 120,
     preventOverlap: true,
     nodeSize: 48,
-    nodeSpacing: 36,
+    nodeSpacing: 18,
     strictRadial: false,
     maxIteration: 300,
     maxPreventOverlapIteration: 80,

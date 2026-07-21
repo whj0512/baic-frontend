@@ -14,12 +14,15 @@ const NODE_PRIMARY_PANEL_KEYS = [
   'name',
   'identifier',
   'type',
+  'origin',
   'description',
 ]
 const EDGE_PRIMARY_PANEL_KEYS = [
   'predicate',
+  'origin',
   'isExplicit',
   'isInferred',
+  'predicateIri',
 ]
 
 const PANEL_LABEL_MAP: Record<string, string> = {
@@ -33,8 +36,8 @@ const PANEL_LABEL_MAP: Record<string, string> = {
   explicitTypes: '显式类型',
   inferredTypes: '推理类型',
   predicate: '关系类型',
-  isExplicit: '显式',
-  isInferred: '推理',
+  isExplicit: '是否显式',
+  isInferred: '是否推理',
   predicateIri: '关系 IRI',
 }
 
