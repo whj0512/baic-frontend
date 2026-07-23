@@ -36,7 +36,10 @@ const G6_GRAPH_OPTIONS: Omit<GraphOptions, 'container' | 'data' | 'behaviors'> =
 export function createG6RadialLayoutOptions(
   focusNode: string | null,
   animation = false,
+  nodeCount = 0,
 ): LayoutOptions {
+  const iterationBudget = getRadialIterationBudget(nodeCount)
+
   return {
     type: 'radial',
     focusNode,
@@ -47,9 +50,19 @@ export function createG6RadialLayoutOptions(
     nodeSize: 48,
     nodeSpacing: 96,
     strictRadial: false,
-    maxIteration: 300,
-    maxPreventOverlapIteration: 80,
+    maxIteration: iterationBudget.layout,
+    maxPreventOverlapIteration: iterationBudget.preventOverlap,
   }
+}
+
+function getRadialIterationBudget(nodeCount: number) {
+  if (nodeCount <= 40) {
+    return { layout: 180, preventOverlap: 40 }
+  }
+  if (nodeCount <= 100) {
+    return { layout: 100, preventOverlap: 24 }
+  }
+  return { layout: 60, preventOverlap: 12 }
 }
 
 export function createG6GraphOptions(

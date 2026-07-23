@@ -1,21 +1,51 @@
-import React, { useMemo, useState } from 'react'
-import { Button, Badge } from 'antd'
+import React, { useEffect, useMemo, useState } from 'react'
+import { Badge, Button, Empty, Result, Spin } from 'antd'
 import { ArrowLeftOutlined, ExperimentOutlined, EyeOutlined } from '@ant-design/icons'
-import type { Requirement } from '../../models/Requirement'
 import FlowGraph from '../graph'
 import AntvG6GraphRenderer from './graph-renderers/AntvG6GraphRenderer'
+import { fetchTraceabilityGraph } from './testCaseOverviewApi'
 import { buildTestCaseOverviewGraphData } from './testCaseOverviewGraphData'
+import type { TraceabilityGraphResponse } from './types'
 import './TestCaseOverview.css'
 
 interface TestCaseOverviewProps {
-  /** 来自 groupedRequirements[type].subTypeMap 下所有需求的扁平列表 */
-  requirements: Requirement[]
+  projectId: string
   onBack?: () => void
 }
 
-const TestCaseOverview: React.FC<TestCaseOverviewProps> = ({ requirements, onBack }) => {
+const TestCaseOverview: React.FC<TestCaseOverviewProps> = ({ projectId, onBack }) => {
   const [showTestCaseGraph, setShowTestCaseGraph] = useState(false)
-  const g6GraphData = useMemo(() => buildTestCaseOverviewGraphData(requirements), [requirements])
+  const [response, setResponse] = useState<TraceabilityGraphResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState('')
+  const [requestVersion, setRequestVersion] = useState(0)
+  const g6GraphData = useMemo(
+    () => response ? buildTestCaseOverviewGraphData(response.g6) : { nodes: [], edges: [] },
+    [response],
+  )
+  const hasGraphData = Boolean(g6GraphData.nodes?.length)
+
+  useEffect(() => {
+    const abortController = new AbortController()
+
+    setLoading(true)
+    setErrorMessage('')
+    setResponse(null)
+
+    fetchTraceabilityGraph(projectId, abortController.signal)
+      .then(setResponse)
+      .catch(error => {
+        if (abortController.signal.aborted) return
+        setErrorMessage(error instanceof Error ? error.message : '获取测试用例关系失败')
+      })
+      .finally(() => {
+        if (!abortController.signal.aborted) {
+          setLoading(false)
+        }
+      })
+
+    return () => abortController.abort()
+  }, [projectId, requestVersion])
 
   return (
     <div className="tc-container">
@@ -32,12 +62,41 @@ const TestCaseOverview: React.FC<TestCaseOverviewProps> = ({ requirements, onBac
         )}
         <ExperimentOutlined className="tc-header-icon" />
         <h2 className="tc-title">测试用例总览</h2>
-        <Badge count={requirements.length} className="tc-total-badge" overflowCount={999} />
+        <Badge
+          count={response?.summary.test_case_count ?? 0}
+          className="tc-total-badge"
+          overflowCount={999}
+          showZero
+          title="测试用例数量"
+        />
       </div>
 
       {!showTestCaseGraph && (
         <div className="tc-overview-graph-wrap">
-          <AntvG6GraphRenderer graphData={g6GraphData} />
+          {loading ? (
+            <div className="tc-overview-state">
+              <Spin size="large" tip="正在提取追溯关系..." />
+            </div>
+          ) : errorMessage ? (
+            <div className="tc-overview-state">
+              <Result
+                status="error"
+                title="测试用例关系加载失败"
+                subTitle={errorMessage}
+                extra={(
+                  <Button type="primary" onClick={() => setRequestVersion(version => version + 1)}>
+                    重试
+                  </Button>
+                )}
+              />
+            </div>
+          ) : hasGraphData ? (
+            <AntvG6GraphRenderer graphData={g6GraphData} />
+          ) : (
+            <div className="tc-overview-state">
+              <Empty description="当前项目暂无可展示的追溯关系" />
+            </div>
+          )}
         </div>
       )}
       <div className={`tc-testcase-viewer${showTestCaseGraph ? ' tc-testcase-viewer-open' : ''}`}>

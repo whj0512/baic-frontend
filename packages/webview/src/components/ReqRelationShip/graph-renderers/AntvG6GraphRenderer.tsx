@@ -11,8 +11,10 @@ import {
 
 interface AntvG6GraphRendererProps {
   graphData: GraphData
+  visibleEdgeIds: string[]
   edgeLabelsVisible: boolean
   focusNode: string | null
+  layoutRevision: number
   expandingNodeId?: string | null
   onNodeDoubleClick?: (nodeId: string) => void
   onRenderStateChange?: (rendering: boolean, animated: boolean) => void
@@ -39,8 +41,10 @@ function observeContainerResize(container: HTMLElement, onResize: () => void) {
 
 function AntvG6GraphRenderer({
   graphData,
+  visibleEdgeIds,
   edgeLabelsVisible,
   focusNode,
+  layoutRevision,
   expandingNodeId = null,
   onNodeDoubleClick,
   onRenderStateChange,
@@ -49,11 +53,14 @@ function AntvG6GraphRenderer({
   const loadingIndicatorRef = useRef<HTMLDivElement | null>(null)
   const graphRef = useRef<Graph | null>(null)
   const graphDataRef = useRef(graphData)
+  const visibleEdgeIdsRef = useRef(visibleEdgeIds)
   const edgeLabelsVisibleRef = useRef(edgeLabelsVisible)
   const focusNodeRef = useRef(focusNode)
+  const layoutRevisionRef = useRef(layoutRevision)
   const expandingNodeIdRef = useRef(expandingNodeId)
   const onNodeDoubleClickRef = useRef(onNodeDoubleClick)
   const appliedEdgeLabelsVisibleRef = useRef(edgeLabelsVisible)
+  const appliedLayoutRevisionRef = useRef(layoutRevision)
   const renderFrameRef = useRef<number | null>(null)
   const loadingPositionFrameRef = useRef<number | null>(null)
   const renderSequenceRef = useRef(0)
@@ -61,8 +68,10 @@ function AntvG6GraphRenderer({
   const [panelData, setPanelData] = useState<GraphElementPanelData | null>(null)
 
   graphDataRef.current = graphData
+  visibleEdgeIdsRef.current = visibleEdgeIds
   edgeLabelsVisibleRef.current = edgeLabelsVisible
   focusNodeRef.current = focusNode
+  layoutRevisionRef.current = layoutRevision
   expandingNodeIdRef.current = expandingNodeId
   onNodeDoubleClickRef.current = onNodeDoubleClick
 
@@ -141,7 +150,7 @@ function AntvG6GraphRenderer({
     })
   }, [syncLoadingIndicatorPosition])
 
-  const renderGraphData = useCallback((graph: Graph, nextGraphData: GraphData) => {
+  const renderGraphData = useCallback((graph: Graph) => {
     if (renderFrameRef.current !== null) {
       window.cancelAnimationFrame(renderFrameRef.current)
     }
@@ -160,9 +169,11 @@ function AntvG6GraphRenderer({
       renderFrameRef.current = null
       if (graph.destroyed || renderSequence !== renderSequenceRef.current) return
 
+      const latestGraphData = graphDataRef.current
       const labelsVisible = edgeLabelsVisibleRef.current
-      graph.setLayout(createG6RadialLayoutOptions(focusNodeRef.current, animateLayout))
-      graph.setData(applyEdgeLabelVisibility(nextGraphData, labelsVisible))
+      const nodeCount = latestGraphData.nodes?.length || 0
+      graph.setLayout(createG6RadialLayoutOptions(focusNodeRef.current, animateLayout, nodeCount))
+      graph.setData(applyEdgePresentation(latestGraphData, labelsVisible, visibleEdgeIdsRef.current))
       appliedEdgeLabelsVisibleRef.current = labelsVisible
 
       graph.render()
@@ -185,6 +196,26 @@ function AntvG6GraphRenderer({
         })
     })
   }, [onRenderStateChange])
+
+  const updateGraphDataWithoutLayout = useCallback(async (graph: Graph, nextGraphData: GraphData) => {
+    // 若完整布局仍在下一帧等待执行，它会直接读取最新 graphData，无需额外 draw。
+    if (renderFrameRef.current !== null) return
+
+    const labelsVisible = edgeLabelsVisibleRef.current
+    const dataWithCurrentPositions = preserveCurrentNodePositions(graph, nextGraphData)
+    graph.setData(applyEdgePresentation(
+      dataWithCurrentPositions,
+      labelsVisible,
+      visibleEdgeIdsRef.current,
+    ))
+    appliedEdgeLabelsVisibleRef.current = labelsVisible
+
+    try {
+      await graph.draw()
+    } catch (error) {
+      console.debug('[ReqRelationShip][G6 data update error]', error)
+    }
+  }, [])
 
   useEffect(() => {
     const container = containerRef.current
@@ -213,7 +244,8 @@ function AntvG6GraphRenderer({
       }
       resizeObserver = observeContainerResize(container, syncZoomOrigin)
       syncZoomOriginFrame = window.requestAnimationFrame(syncZoomOrigin)
-      renderGraphData(graph, graphDataRef.current)
+      appliedLayoutRevisionRef.current = layoutRevisionRef.current
+      renderGraphData(graph)
     }, 0)
 
     return () => {
@@ -249,9 +281,24 @@ function AntvG6GraphRenderer({
     const graph = graphRef.current
     if (!graph || graph.destroyed) return
 
+    void updateEdgeVisibility(graph, visibleEdgeIds).catch((error) => {
+      console.debug('[ReqRelationShip][G6 edge visibility update error]', error)
+    })
+  }, [visibleEdgeIds])
+
+  useEffect(() => {
+    const graph = graphRef.current
+    if (!graph || graph.destroyed) return
+
     setPanelData(null)
-    renderGraphData(graph, graphData)
-  }, [focusNode, graphData, renderGraphData])
+    if (appliedLayoutRevisionRef.current !== layoutRevision) {
+      appliedLayoutRevisionRef.current = layoutRevision
+      renderGraphData(graph)
+      return
+    }
+
+    void updateGraphDataWithoutLayout(graph, graphData)
+  }, [graphData, layoutRevision, renderGraphData, updateGraphDataWithoutLayout])
 
   useEffect(() => {
     const graph = graphRef.current
@@ -293,16 +340,45 @@ function AntvG6GraphRenderer({
   )
 }
 
-function applyEdgeLabelVisibility(graphData: GraphData, visible: boolean): GraphData {
+function applyEdgePresentation(
+  graphData: GraphData,
+  labelsVisible: boolean,
+  visibleEdgeIds: string[],
+): GraphData {
+  const visibleEdgeIdSet = new Set(visibleEdgeIds)
+
   return {
     ...graphData,
     edges: (graphData.edges || []).map((edge) => ({
       ...edge,
       style: {
         ...edge.style,
-        label: visible,
+        label: labelsVisible,
+        visibility: visibleEdgeIdSet.has(edge.id) ? 'visible' : 'hidden',
       },
     })),
+  }
+}
+
+function preserveCurrentNodePositions(graph: Graph, graphData: GraphData): GraphData {
+  return {
+    ...graphData,
+    nodes: (graphData.nodes || []).map((node) => {
+      try {
+        const [x, y, z] = graph.getElementPosition(node.id)
+        return {
+          ...node,
+          style: {
+            ...node.style,
+            x,
+            y,
+            z,
+          },
+        }
+      } catch {
+        return node
+      }
+    }),
   }
 }
 
@@ -312,6 +388,18 @@ async function updateEdgeLabelVisibility(graph: Graph, visible: boolean) {
     style: { label: visible },
   })))
   await graph.draw()
+}
+
+async function updateEdgeVisibility(graph: Graph, visibleEdgeIds: string[]) {
+  const visibleEdgeIdSet = new Set(visibleEdgeIds)
+  const visibility = Object.fromEntries(
+    graph.getEdgeData().map((edge) => [
+      edge.id,
+      visibleEdgeIdSet.has(edge.id) ? 'visible' : 'hidden',
+    ]),
+  )
+
+  await graph.setElementVisibility(visibility, false)
 }
 
 function getNodeSize(size: unknown): [number, number] {

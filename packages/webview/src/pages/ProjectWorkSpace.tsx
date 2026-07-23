@@ -118,9 +118,6 @@ function ProjectWorkSpace() {
     })
   }
 
-  // 测试用例视图：当前展示的需求列表
-  const [testCaseRequirements, setTestCaseRequirements] = useState<Requirement[]>([])
-
   // 中间区域视图状态
   const [centerView, setCenterView] = useState<CenterView>('overview')
   const isLeftCollapsed = centerView === 'editor' || centerView === 'create-editor'
@@ -553,9 +550,6 @@ function ProjectWorkSpace() {
             icon={<ExperimentOutlined />}
             block
             onClick={() => {
-              // 收集当前 type 下所有 subtype 的需求
-              const allReqs = Object.values(subtypeMap).flat()
-              setTestCaseRequirements(allReqs)
               prevViewStateRef.current = {
                 view: centerView,
                 reqId: selectedRequirement,
@@ -703,9 +697,9 @@ function ProjectWorkSpace() {
             />
           )}
 
-          {centerView === 'test-case' && (
+          {centerView === 'test-case' && project && (
             <TestCaseOverview
-              requirements={testCaseRequirements}
+              projectId={project.id}
               onBack={restorePreviousCenterView}
             />
           )}

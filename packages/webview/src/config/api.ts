@@ -26,6 +26,7 @@ export const API_ENDPOINTS = {
   requirements: `${SERVICE_BASE_URL}/requirements`,
   requirementById: (id: string) => `${SERVICE_BASE_URL}/requirements/${id}`,
   graphdbGraph: `${SERVICE_BASE_URL}/graphdb/graph`,
+  traceabilityExtract: `${SERVICE_BASE_URL}/traceability/extract`,
 }
 
 // Kept as a stable application-wide request entry point, without auth behavior.

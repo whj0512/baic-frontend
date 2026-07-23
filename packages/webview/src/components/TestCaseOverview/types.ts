@@ -4,36 +4,61 @@ import type { TEST_CASE_OVERVIEW_NODE_STYLES } from '../graphNodeStyles'
 export type TestCaseOverviewGraphData = GraphData
 export type TestCaseOverviewNodeKind = keyof typeof TEST_CASE_OVERVIEW_NODE_STYLES
 
-export interface StackItem {
-  indent: number
-  type: 'path' | 'data'
-  value: string
-  id?: string
+export interface TraceabilityGraphRequest {
+  project_id: string
+  response_mode: 'graph'
+  minimum_path_score: number
+  minimum_scenario_coverage: number
+  include_singletons: boolean
+  persist: boolean
 }
 
-export interface ParsedTreeNode {
-  id: string
+export interface TraceabilitySummary {
+  requirement_count: number
+  path_count: number
+  dependency_count: number
+  scenario_count: number
+  test_case_count: number
+  matched_test_case_count: number
+}
+
+export interface TraceabilityPersistence {
+  requested: boolean
+  persisted_test_case_ids: string[]
+}
+
+export interface TraceabilityGraphNodeData {
   name: string
-  category: number
-}
-
-export interface ParsedTreeEdge {
-  from: string
-  to: string
-  label: string
-}
-
-export interface OverviewNodeMeta {
-  id: string
-  name: string
-  category: number
   kind: TestCaseOverviewNodeKind
-  tooltip: string
-  x?: number
-  y?: number
+  category: number
+  [key: string]: unknown
 }
 
-export interface OverviewLinkMeta {
+export interface TraceabilityGraphNode {
+  id: string
+  data: TraceabilityGraphNodeData
+  [key: string]: unknown
+}
+
+export type TraceabilityRelation = 'PART_OF_SCENARIO' | 'COVERED_BY'
+
+export interface TraceabilityGraphEdge {
+  id: string
   source: string
   target: string
+  data: {
+    relation: TraceabilityRelation
+    [key: string]: unknown
+  }
+  [key: string]: unknown
+}
+
+export interface TraceabilityGraphResponse {
+  response_mode: 'graph'
+  summary: TraceabilitySummary
+  g6: {
+    nodes: TraceabilityGraphNode[]
+    edges: TraceabilityGraphEdge[]
+  }
+  persistence: TraceabilityPersistence
 }
