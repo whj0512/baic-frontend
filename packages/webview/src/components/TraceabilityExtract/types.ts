@@ -1,8 +1,8 @@
 import type { GraphData } from '@antv/g6'
-import type { TEST_CASE_OVERVIEW_NODE_STYLES } from '../graphNodeStyles'
+import type { TRACEABILITY_EXTRACT_NODE_STYLES } from '../graphNodeStyles'
 
-export type TestCaseOverviewGraphData = GraphData
-export type TestCaseOverviewNodeKind = keyof typeof TEST_CASE_OVERVIEW_NODE_STYLES
+export type TraceabilityExtractGraphData = GraphData
+export type TraceabilityExtractNodeKind = keyof typeof TRACEABILITY_EXTRACT_NODE_STYLES
 
 export interface TraceabilityGraphRequest {
   project_id: string
@@ -29,7 +29,7 @@ export interface TraceabilityPersistence {
 
 export interface TraceabilityGraphNodeData {
   name: string
-  kind: TestCaseOverviewNodeKind
+  kind: TraceabilityExtractNodeKind
   category: number
   [key: string]: unknown
 }

@@ -1,6 +1,6 @@
 import { API_ENDPOINTS, authFetch } from '../../config/api'
 import type {
-  TestCaseOverviewNodeKind,
+  TraceabilityExtractNodeKind,
   TraceabilityGraphEdge,
   TraceabilityGraphNode,
   TraceabilityGraphRequest,
@@ -18,7 +18,7 @@ const SUMMARY_FIELDS: Array<keyof TraceabilitySummary> = [
   'matched_test_case_count',
 ]
 
-const NODE_KINDS = new Set<TestCaseOverviewNodeKind>([
+const NODE_KINDS = new Set<TraceabilityExtractNodeKind>([
   'requirement',
   'scenario',
   'testCase',
@@ -135,7 +135,7 @@ function isTraceabilityGraphNode(value: unknown): value is TraceabilityGraphNode
 
   return typeof value.data.name === 'string'
     && typeof value.data.category === 'number'
-    && NODE_KINDS.has(value.data.kind as TestCaseOverviewNodeKind)
+    && NODE_KINDS.has(value.data.kind as TraceabilityExtractNodeKind)
 }
 
 function isTraceabilityGraphEdge(value: unknown): value is TraceabilityGraphEdge {

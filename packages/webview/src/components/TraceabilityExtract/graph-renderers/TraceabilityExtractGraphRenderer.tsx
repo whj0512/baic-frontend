@@ -1,26 +1,26 @@
 import { useEffect, useRef } from 'react'
 import { Graph } from '@antv/g6'
-import type { TestCaseOverviewGraphData } from '../types'
+import type { TraceabilityExtractGraphData } from '../types'
 import {
-  TEST_CASE_OVERVIEW_LEGEND_PLUGIN_OPTIONS,
-  createTestCaseOverviewG6GraphOptions,
-  updateTestCaseOverviewZoomOrigin,
-} from './g6GraphOptions'
+  TRACEABILITY_EXTRACT_LEGEND_PLUGIN_OPTIONS,
+  createTraceabilityExtractG6GraphOptions,
+  updateTraceabilityExtractZoomOrigin,
+} from './traceabilityExtractGraphOptions'
 
-interface AntvG6GraphRendererProps {
-  graphData: TestCaseOverviewGraphData
+interface TraceabilityExtractGraphRendererProps {
+  graphData: TraceabilityExtractGraphData
 }
 
-function renderGraphData(graph: Graph, graphData: TestCaseOverviewGraphData) {
+function renderGraphData(graph: Graph, graphData: TraceabilityExtractGraphData) {
   graph.setData(graphData)
   graph.render()
     .then(() => {
       if (!graph.destroyed) {
-        graph.updatePlugin(TEST_CASE_OVERVIEW_LEGEND_PLUGIN_OPTIONS)
+        graph.updatePlugin(TRACEABILITY_EXTRACT_LEGEND_PLUGIN_OPTIONS)
       }
     })
     .catch((error) => {
-      console.debug('[TestCaseOverview][G6 render error]', error)
+      console.debug('[TraceabilityExtract][G6 render error]', error)
     })
 }
 
@@ -32,7 +32,7 @@ function observeContainerResize(container: HTMLElement, onResize: () => void) {
   return resizeObserver
 }
 
-function AntvG6GraphRenderer({ graphData }: AntvG6GraphRendererProps) {
+function TraceabilityExtractGraphRenderer({ graphData }: TraceabilityExtractGraphRendererProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const graphRef = useRef<Graph | null>(null)
 
@@ -44,11 +44,11 @@ function AntvG6GraphRenderer({ graphData }: AntvG6GraphRendererProps) {
 
     const graph = new Graph({
       container,
-      ...createTestCaseOverviewG6GraphOptions(container),
+      ...createTraceabilityExtractG6GraphOptions(container),
     })
     graphRef.current = graph
 
-    const syncZoomOrigin = () => updateTestCaseOverviewZoomOrigin(graph, container)
+    const syncZoomOrigin = () => updateTraceabilityExtractZoomOrigin(graph, container)
     const resizeObserver = observeContainerResize(container, syncZoomOrigin)
     const syncZoomOriginFrame = window.requestAnimationFrame(syncZoomOrigin)
 
@@ -71,4 +71,4 @@ function AntvG6GraphRenderer({ graphData }: AntvG6GraphRendererProps) {
   return <div ref={containerRef} className="tc-overview-g6-graph" />
 }
 
-export default AntvG6GraphRenderer
+export default TraceabilityExtractGraphRenderer

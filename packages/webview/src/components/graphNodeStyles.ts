@@ -71,7 +71,7 @@ export const getRequirementRelationNodeStyle = (type?: string): GraphNodeStyle =
   return REQUIREMENT_RELATION_NODE_STYLES[type] ?? DEFAULT_REQUIREMENT_RELATION_NODE_STYLE
 }
 
-export const TEST_CASE_OVERVIEW_NODE_STYLES = {
+export const TRACEABILITY_EXTRACT_NODE_STYLES = {
   requirement: {
     type: 'circle',
     category: 0,
@@ -143,7 +143,7 @@ export const createGraphNodeStyle = (
   ...options,
 })
 
-export const TEST_CASE_OVERVIEW_CATEGORIES = Object.values(TEST_CASE_OVERVIEW_NODE_STYLES).map(style => ({
+export const TRACEABILITY_EXTRACT_CATEGORIES = Object.values(TRACEABILITY_EXTRACT_NODE_STYLES).map(style => ({
   name: style.name,
   itemStyle: {
     color: style.style.fill,

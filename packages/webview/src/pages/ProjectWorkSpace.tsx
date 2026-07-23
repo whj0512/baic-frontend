@@ -10,7 +10,7 @@ import RequirementOverview, { type SectionKey } from '../components/RequirementO
 import DimensionEditor from '../components/DimensionEditor'
 import RequirementCreator from '../components/RequirementCreator/RequirementCreator'
 import ReqRelationShip from '../components/ReqRelationShip'
-import TestCaseOverview from '../components/TestCaseOverview'
+import TraceabilityExtract from '../components/TraceabilityExtract'
 import PublishProjectDialog from '../components/PublishProjectDialog'
 import { API_ENDPOINTS, authFetch } from '../config/api'
 import { useProjectSync } from '../hooks/useProjectSync'
@@ -698,7 +698,7 @@ function ProjectWorkSpace() {
           )}
 
           {centerView === 'test-case' && project && (
-            <TestCaseOverview
+            <TraceabilityExtract
               projectId={project.id}
               onBack={restorePreviousCenterView}
             />

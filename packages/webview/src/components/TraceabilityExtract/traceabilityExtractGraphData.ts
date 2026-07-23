@@ -1,11 +1,11 @@
-import { createGraphNodeStyle, TEST_CASE_OVERVIEW_NODE_STYLES } from '../graphNodeStyles'
+import { createGraphNodeStyle, TRACEABILITY_EXTRACT_NODE_STYLES } from '../graphNodeStyles'
 import type {
-  TestCaseOverviewGraphData,
-  TestCaseOverviewNodeKind,
+  TraceabilityExtractGraphData,
+  TraceabilityExtractNodeKind,
   TraceabilityGraphResponse,
 } from './types'
 
-const COLUMN_X: Record<TestCaseOverviewNodeKind, number> = {
+const COLUMN_X: Record<TraceabilityExtractNodeKind, number> = {
   requirement: 300,
   scenario: 800,
   testCase: 1300,
@@ -13,15 +13,15 @@ const COLUMN_X: Record<TestCaseOverviewNodeKind, number> = {
 
 const Y_SPACING = 100
 
-export function buildTestCaseOverviewGraphData(
+export function buildTraceabilityExtractGraphData(
   graphData: TraceabilityGraphResponse['g6'],
-): TestCaseOverviewGraphData {
+): TraceabilityExtractGraphData {
   const positions = buildColumnPositions(graphData.nodes)
 
   return {
     nodes: graphData.nodes.map(node => {
       const kind = node.data.kind
-      const style = TEST_CASE_OVERVIEW_NODE_STYLES[kind]
+      const style = TRACEABILITY_EXTRACT_NODE_STYLES[kind]
       const position = positions.get(node.id)
 
       return {
@@ -46,13 +46,14 @@ export function buildTestCaseOverviewGraphData(
         stroke: '#8c8c8c',
         lineWidth: 1.5,
         endArrow: false,
+        labelText: edge.data.relation,
       },
     })),
   }
 }
 
 function buildColumnPositions(nodes: TraceabilityGraphResponse['g6']['nodes']) {
-  const nodesByKind: Record<TestCaseOverviewNodeKind, typeof nodes> = {
+  const nodesByKind: Record<TraceabilityExtractNodeKind, typeof nodes> = {
     requirement: [],
     scenario: [],
     testCase: [],
@@ -65,7 +66,7 @@ function buildColumnPositions(nodes: TraceabilityGraphResponse['g6']['nodes']) {
   const positions = new Map<string, { x: number; y: number }>()
 
   Object.entries(nodesByKind).forEach(([kind, columnNodes]) => {
-    const nodeKind = kind as TestCaseOverviewNodeKind
+    const nodeKind = kind as TraceabilityExtractNodeKind
     const startY = -(columnNodes.length * Y_SPACING) / 2
 
     columnNodes.forEach((node, index) => {

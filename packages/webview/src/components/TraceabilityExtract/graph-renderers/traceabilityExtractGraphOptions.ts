@@ -1,8 +1,8 @@
 import type { ElementDatum, Graph, GraphOptions, IElementEvent } from '@antv/g6'
 
-export const TEST_CASE_OVERVIEW_LEGEND_PLUGIN_OPTIONS = {
+export const TRACEABILITY_EXTRACT_LEGEND_PLUGIN_OPTIONS = {
   type: 'legend',
-  key: 'test-case-overview-legend',
+  key: 'traceability-extract-legend',
   nodeField: 'categoryName',
   layout: 'grid',
   gridRow: 1,
@@ -12,9 +12,9 @@ export const TEST_CASE_OVERVIEW_LEGEND_PLUGIN_OPTIONS = {
   colPadding: 16,
 }
 
-const TEST_CASE_OVERVIEW_ZOOM_CANVAS_KEY = 'test-case-overview-zoom-canvas'
+const TRACEABILITY_EXTRACT_ZOOM_CANVAS_KEY = 'traceability-extract-zoom-canvas'
 
-const TEST_CASE_OVERVIEW_GRAPH_OPTIONS: Omit<GraphOptions, 'container' | 'data' | 'behaviors'> = {
+const TRACEABILITY_EXTRACT_GRAPH_OPTIONS: Omit<GraphOptions, 'container' | 'data' | 'behaviors'> = {
   autoResize: true,
   autoFit: 'center',
   padding: 56,
@@ -22,18 +22,18 @@ const TEST_CASE_OVERVIEW_GRAPH_OPTIONS: Omit<GraphOptions, 'container' | 'data' 
   animation: true,
   plugins: [
     {
-      ...TEST_CASE_OVERVIEW_LEGEND_PLUGIN_OPTIONS,
+      ...TRACEABILITY_EXTRACT_LEGEND_PLUGIN_OPTIONS,
     },
     {
       type: 'tooltip',
-      key: 'test-case-overview-tooltip',
+      key: 'traceability-extract-tooltip',
       trigger: 'hover',
       getContent: async (_event: IElementEvent, items: ElementDatum[]) => getTooltipHtml(items[0]),
       onOpenChange: () => undefined,
     },
     {
       type: 'grid-line',
-      key: 'my-grid-line', // 指定唯一标识符，便于后续动态更新
+      key: 'traceability-extract-grid-line',
       size: 20,
       stroke: '#0001',
       follow: true,
@@ -41,20 +41,20 @@ const TEST_CASE_OVERVIEW_GRAPH_OPTIONS: Omit<GraphOptions, 'container' | 'data' 
   ],
 }
 
-export function createTestCaseOverviewG6GraphOptions(
+export function createTraceabilityExtractG6GraphOptions(
   container: HTMLElement,
 ): Omit<GraphOptions, 'container' | 'data'> {
   return {
-    ...TEST_CASE_OVERVIEW_GRAPH_OPTIONS,
+    ...TRACEABILITY_EXTRACT_GRAPH_OPTIONS,
     behaviors: createG6Behaviors(container),
   }
 }
 
-export function updateTestCaseOverviewZoomOrigin(graph: Graph, container: HTMLElement) {
+export function updateTraceabilityExtractZoomOrigin(graph: Graph, container: HTMLElement) {
   if (graph.destroyed) return
 
   graph.updateBehavior({
-    key: TEST_CASE_OVERVIEW_ZOOM_CANVAS_KEY,
+    key: TRACEABILITY_EXTRACT_ZOOM_CANVAS_KEY,
     origin: getContainerCenter(container),
   })
 }
@@ -64,7 +64,7 @@ function createG6Behaviors(container: HTMLElement): GraphOptions['behaviors'] {
     { type: 'drag-canvas' },
     {
       type: 'zoom-canvas',
-      key: TEST_CASE_OVERVIEW_ZOOM_CANVAS_KEY,
+      key: TRACEABILITY_EXTRACT_ZOOM_CANVAS_KEY,
       origin: getContainerCenter(container),
     },
     { type: 'drag-element' },
