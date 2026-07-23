@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Badge, Button, Empty, Result, Spin } from 'antd'
-import { ArrowLeftOutlined, ExperimentOutlined, EyeOutlined } from '@ant-design/icons'
-import FlowGraph from '../graph'
+import { ArrowLeftOutlined, ExperimentOutlined } from '@ant-design/icons'
 import TraceabilityExtractGraphRenderer from './graph-renderers/TraceabilityExtractGraphRenderer'
 import { fetchTraceabilityGraph } from './traceabilityExtractApi'
 import { buildTraceabilityExtractGraphData } from './traceabilityExtractGraphData'
@@ -14,7 +13,6 @@ interface TraceabilityExtractProps {
 }
 
 const TraceabilityExtract: React.FC<TraceabilityExtractProps> = ({ projectId, onBack }) => {
-  const [showTestCaseGraph, setShowTestCaseGraph] = useState(false)
   const [response, setResponse] = useState<TraceabilityGraphResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
@@ -50,16 +48,16 @@ const TraceabilityExtract: React.FC<TraceabilityExtractProps> = ({ projectId, on
   return (
     <div className="tc-container">
       <div className="tc-header">
-        {onBack && (
+        {onBack ? (
           <Button
             type="text"
             icon={<ArrowLeftOutlined />}
             onClick={onBack}
             className="tc-back-btn"
           >
-            返回
+            返回测试用例
           </Button>
-        )}
+        ) : null}
         <ExperimentOutlined className="tc-header-icon" />
         <h2 className="tc-title">需求-场景-用例关系总览</h2>
         <Badge
@@ -71,47 +69,29 @@ const TraceabilityExtract: React.FC<TraceabilityExtractProps> = ({ projectId, on
         />
       </div>
 
-      {!showTestCaseGraph && (
-        <div className="tc-overview-graph-wrap">
-          {loading ? (
-            <div className="tc-overview-state">
-              <Spin size="large" tip="正在提取追溯关系..." />
-            </div>
-          ) : errorMessage ? (
-            <div className="tc-overview-state">
-              <Result
-                status="error"
-                title="测试用例关系加载失败"
-                subTitle={errorMessage}
-                extra={(
-                  <Button type="primary" onClick={() => setRequestVersion(version => version + 1)}>
-                    重试
-                  </Button>
-                )}
-              />
-            </div>
-          ) : hasGraphData ? (
-            <TraceabilityExtractGraphRenderer graphData={g6GraphData} />
-          ) : (
-            <div className="tc-overview-state">
-              <Empty description="当前项目暂无可展示的追溯关系" />
-            </div>
-          )}
-        </div>
-      )}
-      <div className={`tc-testcase-viewer${showTestCaseGraph ? ' tc-testcase-viewer-open' : ''}`}>
-        <div className="tc-testcase-viewer-toolbar">
-          <Button
-            type={showTestCaseGraph ? 'default' : 'primary'}
-            icon={<EyeOutlined />}
-            onClick={() => setShowTestCaseGraph(prev => !prev)}
-          >
-            {showTestCaseGraph ? '返回关系图' : '查看测试用例'}
-          </Button>
-        </div>
-        {showTestCaseGraph && (
-          <div className="tc-testcase-graph-wrap">
-            <FlowGraph sectionKey="testcaseView" />
+      <div className="tc-overview-graph-wrap">
+        {loading ? (
+          <div className="tc-overview-state">
+            <Spin size="large" tip="正在提取追溯关系..." />
+          </div>
+        ) : errorMessage ? (
+          <div className="tc-overview-state">
+            <Result
+              status="error"
+              title="测试用例关系加载失败"
+              subTitle={errorMessage}
+              extra={(
+                <Button type="primary" onClick={() => setRequestVersion(version => version + 1)}>
+                  重试
+                </Button>
+              )}
+            />
+          </div>
+        ) : hasGraphData ? (
+          <TraceabilityExtractGraphRenderer graphData={g6GraphData} />
+        ) : (
+          <div className="tc-overview-state">
+            <Empty description="当前项目暂无可展示的追溯关系" />
           </div>
         )}
       </div>

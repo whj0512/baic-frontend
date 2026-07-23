@@ -48,13 +48,19 @@ function TraceabilityExtractGraphRenderer({ graphData }: TraceabilityExtractGrap
     })
     graphRef.current = graph
 
-    const syncZoomOrigin = () => updateTraceabilityExtractZoomOrigin(graph, container)
-    const resizeObserver = observeContainerResize(container, syncZoomOrigin)
-    const syncZoomOriginFrame = window.requestAnimationFrame(syncZoomOrigin)
+    const syncGraphSize = () => {
+      const { width, height } = container.getBoundingClientRect()
+      if (width <= 0 || height <= 0 || graph.destroyed) return
+
+      graph.resize(width, height)
+      updateTraceabilityExtractZoomOrigin(graph, container)
+    }
+    const resizeObserver = observeContainerResize(container, syncGraphSize)
+    const syncGraphSizeFrame = window.requestAnimationFrame(syncGraphSize)
 
     return () => {
       resizeObserver?.disconnect()
-      window.cancelAnimationFrame(syncZoomOriginFrame)
+      window.cancelAnimationFrame(syncGraphSizeFrame)
       graph.destroy()
       graphRef.current = null
       container.replaceChildren()

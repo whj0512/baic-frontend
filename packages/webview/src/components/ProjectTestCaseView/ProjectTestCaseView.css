@@ -1,0 +1,218 @@
+.project-test-case-view,
+.project-test-case-subview {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.project-test-case-view {
+  background: #f5f5f5;
+}
+
+.project-test-case-subview {
+  display: flex;
+  flex-direction: column;
+}
+
+.project-test-case-subview[hidden] {
+  display: none;
+}
+
+.project-test-case-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.project-test-case-header h2,
+.project-test-case-panel h3 {
+  margin: 0;
+  color: #1f2937;
+}
+
+.project-test-case-header h2 {
+  font-size: 18px;
+}
+
+.project-test-case-header p {
+  margin: 4px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.project-test-case-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 16px;
+  padding: 16px 24px 24px;
+  overflow: hidden;
+}
+
+.project-test-case-panel {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.project-test-case-panel h3 {
+  flex: 0 0 auto;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+  font-size: 14px;
+}
+
+.project-test-case-list-content,
+.project-test-case-json-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.project-test-case-list {
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+}
+
+.project-test-case-list li + li {
+  margin-top: 8px;
+}
+
+.project-test-case-item {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #6b7280;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+}
+
+.project-test-case-item:hover {
+  border-color: #60a5fa;
+  background: #f8fbff;
+}
+
+.project-test-case-item:focus-visible {
+  outline: 2px solid #1677ff;
+  outline-offset: 2px;
+}
+
+.project-test-case-item-selected {
+  border-color: #1677ff;
+  background: #e6f4ff;
+  box-shadow: 0 0 0 1px rgba(22, 119, 255, 0.08);
+}
+
+.project-test-case-item strong {
+  width: 100%;
+  overflow: hidden;
+  color: #1f2937;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-test-case-item span {
+  font-size: 12px;
+}
+
+.project-test-case-state {
+  width: 100%;
+  height: 100%;
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.project-test-case-json {
+  width: max-content;
+  min-width: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 16px;
+  background: #111827;
+  color: #e5e7eb;
+  font-family: Consolas, Monaco, 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+@media (max-width: 900px) {
+  .project-test-case-header {
+    padding: 12px 16px;
+  }
+
+  .project-test-case-content {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(220px, 0.8fr) minmax(260px, 1.2fr);
+    padding: 12px 16px 16px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .project-test-case-view {
+    background: #111827;
+  }
+
+  .project-test-case-header,
+  .project-test-case-panel,
+  .project-test-case-item {
+    background: #1f2937;
+  }
+
+  .project-test-case-header,
+  .project-test-case-panel,
+  .project-test-case-panel h3,
+  .project-test-case-item {
+    border-color: #374151;
+  }
+
+  .project-test-case-panel h3 {
+    background: #111827;
+  }
+
+  .project-test-case-header h2,
+  .project-test-case-panel h3,
+  .project-test-case-item strong {
+    color: #f3f4f6;
+  }
+
+  .project-test-case-header p,
+  .project-test-case-item {
+    color: #9ca3af;
+  }
+
+  .project-test-case-item:hover,
+  .project-test-case-item-selected {
+    border-color: #60a5fa;
+    background: #1e3a5f;
+  }
+}

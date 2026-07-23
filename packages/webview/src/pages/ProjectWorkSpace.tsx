@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Button, message, Spin, Badge, Modal, Collapse } from 'antd'
+import { Button, message, Spin, Badge, Modal, Collapse, Segmented } from 'antd'
 import type { CollapseProps } from 'antd'
-import { ShareAltOutlined, ArrowLeftOutlined, CloudUploadOutlined, ExperimentOutlined } from '@ant-design/icons'
+import { ShareAltOutlined, ArrowLeftOutlined, CloudUploadOutlined } from '@ant-design/icons'
 import './ProjectWorkSpace.css'
 import type { Requirement } from '../models/Requirement'
 import type { RequirementVersion } from '../models/RequirementVersion'
@@ -10,7 +10,7 @@ import RequirementOverview, { type SectionKey } from '../components/RequirementO
 import DimensionEditor from '../components/DimensionEditor'
 import RequirementCreator from '../components/RequirementCreator/RequirementCreator'
 import ReqRelationShip from '../components/ReqRelationShip'
-import TraceabilityExtract from '../components/TraceabilityExtract'
+import ProjectTestCaseView from '../components/ProjectTestCaseView/ProjectTestCaseView'
 import PublishProjectDialog from '../components/PublishProjectDialog'
 import { API_ENDPOINTS, authFetch } from '../config/api'
 import { useProjectSync } from '../hooks/useProjectSync'
@@ -24,8 +24,10 @@ import {
 } from '../utils/editorDraftStorage'
 import type { Project } from '../models/Project'
 
+type WorkspaceView = 'requirements' | 'testCases'
+
 // 中间区域视图类型
-type CenterView = 'overview' | 'editor' | 'create' | 'create-editor' | 'relationship' | 'test-case'
+type CenterView = 'overview' | 'editor' | 'create' | 'create-editor' | 'relationship'
 type CreateCenterView = Extract<CenterView, 'create' | 'create-editor'>
 
 const createEmptyRequirementFormData = (): CreateRequirementFormData => ({
@@ -98,7 +100,7 @@ function ProjectWorkSpace() {
   // 当前选中的需求
   const [selectedRequirement, setSelectedRequirement] = useState<string | null>(null)
 
-  // 进入 relationship / test-case 视图前保存上一个视图状态，以便返回
+  // 进入 relationship 视图前保存上一个视图状态，以便返回
   const prevViewStateRef = useRef<{ view: CenterView; reqId: string | null; section: SectionKey | null }>({
     view: 'overview', reqId: null, section: null
   })
@@ -117,6 +119,10 @@ function ProjectWorkSpace() {
       clearDimensionEditorDraft(draftProjectScope, draftUserId, 'NEW', sectionKey)
     })
   }
+
+  // 项目工作区一级视图状态
+  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>('requirements')
+  const [hasOpenedTestCases, setHasOpenedTestCases] = useState(false)
 
   // 中间区域视图状态
   const [centerView, setCenterView] = useState<CenterView>('overview')
@@ -137,6 +143,19 @@ function ProjectWorkSpace() {
     setEditingSection(prev.section)
     setCenterView(prev.view)
   }
+
+  const handleWorkspaceViewChange = (nextView: WorkspaceView) => {
+    if (nextView === 'testCases') {
+      setHasOpenedTestCases(true)
+    }
+    setWorkspaceView(nextView)
+  }
+
+  useEffect(() => {
+    setWorkspaceView('requirements')
+    setHasOpenedTestCases(false)
+    setProject(null)
+  }, [projectKey])
 
   // 初始化：获取项目元信息（仅 project，需求列表由 WebSocket 提供）
   useEffect(() => {
@@ -545,29 +564,36 @@ function ProjectWorkSpace() {
               className="subtype-collapse"
             />
           )}
-          <Button
-            type='default'
-            icon={<ExperimentOutlined />}
-            block
-            onClick={() => {
-              prevViewStateRef.current = {
-                view: centerView,
-                reqId: selectedRequirement,
-                section: editingSection
-              }
-              setSelectedRequirement(null)
-              setCenterView('test-case')
-            }}
-          >
-            测试用例
-          </Button>
         </div>
       )
     }
   })
 
   return (
-    <div className="workspace-container">
+    <div className="project-workspace-page">
+      <div className="workspace-view-switcher">
+        <Segmented
+          value={workspaceView}
+          options={[
+            { label: '需求', value: 'requirements' },
+            {
+              label: '测试用例',
+              value: 'testCases',
+              disabled: loading || !project,
+            },
+          ]}
+          onChange={value => handleWorkspaceViewChange(value as WorkspaceView)}
+          aria-label="项目工作区视图"
+        />
+      </div>
+
+      <div className="workspace-view-body">
+        <section
+          className="workspace-pane workspace-requirements-pane"
+          hidden={workspaceView !== 'requirements'}
+          aria-hidden={workspaceView !== 'requirements'}
+        >
+          <div className="workspace-container" data-workspace-view={workspaceView}>
       {/* ... Left Panel ... */}
       <div
         className={`workspace-left${isLeftCollapsed ? ' workspace-left-collapsed' : ''}`}
@@ -697,17 +723,11 @@ function ProjectWorkSpace() {
             />
           )}
 
-          {centerView === 'test-case' && project && (
-            <TraceabilityExtract
-              projectId={project.id}
-              onBack={restorePreviousCenterView}
-            />
-          )}
         </div>
       </div>
 
       {/* Right Panel */}
-      {!['create', 'create-editor', 'relationship', 'test-case'].includes(centerView) && (
+      {!['create', 'create-editor', 'relationship'].includes(centerView) && (
         <div className={`workspace-right${rightCollapsed ? ' workspace-right-collapsed' : ''}`}>
           {/* 折叠/展开触发区 */}
           <div className="right-collapse-bar" onClick={() => setRightCollapsed(prev => !prev)} title={rightCollapsed ? '展开面板' : '收起面板'}>
@@ -750,6 +770,23 @@ function ProjectWorkSpace() {
           )}
         </div>
       )}
+          </div>
+        </section>
+
+        {hasOpenedTestCases && project ? (
+          <section
+            className="workspace-pane workspace-test-cases-pane"
+            hidden={workspaceView !== 'testCases'}
+            aria-hidden={workspaceView !== 'testCases'}
+          >
+            <ProjectTestCaseView
+              projectId={project.id}
+              active={workspaceView === 'testCases'}
+            />
+          </section>
+        ) : null}
+      </div>
+
       <PublishProjectDialog
         open={showPublishDialog}
         project={project}

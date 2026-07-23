@@ -1,8 +1,44 @@
 /* ProjectWorkSpace 整体布局 */
+.project-workspace-page {
+  height: calc(100vh - 60px);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #f3f4f6;
+}
+
+.workspace-view-switcher {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid #d1d5db;
+  background: #ffffff;
+}
+
+.workspace-view-body {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.workspace-pane {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.workspace-pane[hidden] {
+  display: none;
+}
+
 .workspace-container {
   display: flex;
   align-items: flex-start;
-  height: calc(100vh - 60px);
+  height: 100%;
   gap: 1px;
   scrollbar-color: #d1d5db #f3f4f6;
   background-color: #e5e7eb;
@@ -14,7 +50,7 @@
   flex: 0 0 280px;
   min-width: 200px;
   max-width: 400px;
-  height: calc(100vh - 60px);
+  height: 100%;
   background-color: #ffffff;
   display: flex;
   flex-direction: column;
@@ -42,7 +78,7 @@
 /* 中间：多维编辑器 */
 .workspace-center {
   flex: 1;
-  height: calc(100vh - 60px);
+  height: 100%;
   background-color: #ffffff;
   display: flex;
   flex-direction: column;
@@ -77,7 +113,7 @@
   width: 280px;
   min-width: 200px;
   max-width: 400px;
-  height: calc(100vh - 60px);
+  height: 100%;
   background-color: #ffffff;
   display: flex;
   flex-direction: row;
@@ -681,9 +717,14 @@
 }
 
 @media (max-width: 900px) {
+  .workspace-requirements-pane {
+    overflow-y: auto;
+  }
+
   .workspace-container {
     flex-direction: column;
     height: auto;
+    min-height: 100%;
   }
 
   .workspace-left,
@@ -707,6 +748,15 @@
 
 /* 暗色模式 */
 @media (prefers-color-scheme: dark) {
+  .project-workspace-page,
+  .workspace-view-switcher {
+    background-color: #111827;
+  }
+
+  .workspace-view-switcher {
+    border-bottom-color: #374151;
+  }
+
   .workspace-container {
     background-color: #111827;
   }
