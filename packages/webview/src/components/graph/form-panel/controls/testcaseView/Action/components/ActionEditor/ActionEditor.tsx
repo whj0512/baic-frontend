@@ -5,7 +5,9 @@ import {
   type ChangeEvent,
   type FC,
   type KeyboardEvent,
+  useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -20,7 +22,6 @@ import {
   getListOfName,
   getSignalGuide,
   getSymbols,
-  isModifySignalValue,
   isNameMatchOption,
   isSwitchComponent,
   replaceChSymbolWithEnSymbol,
@@ -44,63 +45,101 @@ const ActionEditor: FC<ActionEditorProps> = ({
   onFinish,
 }) => {
   const actionType = controlSchema.name
-  const symbolOptions = getSymbols(actionType).map((symbol) => ({
-    label: symbol,
-    value: symbol,
-  }))
+  const symbolOptions = useMemo(() => (
+    getSymbols(actionType).map((symbol) => ({
+      label: symbol,
+      value: symbol,
+    }))
+  ), [actionType])
+  const summaryList = useMemo(() => {
+    const nextSummaryList = getListOfName(actionType, getDatabaseDataForCase())
+    sortSummaryListByUsageFrequency(ACTION_SIGNAL_NAME, nextSummaryList)
+    return nextSummaryList
+  }, [actionType])
+  const matchedOption = useMemo(() => {
+    const matcher = isNameMatchOption(summaryList, defaultValue.name)
+    return matcher ? matcher() : null
+  }, [defaultValue.name, summaryList])
 
   const containerRef = useRef<HTMLDivElement>(null)
   const isUserTrigger = useRef(false)
-  const [inputedName, setInputedName] = useState(defaultValue.name)
+  const [inputedName, setInputedName] = useState(
+    matchedOption
+      ? defaultValue.name.trim()
+      : (defaultValue.express || formatAction(defaultValue)).trim(),
+  )
   const [inputedValue, setInputedValue] = useState(defaultValue.value)
   const [selectedSymbol, setSelectedSymbol] = useState(defaultValue.symbol)
-  const [nameOptions, setNameOptions] = useState<DefaultOptionType[]>([])
-  const [valueOptions, setValueOptions] = useState<DefaultOptionType[]>([])
-  const [summaryList, setSummaryList] = useState<Candidate[]>([])
+  const [nameFilter, setNameFilter] = useState('')
   const [illegalChSymbols, setIllegalChSymbols] = useState<string[]>([])
-  const [selectedNameOption, setSelectedNameOption] = useState<Candidate | null>(null)
+  const [selectedNameOption, setSelectedNameOption] = useState<Candidate | null>(
+    matchedOption?.selectedNameOption ?? null,
+  )
   const { type = '', doc = '' } = selectedNameOption ?? {}
+  const nameOptions = useMemo(() => (
+    convertListToOptions(summaryList).filter((item) => `${item.label}`.includes(nameFilter))
+  ), [nameFilter, summaryList])
+  const valueOptions = useMemo<DefaultOptionType[]>(() => {
+    if (selectedNameOption?.type !== 'type') return []
+    return getSignalGuide(selectedNameOption)
+  }, [selectedNameOption])
 
-  useEffect(() => {
-    const env = getDatabaseDataForCase()
-    const nextSummaryList = getListOfName(actionType, env)
-    sortSummaryListByUsageFrequency(ACTION_SIGNAL_NAME, nextSummaryList)
-    setSummaryList(nextSummaryList)
-    setNameOptions(convertListToOptions(nextSummaryList))
-
-    const matchedOption = isNameMatchOption(nextSummaryList, inputedName)
-    if (matchedOption) {
-      const matched = matchedOption()
-      setSelectedNameOption(matched.selectedNameOption)
-      setValueOptions(matched.valueOptions)
-      setSelectedSymbol(defaultValue.symbol)
-      setInputedValue(defaultValue.value)
-      setInputedName(defaultValue.name.trim())
-      return
+  const applySelectedName = useCallback((selected: Candidate) => {
+    if (selected.type === 'type') {
+      setInputedValue('')
     }
 
-    setSelectedSymbol('')
-    setInputedValue('')
-    setInputedName(formatAction(defaultValue).trim())
-  }, [])
+    if (selected.type === 'logic') {
+      setInputedValue(getFunctionGuide(selected))
+    }
+
+    const switchComponent = isSwitchComponent(selectedNameOption, selected.type)
+    if (switchComponent) {
+      setSelectedSymbol(switchComponent())
+    }
+
+    setInputedName(selected.name)
+    setSelectedNameOption(selected)
+    isUserTrigger.current = true
+  }, [selectedNameOption])
 
   useEffect(() => {
     if (!isUserTrigger.current) return
 
     isUserTrigger.current = false
+    const isStandardAction = Boolean(selectedNameOption)
+    const express = isStandardAction
+      ? formatAction({
+          name: inputedName,
+          symbol: selectedSymbol,
+          value: inputedValue,
+          isStandard: true,
+        })
+      : inputedName.trim()
+
     onUpdate({
       ...defaultValue,
-      name: inputedName,
-      symbol: selectedSymbol,
-      value: inputedValue,
-      isStandard: true,
-      express: undefined,
+      name: isStandardAction ? inputedName : '',
+      symbol: isStandardAction ? selectedSymbol : '',
+      value: isStandardAction ? inputedValue : '',
+      isStandard: isStandardAction,
+      express,
     })
-  }, [defaultValue, inputedName, inputedValue, onUpdate, selectedSymbol])
+  }, [defaultValue, inputedName, inputedValue, onUpdate, selectedNameOption, selectedSymbol])
 
   useEffect(() => {
     cacheKeyWithUsageFrequency(ACTION_SIGNAL_NAME, inputedName)
   }, [inputedName])
+
+  const fixIllegalString = useCallback(() => {
+    const nextValue = replaceChSymbolWithEnSymbol(inputedValue, illegalChSymbols)
+    const nextName = replaceChSymbolWithEnSymbol(inputedName, illegalChSymbols)
+
+    if (nextValue !== inputedValue) setInputedValue(nextValue)
+    if (nextName !== inputedName) setInputedName(nextName)
+    setIllegalChSymbols([])
+    isUserTrigger.current = true
+  }, [illegalChSymbols, inputedName, inputedValue])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -116,15 +155,22 @@ const ActionEditor: FC<ActionEditorProps> = ({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [illegalChSymbols, inputedName, inputedValue, onFinish])
+  }, [fixIllegalString, onFinish])
 
   const onFilterByName = (text: string) => {
-    const nextSummaryList = [...summaryList]
-    sortSummaryListByUsageFrequency(ACTION_SIGNAL_NAME, nextSummaryList)
-    setNameOptions(convertListToOptions(nextSummaryList).filter((item) => `${item.label}`.includes(text)))
+    setNameFilter(text)
     setIllegalChSymbols(getChCharOfStr(text))
-    setInputedValue('')
+
+    const matcher = isNameMatchOption(summaryList, text)
+    if (matcher) {
+      applySelectedName(matcher().selectedNameOption)
+      return
+    }
+
     setInputedName(text)
+    setInputedValue('')
+    setSelectedSymbol('')
+    setSelectedNameOption(null)
     isUserTrigger.current = true
   }
 
@@ -138,32 +184,14 @@ const ActionEditor: FC<ActionEditorProps> = ({
     const selected = summaryList.find((item) => item.name === text)
 
     if (selected) {
-      if (selected.type === 'type') {
-        setValueOptions(getSignalGuide(selected))
-        setInputedValue('')
-      }
-
-      if (selected.type === 'logic') {
-        setInputedValue(getFunctionGuide(selected))
-      }
-
-      const switchComponent = isSwitchComponent(selectedNameOption, selected.type)
-      if (switchComponent) {
-        setSelectedSymbol(switchComponent())
-      }
-
-      setInputedName(selected.name)
-      setSelectedNameOption(selected)
-      isUserTrigger.current = true
+      applySelectedName(selected)
       return
     }
 
     setInputedName(text)
-    if (!isModifySignalValue(selectedNameOption, selectedSymbol, inputedValue)) {
-      setInputedValue('')
-      setSelectedSymbol('')
-      setSelectedNameOption(null)
-    }
+    setInputedValue('')
+    setSelectedSymbol('')
+    setSelectedNameOption(null)
     isUserTrigger.current = true
   }
 
@@ -176,16 +204,6 @@ const ActionEditor: FC<ActionEditorProps> = ({
     const nextValue = event.target.value
     setIllegalChSymbols(getChCharOfStr(nextValue))
     setInputedValue(nextValue)
-    isUserTrigger.current = true
-  }
-
-  const fixIllegalString = () => {
-    const nextValue = replaceChSymbolWithEnSymbol(inputedValue, illegalChSymbols)
-    const nextName = replaceChSymbolWithEnSymbol(inputedName, illegalChSymbols)
-
-    if (nextValue !== inputedValue) setInputedValue(nextValue)
-    if (nextName !== inputedName) setInputedName(nextName)
-    setIllegalChSymbols([])
     isUserTrigger.current = true
   }
 

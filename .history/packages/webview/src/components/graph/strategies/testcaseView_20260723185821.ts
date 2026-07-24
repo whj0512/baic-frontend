@@ -6,8 +6,9 @@ import Loop from '../../nodes/testcaseView/Loop'
 import Traverse from '../../nodes/testcaseView/Traverse'
 import Branch from '../../nodes/testcaseView/Branch'
 import SubBranch from '../../nodes/testcaseView/SubBranch'
-import Action from '../../form-panel/controls/testcaseView/Action'
-import Observe from '../../form-panel/controls/testcaseView/Observe'
+import Start from '../../nodes/internalConstraints/Start'
+import Action from '../form-panel/controls/testcaseView/Action'
+import Observe from '../form-panel/controls/testcaseView/Observe'
 
 const formConfig: FormConfig = {
     nodes: {
@@ -322,7 +323,20 @@ const testcaseViewStrategy: GraphStrategy = {
                 stroke: '#333',
                 fill: '#fff'
             }
-        }
+        },
+        {
+            type: 'start',
+            label: 'start',
+            shape: 'start-node',
+            color: '#e6f7ff',
+            tooltip: '表示流程的起点',
+            defaultAttrs: {
+                data: {
+                    stroke: '#333',
+                    fill: '#686666',
+                }
+            },
+        },
     ],
     registerNodes: () => {
         register({
@@ -348,6 +362,12 @@ const testcaseViewStrategy: GraphStrategy = {
         register({
             shape: 'sub-branch-node',
             component: SubBranch
+        })
+        register({
+            shape: 'start-node',
+            width: 30,
+            height: 30,
+            component: Start
         })
     },
     formConfig: formConfig,

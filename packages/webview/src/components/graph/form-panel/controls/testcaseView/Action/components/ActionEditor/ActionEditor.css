@@ -1,29 +1,57 @@
 .testcase-action-editor {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  width: 100%;
+  min-width: 0;
 }
 
-.testcase-action-editor .ant-select,
-.testcase-action-editor .ant-select-selector {
-  min-width: 60px;
+.testcase-action-editor > .ant-select,
+.testcase-action-editor > .ant-input,
+.testcase-action-editor > .ant-input-affix-wrapper {
+  min-width: 0;
+}
+
+.testcase-action-editor > .ant-select-auto-complete {
+  flex: 1 1 140px;
+}
+
+.testcase-action-editor > .ant-select:not(.ant-select-auto-complete) {
+  flex: 0 0 76px;
+  width: 76px;
+  min-width: 76px;
 }
 
 .testcase-action-editor__func-args {
-  min-width: 120px;
+  flex: 1 1 140px;
+  min-width: 0;
 }
 
 .testcase-action-editor__help {
+  flex: 0 0 auto;
   color: #8c8c8c;
+  cursor: help;
 }
 
 .testcase-action-editor__warn-tips {
   margin-top: 4px;
-  font-size: 10px;
+  color: #fa8c16;
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
 }
 
 .testcase-action-editor__fixup {
-  margin-left: 6px;
-  cursor: pointer;
-  text-decoration: underline;
+  margin-left: 8px;
+  color: #1677ff;
+}
+
+@media (max-width: 520px) {
+  .testcase-action-editor > .ant-select,
+  .testcase-action-editor > .ant-input,
+  .testcase-action-editor > .ant-input-affix-wrapper {
+    flex-basis: 100%;
+    width: 100%;
+  }
 }

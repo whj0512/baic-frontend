@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button, Empty, Result, Spin } from 'antd'
 import { ApartmentOutlined } from '@ant-design/icons'
 import TraceabilityExtract from '../TraceabilityExtract/TraceabilityExtract'
+import FlowGraph from '../graph'
+import { getModelStrategy } from '../../models/strategies'
 import { fetchProjectTestCases } from './projectTestCasesApi'
 import type { JsonValue, ProjectTestCase } from './types'
 import './ProjectTestCaseView.css'
@@ -12,6 +14,8 @@ interface ProjectTestCaseViewProps {
 }
 
 type TestCaseViewMode = 'cases' | 'traceability'
+
+const testcaseViewModelStrategy = getModelStrategy('testcaseView')
 
 function getNodeCount(testCase: ProjectTestCase): number | null {
   const testContent = testCase.test_content
@@ -49,16 +53,45 @@ function ProjectTestCaseView({ projectId, active }: ProjectTestCaseViewProps) {
     [selectedTestCaseId, testCases],
   )
 
-  const formattedJson = useMemo(() => {
-    if (!selectedTestCase) return { value: '', error: false }
+  const selectedTestCaseGraph = useMemo(() => {
+    if (!selectedTestCase) {
+      return { data: null, empty: false, errorMessage: '' }
+    }
+
+    if (!isJsonObject(selectedTestCase.test_content)) {
+      return {
+        data: null,
+        empty: false,
+        errorMessage: '当前测试用例缺少有效的 test_content 对象',
+      }
+    }
 
     try {
-      const value = JSON.stringify(selectedTestCase, null, 2)
-      return typeof value === 'string'
-        ? { value, error: false }
-        : { value: '', error: true }
-    } catch {
-      return { value: '', error: true }
+      const data = testcaseViewModelStrategy.importGraphFromJSON(
+        JSON.stringify(selectedTestCase.test_content),
+      )
+      const cells = (
+        typeof data === 'object'
+        && data !== null
+        && 'cells' in data
+        && Array.isArray(data.cells)
+      ) ? data.cells : null
+
+      if (!cells) {
+        throw new Error('测试用例转换结果不是有效的 X6 图数据')
+      }
+
+      return {
+        data,
+        empty: cells.length === 0,
+        errorMessage: '',
+      }
+    } catch (error) {
+      return {
+        data: null,
+        empty: false,
+        errorMessage: error instanceof Error ? error.message : '测试用例图数据转换失败',
+      }
     }
   }, [selectedTestCase])
 
@@ -116,7 +149,7 @@ function ProjectTestCaseView({ projectId, active }: ProjectTestCaseViewProps) {
         <header className="project-test-case-header">
           <div>
             <h2>项目测试用例</h2>
-            <p>查看当前项目测试用例及所选记录的完整原始 JSON</p>
+            <p>查看当前项目测试用例，并在流程图中临时查看或编辑所选用例</p>
           </div>
           <Button
             type="primary"
@@ -181,25 +214,32 @@ function ProjectTestCaseView({ projectId, active }: ProjectTestCaseViewProps) {
             </div>
           </section>
 
-          <section className="project-test-case-panel project-test-case-json-panel">
-            <h3>所选用例完整原始 JSON</h3>
-            <div className="project-test-case-json-content">
+          <section className="project-test-case-panel project-test-case-graph-panel">
+            <h3>所选用例流程图</h3>
+            <div className="project-test-case-graph-content">
               {!selectedTestCase ? (
                 <div className="project-test-case-state">
                   <Empty description="请选择一个测试用例" />
                 </div>
-              ) : formattedJson.error ? (
+              ) : selectedTestCaseGraph.errorMessage ? (
                 <div className="project-test-case-state">
                   <Result
                     status="error"
-                    title="当前测试用例数据无法格式化"
+                    title="测试用例图数据转换失败"
+                    subTitle={selectedTestCaseGraph.errorMessage}
                   />
                 </div>
-              ) : (
-                <pre className="project-test-case-json">
-                  <code>{formattedJson.value}</code>
-                </pre>
-              )}
+              ) : selectedTestCaseGraph.empty ? (
+                <div className="project-test-case-state">
+                  <Empty description="当前测试用例暂无图数据" />
+                </div>
+              ) : selectedTestCaseGraph.data ? (
+                <FlowGraph
+                  key={selectedTestCase.id}
+                  sectionKey="testcaseView"
+                  data={selectedTestCaseGraph.data}
+                />
+              ) : null}
             </div>
           </section>
         </div>

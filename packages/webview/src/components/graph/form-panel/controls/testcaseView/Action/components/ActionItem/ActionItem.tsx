@@ -1,5 +1,6 @@
-import { CloseOutlined, HolderOutlined } from '@ant-design/icons'
-import { type DragEvent, type FC, useState } from 'react'
+import { CloseOutlined, CopyOutlined, HolderOutlined } from '@ant-design/icons'
+import { Tooltip } from 'antd'
+import { type DragEvent, type FC, type MouseEvent, useState } from 'react'
 import EditableSwitch from '../../../../common/EditableSwitch'
 import ActionEditor from '../ActionEditor/ActionEditor'
 import { formatAction, type ActionType, type ActionValue } from '../../utils'
@@ -11,11 +12,11 @@ interface ActionItemProps {
   actionType: ActionType
   isEditing: boolean
   onUpdate: (value: ActionValue) => void
+  onCopy: (value: ActionValue) => void
   onRemove: () => void
   onStartEdit: () => void
   onFinishEdit: () => void
   onDragStart: (index: number) => void
-  onDragOver: (index: number) => void
   onDrop: (index: number) => void
 }
 
@@ -25,11 +26,11 @@ const ActionItem: FC<ActionItemProps> = ({
   actionType,
   isEditing,
   onUpdate,
+  onCopy,
   onRemove,
   onStartEdit,
   onFinishEdit,
   onDragStart,
-  onDragOver,
   onDrop,
 }) => {
   const [isDragging, setIsDragging] = useState(false)
@@ -41,7 +42,7 @@ const ActionItem: FC<ActionItemProps> = ({
       return
     }
 
-    if (!value.name.trim() && !value.value.trim()) {
+    if (!value.name.trim() && !value.value.trim() && !value.express?.trim()) {
       onRemove()
       return
     }
@@ -57,13 +58,17 @@ const ActionItem: FC<ActionItemProps> = ({
 
   const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault()
-    onDragOver(index)
   }
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault()
     setIsDragging(false)
     onDrop(index)
+  }
+
+  const handleCopy = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+    onCopy(value)
   }
 
   return (
@@ -94,6 +99,15 @@ const ActionItem: FC<ActionItemProps> = ({
           />
         )}
       </EditableSwitch>
+      <Tooltip title="Copy action">
+        <button
+          type="button"
+          className="testcase-action-item__copy"
+          onClick={handleCopy}
+        >
+          <CopyOutlined />
+        </button>
+      </Tooltip>
       <CloseOutlined className="testcase-action-item__remove" onClick={onRemove} />
     </div>
   )

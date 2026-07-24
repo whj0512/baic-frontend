@@ -1,28 +1,84 @@
 .testcase-action-item {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 18px;
-  gap: 8px;
+  display: flex;
   align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 4px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.testcase-action-item:last-child {
+  border-bottom: none;
 }
 
 .testcase-action-item--dragging {
   opacity: 0.5;
 }
 
-.testcase-action-item__handle,
-.testcase-action-item__remove {
-  cursor: pointer;
-  color: #8c8c8c;
-}
-
 .testcase-action-item__handle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 18px;
+  color: #999;
   cursor: grab;
+  flex-shrink: 0;
+  font-size: 14px;
   user-select: none;
+}
+
+.testcase-action-item__handle:hover {
+  color: #666;
 }
 
 .testcase-action-item__handle:active {
   cursor: grabbing;
+}
+
+.testcase-action-item .editable-switch {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.testcase-action-item__copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  color: #999;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: color 0.2s, background 0.2s, opacity 0.2s;
+}
+
+.testcase-action-item:hover .testcase-action-item__copy,
+.testcase-action-item:focus-within .testcase-action-item__copy {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.testcase-action-item__copy:hover {
+  color: #1890ff;
+  background: #e6f7ff;
+}
+
+.testcase-action-item__remove {
+  color: #999;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 12px;
+  transition: color 0.2s;
+}
+
+.testcase-action-item__remove:hover {
+  color: #ff4d4f;
 }
