@@ -117,7 +117,13 @@ npm run preview
 ```env
 VITE_API_BASE_URL=http://localhost:8000
 VITE_WS_BASE_URL=ws://localhost:8000
+VITE_QWENPAW_BASE_URL=/qwenpaw
 ```
+
+开发服务器会把同源 `/qwenpaw/*` 转发到本机
+`http://localhost:7706/*`。QwenPaw 当前版本不处理浏览器 CORS 预检，因此
+不要在浏览器业务代码中写死 `localhost:7706`。平台和生产环境也应把
+`/qwenpaw` 配置为同源反向代理，并在代理层注入远程部署所需的认证信息。
 
 可选 LSP WebSocket 变量：
 
@@ -138,6 +144,7 @@ VITE_LSP_WS_INTERNAL_COMPOSITION=ws://127.0.0.1:3003
 | --- | --- | --- |
 | `baic.apiBaseUrl` | `http://localhost:8000` | REST API 根地址 |
 | `baic.projectWsBaseUrl` | `ws://localhost:8000` | 项目同步 WebSocket 根地址 |
+| `baic.qwenPawBaseUrl` | `http://localhost:7706` | 注入 webview 的 QwenPaw REST API 根地址；跨域部署需指向允许 webview 访问的代理 |
 | `baic.lspWs.internalConstraints` | `ws://127.0.0.1:3000` | 内部约束 DSL LSP |
 | `baic.lspWs.environment` | `ws://127.0.0.1:3001` | 所处环境 DSL LSP |
 | `baic.lspWs.interaction` | `ws://127.0.0.1:3002` | 交互 DSL LSP |

@@ -4,6 +4,7 @@ const runtimeConfig = getRuntimeConfig()
 
 export const SERVICE_BASE_URL = runtimeConfig.apiBaseUrl
 export const WS_BASE_URL = runtimeConfig.projectWsBaseUrl
+export const QWENPAW_BASE_URL = runtimeConfig.qwenPawBaseUrl.replace(/\/+$/, '')
 
 export const WS_ENDPOINTS = {
   projectSync: (projectId: string) => `${WS_BASE_URL}/ws/projects/${projectId}`,
@@ -31,6 +32,34 @@ export const API_ENDPOINTS = {
   requirementById: (id: string) => `${SERVICE_BASE_URL}/requirements/${id}`,
   graphdbGraph: `${SERVICE_BASE_URL}/graphdb/graph`,
   traceabilityExtract: `${SERVICE_BASE_URL}/traceability/extract`,
+}
+
+export interface QwenPawChatFilters {
+  userId?: string
+  channel?: string
+}
+
+export const QWENPAW_ENDPOINTS = {
+  version: `${QWENPAW_BASE_URL}/api/version`,
+  agents: `${QWENPAW_BASE_URL}/api/agents`,
+  agentChats: (agentId: string, filters?: QwenPawChatFilters) => {
+    const endpoint = `${QWENPAW_BASE_URL}/api/agents/${encodeURIComponent(agentId)}/chats`
+    const searchParams = new URLSearchParams()
+
+    if (filters?.userId) {
+      searchParams.set('user_id', filters.userId)
+    }
+    if (filters?.channel) {
+      searchParams.set('channel', filters.channel)
+    }
+
+    const query = searchParams.toString()
+    return query ? `${endpoint}?${query}` : endpoint
+  },
+  agentChat: (agentId: string, chatId: string) =>
+    `${QWENPAW_BASE_URL}/api/agents/${encodeURIComponent(agentId)}/chats/${encodeURIComponent(chatId)}`,
+  chat: `${QWENPAW_BASE_URL}/api/console/chat`,
+  upload: `${QWENPAW_BASE_URL}/api/console/upload`,
 }
 
 // Kept as a stable application-wide request entry point, without auth behavior.

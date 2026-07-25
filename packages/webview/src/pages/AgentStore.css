@@ -124,6 +124,33 @@
   line-height: 1.6;
 }
 
+.agent-create-project-modal .ant-modal-body {
+  max-height: calc(100vh - 220px);
+  max-height: calc(100dvh - 220px);
+  padding-right: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #c7c9d9 transparent;
+}
+
+.agent-create-project-modal .ant-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.agent-create-project-modal .ant-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.agent-create-project-modal .ant-modal-body::-webkit-scrollbar-thumb {
+  background: #c7c9d9;
+  border-radius: 999px;
+}
+
+.agent-create-project-modal .ant-modal-body::-webkit-scrollbar-thumb:hover {
+  background: #aeb1c5;
+}
+
 .agent-create-project-modal__field {
   display: flex;
   flex-direction: column;

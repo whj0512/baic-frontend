@@ -5,6 +5,15 @@ import react from '@vitejs/plugin-react'
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
   base: mode === 'platform' ? '/' : './',
+  server: {
+    proxy: {
+      '/qwenpaw': {
+        target: 'http://localhost:7706',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/qwenpaw/, ''),
+      },
+    },
+  },
   build: {
     rollupOptions: {
       output: {

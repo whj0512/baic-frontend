@@ -85,6 +85,11 @@
           "default": "ws://localhost:8000",
           "description": "Base WebSocket URL for project synchronization."
         },
+        "baic.qwenPawBaseUrl": {
+          "type": "string",
+          "default": "http://localhost:7706",
+          "description": "QwenPaw REST API base URL injected into the webview."
+        },
         "baic.platformApiBaseUrl": {
           "type": "string",
           "default": "",

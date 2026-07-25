@@ -4,6 +4,7 @@ export interface RuntimeConfig {
   appTarget: AppTarget
   apiBaseUrl: string
   projectWsBaseUrl: string
+  qwenPawBaseUrl: string
   platformApiBaseUrl: string
   platformWebBaseUrl: string
   lspWs: {
@@ -24,6 +25,7 @@ const envConfig: RuntimeConfig = {
   appTarget: import.meta.env.VITE_APP_TARGET === 'platform' ? 'platform' : 'local',
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? '',
   projectWsBaseUrl: import.meta.env.VITE_WS_BASE_URL ?? '',
+  qwenPawBaseUrl: import.meta.env.VITE_QWENPAW_BASE_URL ?? '',
   platformApiBaseUrl: import.meta.env.VITE_PLATFORM_API_BASE_URL ?? '',
   platformWebBaseUrl: import.meta.env.VITE_PLATFORM_WEB_BASE_URL ?? '',
   lspWs: {

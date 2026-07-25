@@ -9,6 +9,7 @@ export interface RuntimeConfig {
   appTarget: 'local' | 'platform'
   apiBaseUrl: string
   projectWsBaseUrl: string
+  qwenPawBaseUrl: string
   platformApiBaseUrl: string
   platformWebBaseUrl: string
   lspWs: LspWsConfig

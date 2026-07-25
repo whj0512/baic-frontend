@@ -29,6 +29,10 @@ export function getRuntimeConfig(
     projectWsBaseUrl:
       override?.projectWsBaseUrl ??
       config.get<string>('projectWsBaseUrl', 'ws://localhost:8000'),
+    qwenPawBaseUrl: config.get<string>(
+      'qwenPawBaseUrl',
+      'http://localhost:7706',
+    ),
     platformApiBaseUrl: config.get<string>('platformApiBaseUrl', ''),
     platformWebBaseUrl: config.get<string>('platformWebBaseUrl', ''),
     lspWs: {
@@ -56,6 +60,7 @@ export function getConnectSources(config: RuntimeConfig): string[] {
   return [
     getOrigin(config.apiBaseUrl),
     getOrigin(config.projectWsBaseUrl),
+    getOrigin(config.qwenPawBaseUrl),
     getOrigin(config.platformApiBaseUrl),
     getOrigin(config.lspWs.internalConstraints),
     getOrigin(config.lspWs.environment),
