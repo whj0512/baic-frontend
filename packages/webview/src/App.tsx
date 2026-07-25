@@ -4,6 +4,7 @@ import PlatformLayout from './layouts/PlatformLayout'
 import Home from './pages/Home'
 import ProjectWorkSpace from './pages/ProjectWorkSpace'
 import CreateProject from './pages/CreateProject'
+import AgentStore from './pages/AgentStore'
 import PlatformHome from './pages/platform/PlatformHome'
 import PlatformProjectDetail from './pages/platform/PlatformProjectDetail'
 import PlatformUploads from './pages/platform/PlatformUploads'
@@ -20,6 +21,7 @@ function LocalApp() {
           <Route path="/workspace/:projectKey" element={<ProjectWorkSpace />} />
           <Route path="/create-project" element={<CreateProject />} />
         </Route>
+        <Route path="/agent/store" element={<AgentStore />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

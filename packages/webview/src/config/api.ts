@@ -21,6 +21,8 @@ export const API_ENDPOINTS = {
   dslToRbgISD: `${SERVICE_BASE_URL}/dsl-to-rbg/ISD`,
   nlToDsl: `${SERVICE_BASE_URL}/nl-to-dsl`,
   projects: `${SERVICE_BASE_URL}/projects`,
+  projectById: (projectId: string) =>
+    `${SERVICE_BASE_URL}/projects/${encodeURIComponent(projectId)}`,
   projectSnapshot: (projectId: string) =>
     `${SERVICE_BASE_URL}/projects/${encodeURIComponent(projectId)}/snapshot?schema_version=1`,
   projectTestCases: (projectId: string) =>
