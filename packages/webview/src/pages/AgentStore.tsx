@@ -8,6 +8,7 @@ import {
 import AgentSidebar from '../components/AgentWorkspace/AgentSidebar'
 import type { AgentProject } from '../components/AgentWorkspace/AgentSidebar'
 import ConversationWorkspace from '../components/AgentWorkspace/ConversationWorkspace'
+import { useQwenPawWorkspace } from '../components/AgentWorkspace/qwenPaw/useQwenPawWorkspace'
 import { API_ENDPOINTS, authFetch } from '../config/api'
 import './AgentStore.css'
 
@@ -108,6 +109,7 @@ function AgentStore() {
   const [creatingProject, setCreatingProject] = useState(false)
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null)
   const [newProjectForm, setNewProjectForm] = useState<NewProjectForm>(EMPTY_PROJECT_FORM)
+  const qwenPawWorkspace = useQwenPawWorkspace(selectedProject?.id ?? null)
   const activeAgent = AGENTS.find((agent) => agent.id === activeAgentId) ?? AGENTS[0]
 
   const fetchProjects = useCallback(async (signal?: AbortSignal) => {
@@ -159,12 +161,35 @@ function AgentStore() {
     return () => window.removeEventListener('keydown', handleEscape)
   }, [sidebarOpen])
 
+  useEffect(() => {
+    if (!import.meta.env.DEV) {
+      return
+    }
+
+    console.debug('[QwenPaw workspace state]', {
+      projectId: selectedProject?.id ?? null,
+      agentId: qwenPawWorkspace.activeAgentId,
+      conversation: qwenPawWorkspace.activeConversation,
+      status: qwenPawWorkspace.status,
+      registrationState: qwenPawWorkspace.registrationState,
+    })
+  }, [
+    qwenPawWorkspace.activeAgentId,
+    qwenPawWorkspace.activeConversation,
+    qwenPawWorkspace.registrationState,
+    qwenPawWorkspace.status,
+    selectedProject?.id,
+  ])
+
   const handleAgentChange = (agentId: string) => {
     setActiveAgentId(agentId)
     setSidebarOpen(false)
   }
 
   const handleProjectSelect = (project: AgentProject) => {
+    if (project.id !== selectedProject?.id) {
+      qwenPawWorkspace.stop()
+    }
     setSelectedProject(project)
     setSidebarOpen(false)
   }
@@ -240,6 +265,7 @@ function AgentStore() {
           project.id === createdProject.id ? createdProject : project,
         )
       })
+      qwenPawWorkspace.stop()
       setSelectedProject(createdProject)
       setCreateProjectOpen(false)
       setNewProjectForm(EMPTY_PROJECT_FORM)
@@ -280,6 +306,9 @@ function AgentStore() {
           setProjects((currentProjects) =>
             currentProjects.filter((currentProject) => currentProject.id !== project.id),
           )
+          if (selectedProject?.id === project.id) {
+            qwenPawWorkspace.stop()
+          }
           setSelectedProject((currentProject) =>
             currentProject?.id === project.id ? null : currentProject,
           )
@@ -297,7 +326,16 @@ function AgentStore() {
   }
 
   return (
-    <div className="agent-store-page">
+    <div
+      className="agent-store-page"
+      data-qwenpaw-connection={qwenPawWorkspace.connectionState}
+      data-qwenpaw-agent-id={qwenPawWorkspace.activeAgentId ?? undefined}
+      data-qwenpaw-conversation-kind={
+        qwenPawWorkspace.activeConversation?.kind ?? undefined
+      }
+      data-qwenpaw-status={qwenPawWorkspace.status}
+      data-qwenpaw-registration={qwenPawWorkspace.registrationState}
+    >
       <AgentSidebar
         open={sidebarOpen}
         activeAgentId={activeAgentId}
