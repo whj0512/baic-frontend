@@ -38,6 +38,10 @@ export type QwenPawConversationAction =
       assistantMessage: ConversationMessageView
     }
   | {
+      type: 'retry_started'
+      assistantMessageId: string
+    }
+  | {
       type: 'stream_text'
       assistantMessageId: string
       text: string
@@ -157,6 +161,21 @@ export function qwenPawConversationReducer(
           action.userMessage,
           action.assistantMessage,
         ],
+        status: 'generating',
+        error: null,
+      }
+    case 'retry_started':
+      return {
+        ...state,
+        messages: state.messages.map((message) =>
+          message.id === action.assistantMessageId
+            ? {
+                ...message,
+                parts: [{ type: 'text', text: '' }],
+                transient: true,
+                status: 'generating',
+              }
+            : message),
         status: 'generating',
         error: null,
       }

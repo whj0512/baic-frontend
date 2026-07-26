@@ -8,10 +8,16 @@ import {
   DownOutlined,
   FolderOutlined,
   PlusOutlined,
+  PushpinFilled,
   RobotOutlined,
+  SyncOutlined,
 } from '@ant-design/icons'
 import { Popover, Spin } from 'antd'
-import { AGENTS } from '../agentWorkspaceData'
+import type {
+  QwenPawAgent,
+  QwenPawChatSpec,
+  QwenPawConnectionState,
+} from '../qwenPaw/types'
 import './AgentSidebar.css'
 
 export interface AgentProject {
@@ -23,7 +29,16 @@ export interface AgentProject {
 
 interface AgentSidebarProps {
   open: boolean
-  activeAgentId: string
+  agents: QwenPawAgent[]
+  agentsLoading: boolean
+  agentsError: string | null
+  activeAgentId: string | null
+  sessions: QwenPawChatSpec[]
+  sessionsLoading: boolean
+  sessionsError: string | null
+  activeChatId: string | null
+  creatingDraft: boolean
+  connectionState: QwenPawConnectionState
   projects: AgentProject[]
   selectedProject: AgentProject | null
   projectsLoading: boolean
@@ -31,6 +46,10 @@ interface AgentSidebarProps {
   deletingProjectId: string | null
   onClose: () => void
   onAgentChange: (agentId: string) => void
+  onSessionChange: (chatId: string) => void
+  onNewChat: () => void
+  onAgentsRetry: () => void
+  onSessionsRetry: () => void
   onProjectSelect: (project: AgentProject) => void
   onProjectCreate: () => void
   onProjectDelete: (project: AgentProject) => void
@@ -41,9 +60,32 @@ function getProjectDisplayName(project: AgentProject): string {
   return project.name?.trim() || project.key?.trim() || '未命名项目'
 }
 
+function formatSessionTime(value: string): string {
+  const timestamp = Date.parse(value)
+  if (!Number.isFinite(timestamp)) {
+    return '时间未知'
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(timestamp)
+}
+
 function AgentSidebar({
   open,
+  agents,
+  agentsLoading,
+  agentsError,
   activeAgentId,
+  sessions,
+  sessionsLoading,
+  sessionsError,
+  activeChatId,
+  creatingDraft,
+  connectionState,
   projects,
   selectedProject,
   projectsLoading,
@@ -51,12 +93,23 @@ function AgentSidebar({
   deletingProjectId,
   onClose,
   onAgentChange,
+  onSessionChange,
+  onNewChat,
+  onAgentsRetry,
+  onSessionsRetry,
   onProjectSelect,
   onProjectCreate,
   onProjectDelete,
   onProjectsRetry,
 }: AgentSidebarProps) {
   const [projectPickerOpen, setProjectPickerOpen] = useState(false)
+  const activeAgent =
+    agents.find((agent) => agent.id === activeAgentId) ?? null
+  const currentModel = activeAgent?.active_model?.model?.trim()
+  const canStartChat =
+    Boolean(selectedProject)
+    && Boolean(activeAgent?.enabled)
+    && connectionState === 'online'
 
   useEffect(() => {
     if (!open) {
@@ -185,41 +238,70 @@ function AgentSidebar({
             智能体
           </h2>
           <div className="agent-list">
-            {AGENTS.map((agent) => {
-              const active = agent.id === activeAgentId
+            {agentsLoading ? (
+              <div className="agent-sidebar__list-state">
+                <Spin size="small" />
+                <span>正在加载智能体...</span>
+              </div>
+            ) : agentsError ? (
+              <div className="agent-sidebar__list-state agent-sidebar__list-state--error">
+                <span>{agentsError}</span>
+                <button type="button" onClick={onAgentsRetry}>重试</button>
+              </div>
+            ) : agents.length === 0 ? (
+              <div className="agent-sidebar__list-state">
+                QwenPaw 暂无已配置智能体
+              </div>
+            ) : (
+              agents.map((agent) => {
+                const active = agent.id === activeAgentId
+                const modelName = agent.active_model?.model?.trim()
 
-              return (
-                <button
-                  key={agent.id}
-                  type="button"
-                  className={`agent-list__item agent-list__item--${agent.accent}${
-                    active ? ' agent-list__item--active' : ''
-                  }`}
-                  aria-pressed={active}
-                  onClick={() => onAgentChange(agent.id)}
-                >
-                  <span className="agent-list__icon" aria-hidden="true">
-                    <RobotOutlined />
-                  </span>
-                  <span className="agent-list__copy">
-                    <strong>{agent.name}</strong>
-                    <small>{agent.description}</small>
-                  </span>
-                  {active ? <span className="agent-list__current">当前</span> : null}
-                </button>
-              )
-            })}
+                return (
+                  <button
+                    key={agent.id}
+                    type="button"
+                    className={`agent-list__item${
+                      active ? ' agent-list__item--active' : ''
+                    }${agent.enabled ? '' : ' agent-list__item--disabled'}`}
+                    aria-pressed={active}
+                    disabled={!agent.enabled}
+                    title={modelName || agent.description}
+                    onClick={() => onAgentChange(agent.id)}
+                  >
+                    <span className="agent-list__icon" aria-hidden="true">
+                      <RobotOutlined />
+                    </span>
+                    <span className="agent-list__copy">
+                      <strong>{agent.name || agent.id}</strong>
+                      <small>{agent.description || modelName || '暂无描述'}</small>
+                    </span>
+                    {active ? (
+                      <span className="agent-list__current">当前</span>
+                    ) : !agent.enabled ? (
+                      <span className="agent-list__disabled-label">已禁用</span>
+                    ) : null}
+                  </button>
+                )
+              })
+            )}
           </div>
         </section>
 
         <button
           type="button"
           className="agent-sidebar__new-chat"
-          disabled
-          title="Agent 服务接入后可用"
+          disabled={!canStartChat}
+          aria-current={creatingDraft ? 'page' : undefined}
+          title={
+            canStartChat
+              ? '创建新的 QwenPaw 对话'
+              : '请选择项目和可用智能体，并确认 QwenPaw 已连接'
+          }
+          onClick={onNewChat}
         >
           <PlusOutlined />
-          <span>新建对话</span>
+          <span>{creatingDraft ? '当前为新对话' : '新建对话'}</span>
         </button>
 
         <section className="agent-sidebar__section agent-sidebar__section--navigation">
@@ -273,12 +355,56 @@ function AgentSidebar({
               <ClockCircleOutlined />
               <span>历史对话</span>
             </h2>
-            <span className="agent-sidebar__history-count">1</span>
+            <span className="agent-sidebar__history-count">{sessions.length}</span>
           </div>
-          <article className="agent-sidebar__history-card">
-            <strong>智能驾驶需求模型构建</strong>
-            <time dateTime="2026-07-23T20:57:00+08:00">07/23 20:57</time>
-          </article>
+          <div className="agent-sidebar__history-list">
+            {sessionsLoading ? (
+              <div className="agent-sidebar__list-state">
+                <Spin size="small" />
+                <span>正在加载会话...</span>
+              </div>
+            ) : sessionsError ? (
+              <div className="agent-sidebar__list-state agent-sidebar__list-state--error">
+                <span>{sessionsError}</span>
+                <button type="button" onClick={onSessionsRetry}>重试</button>
+              </div>
+            ) : !activeAgentId ? (
+              <div className="agent-sidebar__list-state">请先选择可用智能体</div>
+            ) : sessions.length === 0 ? (
+              <div className="agent-sidebar__list-state">暂无历史对话</div>
+            ) : (
+              sessions.map((session) => {
+                const active = session.id === activeChatId
+                return (
+                  <button
+                    key={session.id}
+                    type="button"
+                    className={`agent-sidebar__history-card${
+                      active ? ' agent-sidebar__history-card--active' : ''
+                    }`}
+                    aria-current={active ? 'page' : undefined}
+                    onClick={() => onSessionChange(session.id)}
+                  >
+                    <span className="agent-sidebar__history-title">
+                      <strong>{session.name.trim() || '未命名对话'}</strong>
+                      <span className="agent-sidebar__history-badges">
+                        {session.pinned ? (
+                          <span title="已置顶"><PushpinFilled /></span>
+                        ) : null}
+                        {session.status === 'running' ? (
+                          <span title="运行中"><SyncOutlined spin /></span>
+                        ) : null}
+                        {session.source === 'cron' ? <span>定时</span> : null}
+                      </span>
+                    </span>
+                    <time dateTime={session.updated_at || undefined}>
+                      {formatSessionTime(session.updated_at)}
+                    </time>
+                  </button>
+                )
+              })
+            )}
+          </div>
         </section>
       </div>
 
@@ -287,12 +413,27 @@ function AgentSidebar({
           <ApiOutlined />
           <span>AI 引擎</span>
         </h2>
-        <div className="agent-engine__status">
+        <div className={`agent-engine__status agent-engine__status--${connectionState}`}>
           <div className="agent-engine__status-title">
             <span className="agent-engine__status-dot" aria-hidden="true" />
-            <strong>Agent 服务待接入</strong>
+            <strong>
+              {connectionState === 'online'
+                ? 'QwenPaw 已连接'
+                : connectionState === 'offline'
+                  ? 'QwenPaw 连接失败'
+                  : '正在连接 QwenPaw'}
+            </strong>
           </div>
-          <p>尚未接到后端 Agent 服务</p>
+          <p>
+            {connectionState === 'online'
+              ? currentModel || '当前智能体未报告模型'
+              : connectionState === 'offline'
+                ? '请检查服务地址或运行状态'
+                : '正在读取智能体配置'}
+          </p>
+          {connectionState === 'offline' ? (
+            <button type="button" onClick={onAgentsRetry}>重新连接</button>
+          ) : null}
         </div>
       </section>
     </aside>

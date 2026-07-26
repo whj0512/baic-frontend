@@ -1,0 +1,35 @@
+import type {
+  ActiveConversationRef,
+  ConversationMessageView,
+  QwenPawAgent,
+  QwenPawChatSpec,
+  QwenPawConversationStatus,
+  QwenPawConnectionState,
+  QwenPawHistoryStatus,
+  QwenPawRegistrationState,
+  QwenPawUploadResponse,
+} from '../qwenPaw/types'
+
+export interface ConversationDraft {
+  text: string
+  files: QwenPawUploadResponse[]
+}
+
+export interface ConversationWorkspaceProps {
+  activeAgent: QwenPawAgent | null
+  activeConversation: ActiveConversationRef | null
+  activeChat: QwenPawChatSpec | null
+  connectionState: QwenPawConnectionState
+  messages: ConversationMessageView[]
+  historyStatus: QwenPawHistoryStatus
+  historyError: string | null
+  streaming: boolean
+  streamError: string | null
+  conversationStatus: QwenPawConversationStatus
+  registrationState: QwenPawRegistrationState
+  onSend: (draft: ConversationDraft) => Promise<void>
+  onRetry: () => Promise<void>
+  onStop: () => void
+  onHistoryRetry: () => void
+  onOpenSidebar: () => void
+}

@@ -9,7 +9,10 @@ import {
   type ConversationMessageView,
   type QwenPawChatHistory,
   type QwenPawChatSpec,
+  type QwenPawHistoryStatus,
 } from './types'
+
+const HISTORY_CACHE_LIMIT = 10
 
 function getUpdatedAtValue(value: string): number {
   const timestamp = Date.parse(value)
@@ -36,7 +39,13 @@ export function sortQwenPawChats(
 }
 
 export function useQwenPawSessions(activeAgentId: string | null) {
-  const [sessions, setSessions] = useState<QwenPawChatSpec[]>([])
+  const [sessionsState, setSessionsState] = useState<{
+    agentId: string | null
+    items: QwenPawChatSpec[]
+  }>({
+    agentId: null,
+    items: [],
+  })
   const [selection, setSelection] = useState<{
     agentId: string
     chat: QwenPawChatSpec
@@ -46,13 +55,25 @@ export function useQwenPawSessions(activeAgentId: string | null) {
   const [messages, setMessages] = useState<ConversationMessageView[]>([])
   const [sessionsLoading, setSessionsLoading] = useState(false)
   const [sessionsError, setSessionsError] = useState<QwenPawError | null>(null)
-  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyStatus, setHistoryStatus] =
+    useState<QwenPawHistoryStatus>('idle')
   const [historyError, setHistoryError] = useState<QwenPawError | null>(null)
   const [sessionsReloadVersion, setSessionsReloadVersion] = useState(0)
   const [historyReloadVersion, setHistoryReloadVersion] = useState(0)
   const sessionsRequestIdRef = useRef(0)
   const historyRequestIdRef = useRef(0)
+  const historyIdentityRef = useRef<{
+    agentId: string
+    chatId: string
+  } | null>(null)
+  const historyCacheRef = useRef(new Map<string, {
+    history: QwenPawChatHistory
+    messages: ConversationMessageView[]
+  }>())
+  const forceHistoryRefreshRef = useRef(false)
   const previousAgentIdRef = useRef<string | null>(null)
+  const sessions =
+    sessionsState.agentId === activeAgentId ? sessionsState.items : []
   const selectedChat =
     selection?.agentId === activeAgentId ? selection.chat : null
   const selectedChatId = selectedChat?.id ?? null
@@ -62,6 +83,7 @@ export function useQwenPawSessions(activeAgentId: string | null) {
   }, [])
 
   const retryHistory = useCallback(() => {
+    forceHistoryRefreshRef.current = true
     setHistoryReloadVersion((version) => version + 1)
   }, [])
 
@@ -75,10 +97,17 @@ export function useQwenPawSessions(activeAgentId: string | null) {
         return
       }
 
-      setSessions((currentSessions) => sortQwenPawChats([
-        chat,
-        ...currentSessions.filter((session) => session.id !== chat.id),
-      ]))
+      setSessionsState((currentState) => {
+        const currentSessions =
+          currentState.agentId === activeAgentId ? currentState.items : []
+        return {
+          agentId: activeAgentId,
+          items: sortQwenPawChats([
+            chat,
+            ...currentSessions.filter((session) => session.id !== chat.id),
+          ]),
+        }
+      })
       setSelection({ agentId: activeAgentId, chat })
     },
     [activeAgentId],
@@ -106,13 +135,14 @@ export function useQwenPawSessions(activeAgentId: string | null) {
 
     if (agentChanged) {
       historyRequestIdRef.current += 1
-      setSessions([])
+      setSessionsState({ agentId: activeAgentId, items: [] })
       setSelection(null)
       setHistory(null)
       setHistoryChatId(null)
       setMessages([])
       setHistoryError(null)
-      setHistoryLoading(false)
+      setHistoryStatus('idle')
+      historyIdentityRef.current = null
     }
     setSessionsError(null)
 
@@ -132,7 +162,10 @@ export function useQwenPawSessions(activeAgentId: string | null) {
         }
 
         const sortedSessions = sortQwenPawChats(nextSessions)
-        setSessions(sortedSessions)
+        setSessionsState({
+          agentId: activeAgentId,
+          items: sortedSessions,
+        })
         setSelection((currentSelection) => {
           if (
             !currentSelection
@@ -181,18 +214,45 @@ export function useQwenPawSessions(activeAgentId: string | null) {
     const historyController = new AbortController()
     const requestId = historyRequestIdRef.current + 1
     historyRequestIdRef.current = requestId
-    setHistory(null)
-    setHistoryChatId(null)
-    setMessages([])
     setHistoryError(null)
 
     if (!activeAgentId || !selectedChatId) {
-      setHistoryLoading(false)
+      historyIdentityRef.current = null
+      setHistory(null)
+      setHistoryChatId(null)
+      setMessages([])
+      setHistoryStatus('idle')
       return () => historyController.abort()
     }
 
     const chatId = selectedChatId
-    setHistoryLoading(true)
+    const cacheKey = `${activeAgentId}:${chatId}`
+    const forceRefresh = forceHistoryRefreshRef.current
+    forceHistoryRefreshRef.current = false
+    const hasCurrentSnapshot =
+      historyIdentityRef.current?.agentId === activeAgentId
+      && historyIdentityRef.current.chatId === chatId
+    const cachedSnapshot = historyCacheRef.current.get(cacheKey)
+
+    if (!hasCurrentSnapshot && cachedSnapshot && !forceRefresh) {
+      historyCacheRef.current.delete(cacheKey)
+      historyCacheRef.current.set(cacheKey, cachedSnapshot)
+      setHistory(cachedSnapshot.history)
+      setHistoryChatId(chatId)
+      setMessages(cachedSnapshot.messages)
+      historyIdentityRef.current = { agentId: activeAgentId, chatId }
+      setHistoryStatus('ready')
+      return () => historyController.abort()
+    }
+
+    if (!hasCurrentSnapshot) {
+      historyIdentityRef.current = null
+      setHistory(null)
+      setHistoryChatId(null)
+      setMessages([])
+    }
+    setHistoryStatus(hasCurrentSnapshot ? 'refreshing' : 'loading')
+
     void fetchChatHistory(activeAgentId, chatId, historyController.signal)
       .then((nextHistory) => {
         if (
@@ -202,9 +262,24 @@ export function useQwenPawSessions(activeAgentId: string | null) {
           return
         }
 
+        const nextMessages = normalizeMessages(nextHistory.messages, chatId)
         setHistory(nextHistory)
         setHistoryChatId(chatId)
-        setMessages(normalizeMessages(nextHistory.messages, chatId))
+        setMessages(nextMessages)
+        historyIdentityRef.current = { agentId: activeAgentId, chatId }
+        historyCacheRef.current.delete(cacheKey)
+        historyCacheRef.current.set(cacheKey, {
+          history: nextHistory,
+          messages: nextMessages,
+        })
+        while (historyCacheRef.current.size > HISTORY_CACHE_LIMIT) {
+          const oldestKey = historyCacheRef.current.keys().next().value
+          if (typeof oldestKey !== 'string') {
+            break
+          }
+          historyCacheRef.current.delete(oldestKey)
+        }
+        setHistoryStatus('ready')
       })
       .catch((requestError: unknown) => {
         if (
@@ -221,14 +296,7 @@ export function useQwenPawSessions(activeAgentId: string | null) {
                 cause: requestError,
               }),
         )
-      })
-      .finally(() => {
-        if (
-          !historyController.signal.aborted
-          && historyRequestIdRef.current === requestId
-        ) {
-          setHistoryLoading(false)
-        }
+        setHistoryStatus('error')
       })
 
     return () => historyController.abort()
@@ -240,9 +308,13 @@ export function useQwenPawSessions(activeAgentId: string | null) {
     history,
     historyChatId,
     messages,
-    sessionsLoading,
-    sessionsError,
-    historyLoading,
+    sessionsLoading:
+      sessionsState.agentId === activeAgentId
+        ? sessionsLoading
+        : activeAgentId !== null,
+    sessionsError:
+      sessionsState.agentId === activeAgentId ? sessionsError : null,
+    historyStatus,
     historyError,
     selectChat,
     clearSelection,

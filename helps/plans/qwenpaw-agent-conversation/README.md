@@ -13,6 +13,13 @@
 | 4 | [04-attachments-and-resilience.md](./04-attachments-and-resilience.md) | 文件上传、错误恢复、竞态处理和性能边界 |
 | 5 | [05-verification-and-rollout.md](./05-verification-and-rollout.md) | 分阶段人工验收、回归矩阵和交付条件 |
 
+## 实施与交付记录
+
+- [阶段四：流式对话 UI 验收报告](./phase-4-streaming-ui-report.md)
+- [阶段五：附件与韧性验收报告](./phase-5-attachments-resilience-report.md)
+- [QwenPaw 部署配置说明](./deployment.md)
+- [阶段六：验证与交付报告](./phase-6-verification-rollout-report.md)
+
 ## 推荐实施顺序
 
 ```text
@@ -80,4 +87,3 @@ packages/webview/src/components/AgentWorkspace/
 
 - [QwenPaw RESTful API 调用指南](../../QwenPaw%20RESTful%20API%20调用指南.md)
 - [QwenPaw Agent Session RESTful API 调用文档](../../QwenPaw%20Agent%20Session%20RESTful%20API%20调用文档.md)
-

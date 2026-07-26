@@ -5,6 +5,8 @@ export interface RuntimeConfig {
   apiBaseUrl: string
   projectWsBaseUrl: string
   qwenPawBaseUrl: string
+  qwenPawChatTimeoutMs: number
+  qwenPawUploadMaxBytes: number
   platformApiBaseUrl: string
   platformWebBaseUrl: string
   lspWs: {
@@ -21,11 +23,27 @@ declare global {
   }
 }
 
+function readPositiveNumber(value: unknown, fallback: number): number {
+  const parsedValue =
+    typeof value === 'number' ? value : Number.parseInt(String(value), 10)
+  return Number.isFinite(parsedValue) && parsedValue > 0
+    ? parsedValue
+    : fallback
+}
+
 const envConfig: RuntimeConfig = {
   appTarget: import.meta.env.VITE_APP_TARGET === 'platform' ? 'platform' : 'local',
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? '',
   projectWsBaseUrl: import.meta.env.VITE_WS_BASE_URL ?? '',
   qwenPawBaseUrl: import.meta.env.VITE_QWENPAW_BASE_URL ?? '',
+  qwenPawChatTimeoutMs: readPositiveNumber(
+    import.meta.env.VITE_QWENPAW_CHAT_TIMEOUT_MS,
+    120000,
+  ),
+  qwenPawUploadMaxBytes: readPositiveNumber(
+    import.meta.env.VITE_QWENPAW_UPLOAD_MAX_BYTES,
+    20 * 1024 * 1024,
+  ),
   platformApiBaseUrl: import.meta.env.VITE_PLATFORM_API_BASE_URL ?? '',
   platformWebBaseUrl: import.meta.env.VITE_PLATFORM_WEB_BASE_URL ?? '',
   lspWs: {
@@ -41,5 +59,20 @@ const envConfig: RuntimeConfig = {
 }
 
 export function getRuntimeConfig(): RuntimeConfig {
-  return window.__BAIC_CONFIG__ ?? envConfig
+  const runtimeConfig = window.__BAIC_CONFIG__
+  if (!runtimeConfig) {
+    return envConfig
+  }
+
+  return {
+    ...runtimeConfig,
+    qwenPawChatTimeoutMs: readPositiveNumber(
+      runtimeConfig.qwenPawChatTimeoutMs,
+      envConfig.qwenPawChatTimeoutMs,
+    ),
+    qwenPawUploadMaxBytes: readPositiveNumber(
+      runtimeConfig.qwenPawUploadMaxBytes,
+      envConfig.qwenPawUploadMaxBytes,
+    ),
+  }
 }

@@ -1,13 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { MenuOutlined } from '@ant-design/icons'
 import { Input, Modal, message } from 'antd'
-import {
-  AGENTS,
-  DEFAULT_AGENT_ID,
-} from '../components/AgentWorkspace/agentWorkspaceData'
 import AgentSidebar from '../components/AgentWorkspace/AgentSidebar'
 import type { AgentProject } from '../components/AgentWorkspace/AgentSidebar'
 import ConversationWorkspace from '../components/AgentWorkspace/ConversationWorkspace'
+import type { ConversationDraft } from '../components/AgentWorkspace/ConversationWorkspace'
 import { useQwenPawWorkspace } from '../components/AgentWorkspace/qwenPaw/useQwenPawWorkspace'
 import { API_ENDPOINTS, authFetch } from '../config/api'
 import './AgentStore.css'
@@ -100,7 +97,6 @@ function AgentWelcome({
 
 function AgentStore() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [activeAgentId, setActiveAgentId] = useState(DEFAULT_AGENT_ID)
   const [projects, setProjects] = useState<AgentProject[]>([])
   const [selectedProject, setSelectedProject] = useState<AgentProject | null>(null)
   const [projectsLoading, setProjectsLoading] = useState(false)
@@ -110,7 +106,6 @@ function AgentStore() {
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null)
   const [newProjectForm, setNewProjectForm] = useState<NewProjectForm>(EMPTY_PROJECT_FORM)
   const qwenPawWorkspace = useQwenPawWorkspace(selectedProject?.id ?? null)
-  const activeAgent = AGENTS.find((agent) => agent.id === activeAgentId) ?? AGENTS[0]
 
   const fetchProjects = useCallback(async (signal?: AbortSignal) => {
     setProjectsLoading(true)
@@ -182,8 +177,33 @@ function AgentStore() {
   ])
 
   const handleAgentChange = (agentId: string) => {
-    setActiveAgentId(agentId)
+    qwenPawWorkspace.selectAgent(agentId)
     setSidebarOpen(false)
+  }
+
+  const handleSessionChange = (chatId: string) => {
+    qwenPawWorkspace.selectChat(chatId)
+    setSidebarOpen(false)
+  }
+
+  const handleNewChat = () => {
+    qwenPawWorkspace.startNewConversation()
+    setSidebarOpen(false)
+  }
+
+  const handleConversationSend = async ({
+    text,
+    files,
+  }: ConversationDraft) => {
+    await qwenPawWorkspace.send([
+      { type: 'text', text },
+      ...files.map((file) => ({
+        type: 'file' as const,
+        filename: file.file_name,
+        file_url: file.url,
+        size: file.size,
+      })),
+    ])
   }
 
   const handleProjectSelect = (project: AgentProject) => {
@@ -338,7 +358,16 @@ function AgentStore() {
     >
       <AgentSidebar
         open={sidebarOpen}
-        activeAgentId={activeAgentId}
+        agents={qwenPawWorkspace.agents}
+        agentsLoading={qwenPawWorkspace.agentsLoading}
+        agentsError={qwenPawWorkspace.agentsError?.message ?? null}
+        activeAgentId={qwenPawWorkspace.activeAgentId}
+        sessions={qwenPawWorkspace.sessions}
+        sessionsLoading={qwenPawWorkspace.sessionsLoading}
+        sessionsError={qwenPawWorkspace.sessionsError?.message ?? null}
+        activeChatId={qwenPawWorkspace.selectedChat?.id ?? null}
+        creatingDraft={qwenPawWorkspace.activeConversation?.kind === 'draft'}
+        connectionState={qwenPawWorkspace.connectionState}
         projects={projects}
         selectedProject={selectedProject}
         projectsLoading={projectsLoading}
@@ -346,6 +375,10 @@ function AgentStore() {
         deletingProjectId={deletingProjectId}
         onClose={() => setSidebarOpen(false)}
         onAgentChange={handleAgentChange}
+        onSessionChange={handleSessionChange}
+        onNewChat={handleNewChat}
+        onAgentsRetry={qwenPawWorkspace.reloadAgents}
+        onSessionsRetry={qwenPawWorkspace.reloadSessions}
         onProjectSelect={handleProjectSelect}
         onProjectCreate={handleOpenCreateProject}
         onProjectDelete={handleProjectDelete}
@@ -361,8 +394,24 @@ function AgentStore() {
       ) : null}
       {selectedProject ? (
         <ConversationWorkspace
-          key={selectedProject.id}
-          activeAgent={activeAgent}
+          key={`${selectedProject.id}:${
+            qwenPawWorkspace.activeConversation?.sessionId ?? 'loading'
+          }`}
+          activeAgent={qwenPawWorkspace.activeAgent}
+          activeConversation={qwenPawWorkspace.activeConversation}
+          activeChat={qwenPawWorkspace.selectedChat}
+          connectionState={qwenPawWorkspace.connectionState}
+          messages={qwenPawWorkspace.messages}
+          historyStatus={qwenPawWorkspace.historyStatus}
+          historyError={qwenPawWorkspace.historyError?.message ?? null}
+          streaming={qwenPawWorkspace.streaming}
+          streamError={qwenPawWorkspace.error?.message ?? null}
+          conversationStatus={qwenPawWorkspace.status}
+          registrationState={qwenPawWorkspace.registrationState}
+          onSend={handleConversationSend}
+          onRetry={qwenPawWorkspace.retry}
+          onStop={qwenPawWorkspace.stop}
+          onHistoryRetry={qwenPawWorkspace.retryHistory}
           onOpenSidebar={() => setSidebarOpen(true)}
         />
       ) : (

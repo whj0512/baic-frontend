@@ -43,7 +43,22 @@ export type QwenPawContent =
   | { type: 'text'; text: string }
   | { type: 'image'; image_url: string }
   | { type: 'data'; data: Record<string, unknown> }
-  | { type: 'file'; filename: string; file_url: string }
+  | { type: 'file'; filename: string; file_url: string; size?: number }
+
+export type QwenPawAttachmentState =
+  | 'queued'
+  | 'uploading'
+  | 'uploaded'
+  | 'failed'
+  | 'sent'
+
+export interface QwenPawAttachment {
+  id: string
+  file: File
+  state: QwenPawAttachmentState
+  uploaded?: QwenPawUploadResponse
+  error?: QwenPawError
+}
 
 export interface QwenPawInputMessage {
   role: 'user'
@@ -141,6 +156,7 @@ export interface ConversationMessageView {
 export interface ActiveConversationRef {
   kind: 'persisted' | 'draft'
   agentId: string
+  projectId?: string
   chatId: string | null
   sessionId: string
   userId: string
@@ -155,6 +171,13 @@ export type QwenPawConversationStatus =
   | 'completed'
   | 'failed'
   | 'stopped'
+
+export type QwenPawHistoryStatus =
+  | 'idle'
+  | 'loading'
+  | 'ready'
+  | 'refreshing'
+  | 'error'
 
 export type QwenPawRegistrationState =
   | 'idle'

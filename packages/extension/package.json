@@ -90,6 +90,18 @@
           "default": "http://localhost:7706",
           "description": "QwenPaw REST API base URL injected into the webview."
         },
+        "baic.qwenPawChatTimeoutMs": {
+          "type": "number",
+          "default": 120000,
+          "minimum": 1,
+          "description": "QwenPaw chat request timeout in milliseconds."
+        },
+        "baic.qwenPawUploadMaxBytes": {
+          "type": "number",
+          "default": 20971520,
+          "minimum": 1,
+          "description": "Maximum QwenPaw attachment size in bytes."
+        },
         "baic.platformApiBaseUrl": {
           "type": "string",
           "default": "",

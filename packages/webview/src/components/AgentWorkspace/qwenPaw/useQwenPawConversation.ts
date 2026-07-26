@@ -4,6 +4,7 @@ import {
   useReducer,
   useRef,
 } from 'react'
+import { getRuntimeConfig } from '../../../config/runtime'
 import {
   INITIAL_QWENPAW_CONVERSATION_STATE,
   getConversationKey,
@@ -18,10 +19,28 @@ import type {
   ConversationMessageView,
   QwenPawChatSpec,
   QwenPawContent,
+  QwenPawHistoryStatus,
 } from './types'
 import { QwenPawError } from './types'
 
 const REGISTRATION_DELAYS_MS = [0, 250, 500, 1000]
+
+interface LastSendRequest {
+  contents: QwenPawContent[]
+  userMessageId: string
+  assistantMessageId: string
+}
+
+function toRequestContents(contents: QwenPawContent[]): QwenPawContent[] {
+  return contents.map((content) =>
+    content.type === 'file'
+      ? {
+          type: 'file',
+          filename: content.filename,
+          file_url: content.file_url,
+        }
+      : content)
+}
 
 export function createDraftConversation(
   agentId: string,
@@ -31,6 +50,7 @@ export function createDraftConversation(
   return {
     kind: 'draft',
     agentId,
+    projectId,
     chatId: null,
     sessionId: `baic-${createId()}`,
     userId: `baic-project:${projectId}`,
@@ -41,10 +61,12 @@ export function createDraftConversation(
 export function createPersistedConversation(
   agentId: string,
   chat: QwenPawChatSpec,
+  projectId?: string,
 ): ActiveConversationRef {
   return {
     kind: 'persisted',
     agentId,
+    projectId,
     chatId: chat.id,
     sessionId: chat.session_id,
     userId: chat.user_id,
@@ -91,7 +113,7 @@ interface UseQwenPawConversationOptions {
   selectedChat: QwenPawChatSpec | null
   historyChatId: string | null
   historyMessages: ConversationMessageView[]
-  historyLoading: boolean
+  historyStatus: QwenPawHistoryStatus
   historyError: QwenPawError | null
   adoptChat: (chat: QwenPawChatSpec) => void
   reloadSessions: () => void
@@ -103,7 +125,7 @@ export function useQwenPawConversation({
   selectedChat,
   historyChatId,
   historyMessages,
-  historyLoading,
+  historyStatus,
   historyError,
   adoptChat,
   reloadSessions,
@@ -117,12 +139,60 @@ export function useQwenPawConversation({
   const streamRequestIdRef = useRef(0)
   const activeConversationRef =
     useRef<ActiveConversationRef | null>(null)
+  const lastSendRef = useRef<LastSendRequest | null>(null)
+  const streamFrameRef = useRef<number | null>(null)
+  const pendingStreamRef = useRef<{
+    assistantMessageId: string
+    text: string
+    mode: 'append' | 'replace'
+  } | null>(null)
+
+  const flushStreamText = useCallback(() => {
+    if (streamFrameRef.current !== null) {
+      cancelAnimationFrame(streamFrameRef.current)
+      streamFrameRef.current = null
+    }
+
+    const pendingStream = pendingStreamRef.current
+    pendingStreamRef.current = null
+    if (pendingStream) {
+      dispatch({
+        type: 'stream_text',
+        ...pendingStream,
+      })
+    }
+  }, [])
+
+  const queueStreamText = useCallback((
+    assistantMessageId: string,
+    text: string,
+    mode: 'append' | 'replace',
+  ) => {
+    const pendingStream = pendingStreamRef.current
+    if (
+      !pendingStream
+      || pendingStream.assistantMessageId !== assistantMessageId
+      || mode === 'replace'
+    ) {
+      pendingStreamRef.current = { assistantMessageId, text, mode }
+    } else {
+      pendingStreamRef.current = {
+        ...pendingStream,
+        text: `${pendingStream.text}${text}`,
+      }
+    }
+
+    if (streamFrameRef.current === null) {
+      streamFrameRef.current = requestAnimationFrame(flushStreamText)
+    }
+  }, [flushStreamText])
 
   const activate = useCallback((
     conversation: ActiveConversationRef | null,
     messages: ConversationMessageView[] = [],
   ) => {
     activeConversationRef.current = conversation
+    lastSendRef.current = null
     dispatch({
       type: 'activate',
       conversation,
@@ -136,11 +206,12 @@ export function useQwenPawConversation({
       return
     }
 
-    streamRequestIdRef.current += 1
-    streamControllerRef.current.abort()
-    streamControllerRef.current = null
+    flushStreamText()
+    streamControllerRef.current.abort(
+      new DOMException('User stopped', 'AbortError'),
+    )
     dispatch({ type: 'send_stopped' })
-  }, [])
+  }, [flushStreamText])
 
   const startDraft = useCallback((agentId: string, projectId: string) => {
     stop()
@@ -152,9 +223,10 @@ export function useQwenPawConversation({
   const openPersisted = useCallback((
     agentId: string,
     chat: QwenPawChatSpec,
+    projectId?: string,
   ) => {
     stop()
-    const conversation = createPersistedConversation(agentId, chat)
+    const conversation = createPersistedConversation(agentId, chat, projectId)
     activate(conversation)
     return conversation
   }, [activate, stop])
@@ -163,7 +235,7 @@ export function useQwenPawConversation({
   useEffect(() => {
     const conversation = activeConversationRef.current
     if (
-      historyLoading
+      historyStatus !== 'ready'
       || !conversation
       || conversation.kind !== 'persisted'
       || selectedChat?.id !== conversation.chatId
@@ -182,8 +254,8 @@ export function useQwenPawConversation({
     }
   }, [
     historyChatId,
-    historyLoading,
     historyMessages,
+    historyStatus,
     selectedChat?.id,
   ])
 
@@ -195,6 +267,7 @@ export function useQwenPawConversation({
       || !conversation
       || conversation.kind !== 'persisted'
       || selectedChat?.id !== conversation.chatId
+      || state.messages.length > 0
     ) {
       return
     }
@@ -207,7 +280,7 @@ export function useQwenPawConversation({
         error: historyError,
       })
     }
-  }, [historyError, selectedChat?.id])
+  }, [historyError, selectedChat?.id, state.messages.length])
 
   // When the active conversation is a draft, check if it has been registered as a persisted chat and update the state accordingly
   useEffect(() => {
@@ -224,6 +297,7 @@ export function useQwenPawConversation({
     const persisted = createPersistedConversation(
       conversation.agentId,
       registeredChat,
+      conversation.projectId,
     )
     activeConversationRef.current = persisted
     adoptChat(registeredChat)
@@ -234,6 +308,11 @@ export function useQwenPawConversation({
     streamRequestIdRef.current += 1
     streamControllerRef.current?.abort()
     streamControllerRef.current = null
+    if (streamFrameRef.current !== null) {
+      cancelAnimationFrame(streamFrameRef.current)
+    }
+    streamFrameRef.current = null
+    pendingStreamRef.current = null
   }, [])
 
   const findRegistration = useCallback(async (
@@ -255,75 +334,24 @@ export function useQwenPawConversation({
     return null
   }, [])
 
-  const send = useCallback(async (
+  const executeSend = useCallback(async (
+    conversation: ActiveConversationRef,
     contents: QwenPawContent[],
+    userMessageId: string,
+    assistantMessageId: string,
   ): Promise<void> => {
-    const conversation = activeConversationRef.current
-    if (!conversation) {
-      throw new QwenPawError('protocol', '当前没有可发送的 QwenPaw 会话')
-    }
-    if (conversation.channel !== 'console') {
-      throw new QwenPawError(
-        'protocol',
-        '该渠道会话当前仅支持查看',
-      )
-    }
-    if (streamControllerRef.current) {
-      throw new QwenPawError('protocol', '当前会话正在生成回复')
-    }
-    if (contents.length === 0) {
-      throw new QwenPawError('protocol', '发送内容不能为空')
-    }
-
     const controller = new AbortController()
     const requestId = streamRequestIdRef.current + 1
     streamRequestIdRef.current = requestId
     streamControllerRef.current = controller
-
-    const userMessage: ConversationMessageView = {
-      id: `local:${conversation.sessionId}:user:${crypto.randomUUID()}`,
-      role: 'user',
-      parts: contents.map((content) => {
-        switch (content.type) {
-          case 'text':
-            return { type: 'text' as const, text: content.text }
-          case 'file':
-            return {
-              type: 'file' as const,
-              filename: content.filename,
-              fileUrl: content.file_url,
-            }
-          case 'image':
-            return {
-              type: 'image' as const,
-              imageUrl: content.image_url,
-            }
-          case 'data':
-            return { type: 'data' as const, data: content.data }
-        }
-      }),
-      transient: true,
-      status: 'sending',
-    }
-    const assistantMessageId =
-      `local:${conversation.sessionId}:assistant:${crypto.randomUUID()}`
-    const assistantMessage: ConversationMessageView = {
-      id: assistantMessageId,
-      role: 'assistant',
-      parts: [{ type: 'text', text: '' }],
-      transient: true,
-      status: 'generating',
-    }
-    dispatch({
-      type: 'send_started',
-      userMessage,
-      assistantMessage,
-    })
+    const timeout = globalThis.setTimeout(() => {
+      controller.abort(new DOMException('Chat timeout', 'TimeoutError'))
+    }, getRuntimeConfig().qwenPawChatTimeoutMs)
 
     try {
       for await (const event of streamChat({
         agentId: conversation.agentId,
-        input: [{ role: 'user', content: contents }],
+        input: [{ role: 'user', content: toRequestContents(contents) }],
         stream: true,
         session_id: conversation.sessionId,
         user_id: conversation.userId,
@@ -341,15 +369,13 @@ export function useQwenPawConversation({
           && event.type === 'text'
           && typeof event.text === 'string'
         ) {
-          dispatch({
-            type: 'stream_text',
+          queueStreamText(
             assistantMessageId,
-            text: event.text,
-            mode:
-              event.status === 'completed' || event.delta !== true
-                ? 'replace'
-                : 'append',
-          })
+            event.text,
+            event.status === 'completed' || event.delta !== true
+              ? 'replace'
+              : 'append',
+          )
         }
       }
 
@@ -360,9 +386,11 @@ export function useQwenPawConversation({
         return
       }
 
+      globalThis.clearTimeout(timeout)
+      flushStreamText()
       dispatch({
         type: 'send_completed',
-        userMessageId: userMessage.id,
+        userMessageId,
         assistantMessageId,
       })
 
@@ -384,11 +412,11 @@ export function useQwenPawConversation({
           const persisted = createPersistedConversation(
             conversation.agentId,
             registeredChat,
+            conversation.projectId,
           )
           activeConversationRef.current = persisted
           adoptChat(registeredChat)
           dispatch({ type: 'registered', conversation: persisted })
-          retryHistory()
         } else {
           dispatch({ type: 'registration_pending' })
           reloadSessions()
@@ -398,23 +426,37 @@ export function useQwenPawConversation({
         retryHistory()
       }
     } catch (error) {
-      if (
-        controller.signal.aborted
-        || streamRequestIdRef.current !== requestId
-      ) {
+      if (streamRequestIdRef.current !== requestId) {
         return
       }
 
-      dispatch({
-        type: 'send_failed',
-        error:
-          error instanceof QwenPawError
-            ? error
-            : new QwenPawError('network', 'QwenPaw 发送失败', {
-                cause: error,
-              }),
-      })
+      flushStreamText()
+      const sendError =
+        error instanceof QwenPawError
+          ? error
+          : new QwenPawError('network', 'QwenPaw 发送失败', {
+              cause: error,
+            })
+      if (sendError.kind === 'abort') {
+        dispatch({ type: 'send_stopped' })
+      } else {
+        dispatch({
+          type: 'send_failed',
+          error: sendError,
+        })
+      }
+      if (import.meta.env.DEV) {
+        console.error('[QwenPaw] 聊天请求失败', {
+          endpoint: 'chat',
+          agentId: conversation.agentId.slice(0, 12),
+          sessionId: conversation.sessionId.slice(0, 12),
+          kind: sendError.kind,
+          status: sendError.status,
+        })
+      }
+      throw sendError
     } finally {
+      globalThis.clearTimeout(timeout)
       if (streamRequestIdRef.current === requestId) {
         streamControllerRef.current = null
       }
@@ -422,9 +464,98 @@ export function useQwenPawConversation({
   }, [
     adoptChat,
     findRegistration,
+    flushStreamText,
+    queueStreamText,
     reloadSessions,
     retryHistory,
   ])
+
+  const send = useCallback(async (
+    contents: QwenPawContent[],
+  ): Promise<void> => {
+    const conversation = activeConversationRef.current
+    if (!conversation) {
+      throw new QwenPawError('protocol', '当前没有可发送的 QwenPaw 会话')
+    }
+    if (conversation.channel !== 'console') {
+      throw new QwenPawError('protocol', '该渠道会话当前仅支持查看')
+    }
+    if (streamControllerRef.current) {
+      throw new QwenPawError('protocol', '当前会话正在生成回复')
+    }
+    if (contents.length === 0) {
+      throw new QwenPawError('protocol', '发送内容不能为空')
+    }
+
+    const userMessageId =
+      `local:${conversation.sessionId}:user:${crypto.randomUUID()}`
+    const assistantMessageId =
+      `local:${conversation.sessionId}:assistant:${crypto.randomUUID()}`
+    const userMessage: ConversationMessageView = {
+      id: userMessageId,
+      role: 'user',
+      parts: contents.map((content) => {
+        switch (content.type) {
+          case 'text':
+            return { type: 'text' as const, text: content.text }
+          case 'file':
+            return {
+              type: 'file' as const,
+              filename: content.filename,
+              fileUrl: content.file_url,
+              size: content.size,
+            }
+          case 'image':
+            return { type: 'image' as const, imageUrl: content.image_url }
+          case 'data':
+            return { type: 'data' as const, data: content.data }
+        }
+      }),
+      transient: true,
+      status: 'sending',
+    }
+    const assistantMessage: ConversationMessageView = {
+      id: assistantMessageId,
+      role: 'assistant',
+      parts: [{ type: 'text', text: '' }],
+      transient: true,
+      status: 'generating',
+    }
+    lastSendRef.current = {
+      contents,
+      userMessageId,
+      assistantMessageId,
+    }
+    dispatch({ type: 'send_started', userMessage, assistantMessage })
+    await executeSend(
+      conversation,
+      contents,
+      userMessageId,
+      assistantMessageId,
+    )
+  }, [executeSend])
+
+  const retry = useCallback(async (): Promise<void> => {
+    const conversation = activeConversationRef.current
+    const lastSend = lastSendRef.current
+    if (!conversation || !lastSend) {
+      throw new QwenPawError('protocol', '没有可重试的发送请求')
+    }
+    if (streamControllerRef.current) {
+      throw new QwenPawError('protocol', '当前会话正在生成回复')
+    }
+
+    dispatch({
+      type: 'retry_started',
+      assistantMessageId: lastSend.assistantMessageId,
+    })
+    await executeSend(
+      conversation,
+      lastSend.contents,
+      lastSend.userMessageId,
+      lastSend.assistantMessageId,
+    )
+  }, [executeSend])
 
   const clear = useCallback(() => {
     stop()
@@ -441,6 +572,7 @@ export function useQwenPawConversation({
     startDraft,
     openPersisted,
     send,
+    retry,
     stop,
     clear,
   }

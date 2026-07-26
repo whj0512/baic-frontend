@@ -118,6 +118,8 @@ npm run preview
 VITE_API_BASE_URL=http://localhost:8000
 VITE_WS_BASE_URL=ws://localhost:8000
 VITE_QWENPAW_BASE_URL=/qwenpaw
+VITE_QWENPAW_CHAT_TIMEOUT_MS=120000
+VITE_QWENPAW_UPLOAD_MAX_BYTES=20971520
 ```
 
 开发服务器会把同源 `/qwenpaw/*` 转发到本机
@@ -145,6 +147,8 @@ VITE_LSP_WS_INTERNAL_COMPOSITION=ws://127.0.0.1:3003
 | `baic.apiBaseUrl` | `http://localhost:8000` | REST API 根地址 |
 | `baic.projectWsBaseUrl` | `ws://localhost:8000` | 项目同步 WebSocket 根地址 |
 | `baic.qwenPawBaseUrl` | `http://localhost:7706` | 注入 webview 的 QwenPaw REST API 根地址；跨域部署需指向允许 webview 访问的代理 |
+| `baic.qwenPawChatTimeoutMs` | `120000` | QwenPaw 对话请求超时（毫秒） |
+| `baic.qwenPawUploadMaxBytes` | `20971520` | QwenPaw 单个附件大小上限（字节，默认 20 MiB） |
 | `baic.lspWs.internalConstraints` | `ws://127.0.0.1:3000` | 内部约束 DSL LSP |
 | `baic.lspWs.environment` | `ws://127.0.0.1:3001` | 所处环境 DSL LSP |
 | `baic.lspWs.interaction` | `ws://127.0.0.1:3002` | 交互 DSL LSP |

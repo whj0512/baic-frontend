@@ -23,7 +23,7 @@ export function useQwenPawWorkspace(projectId: string | null) {
     selectedChat: sessionsState.selectedChat,
     historyChatId: sessionsState.historyChatId,
     historyMessages: sessionsState.messages,
-    historyLoading: sessionsState.historyLoading,
+    historyStatus: sessionsState.historyStatus,
     historyError: sessionsState.historyError,
     adoptChat: sessionsState.adoptChat,
     reloadSessions: sessionsState.reloadSessions,
@@ -80,11 +80,16 @@ export function useQwenPawWorkspace(projectId: string | null) {
     if (!chat) {
       return
     }
+    if (
+      sessionsState.selectedChat?.id === chat.id
+      && conversationState.activeConversation?.kind === 'persisted'
+    ) {
+      return
+    }
 
     conversationState.stop()
     sessionsState.selectChat(chat.id)
-    conversationState.openPersisted(activeAgent.id, chat)
-    sessionsState.retryHistory()
+    conversationState.openPersisted(activeAgent.id, chat, projectId ?? undefined)
   }
 
   const startNewConversation = () => {
@@ -97,6 +102,13 @@ export function useQwenPawWorkspace(projectId: string | null) {
     conversationState.startDraft(activeAgent.id, projectId)
   }
 
+  const conversationMatchesContext =
+    conversationState.activeConversation?.projectId === projectId
+    && conversationState.activeConversation?.agentId === activeAgent?.id
+  const visibleConversation = conversationMatchesContext
+    ? conversationState.activeConversation
+    : null
+
   return {
     agents: agentState.agents,
     agentsLoading: agentState.loading,
@@ -108,6 +120,23 @@ export function useQwenPawWorkspace(projectId: string | null) {
     selectAgent,
     ...sessionsState,
     ...conversationState,
+    activeConversation: visibleConversation,
+    messages: conversationMatchesContext ? conversationState.messages : [],
+    status:
+      conversationMatchesContext
+        ? conversationState.status
+        : projectId && activeAgent
+          ? 'loading'
+          : 'idle',
+    registrationState:
+      conversationMatchesContext
+        ? conversationState.registrationState
+        : 'idle',
+    error: conversationMatchesContext ? conversationState.error : null,
+    streaming:
+      conversationMatchesContext && conversationState.streaming,
+    canSend:
+      conversationMatchesContext && conversationState.canSend,
     selectChat,
     startNewConversation,
   }

@@ -33,6 +33,14 @@ export function getRuntimeConfig(
       'qwenPawBaseUrl',
       'http://localhost:7706',
     ),
+    qwenPawChatTimeoutMs: config.get<number>(
+      'qwenPawChatTimeoutMs',
+      120000,
+    ),
+    qwenPawUploadMaxBytes: config.get<number>(
+      'qwenPawUploadMaxBytes',
+      20 * 1024 * 1024,
+    ),
     platformApiBaseUrl: config.get<string>('platformApiBaseUrl', ''),
     platformWebBaseUrl: config.get<string>('platformWebBaseUrl', ''),
     lspWs: {
