@@ -129,6 +129,7 @@ export type ConversationRole =
 
 export type ConversationPart =
   | { type: 'text'; text: string }
+  | { type: 'reasoning'; text: string }
   | {
       type: 'file'
       filename: string
@@ -140,7 +141,11 @@ export type ConversationPart =
   | {
       type: 'tool'
       eventType: 'plugin_call' | 'plugin_call_output' | string
-      data: unknown
+      callId?: string
+      name?: string
+      input?: unknown
+      output?: unknown
+      data?: unknown
     }
   | { type: 'unknown'; summary: string }
 

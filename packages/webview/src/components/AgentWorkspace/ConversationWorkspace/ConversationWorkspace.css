@@ -107,18 +107,19 @@
   font-size: 14px;
   font-weight: 500;
   opacity: 1;
-  cursor: default;
+  cursor: pointer;
 }
 
-.conversation-tabs__item:disabled {
-  color: #6b7280;
-  opacity: 0.78;
+.conversation-tabs__item:not(.conversation-tabs__item--active):hover {
+  color: var(--agent-accent);
+  background: #ffffff;
 }
 
 .conversation-tabs__item--active {
   color: var(--agent-accent);
   background: #ffffff;
   box-shadow: 0 2px 8px rgba(31, 41, 55, 0.07);
+  cursor: default;
 }
 
 .conversation-canvas {
@@ -485,7 +486,8 @@
   overflow-wrap: anywhere;
 }
 
-.conversation-message__tool {
+.conversation-message__tool,
+.conversation-message__reasoning {
   min-width: 0;
   overflow: hidden;
   background: #f8fafc;
@@ -493,7 +495,13 @@
   border-radius: 8px;
 }
 
-.conversation-message__tool summary {
+.conversation-message__reasoning {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.conversation-message__tool summary,
+.conversation-message__reasoning summary {
   display: flex;
   min-height: 38px;
   align-items: center;
@@ -507,11 +515,18 @@
   cursor: pointer;
 }
 
-.conversation-message__tool summary::-webkit-details-marker {
+.conversation-message__reasoning summary {
+  color: #92400e;
+  background: #fffbeb;
+}
+
+.conversation-message__tool summary::-webkit-details-marker,
+.conversation-message__reasoning summary::-webkit-details-marker {
   display: none;
 }
 
-.conversation-message__tool summary::after {
+.conversation-message__tool summary::after,
+.conversation-message__reasoning summary::after {
   margin-left: auto;
   color: #94a3b8;
   content: "›";
@@ -521,12 +536,28 @@
   transition: transform 160ms ease;
 }
 
-.conversation-message__tool[open] summary::after {
+.conversation-message__tool[open] summary::after,
+.conversation-message__reasoning[open] summary::after {
   transform: rotate(-90deg);
 }
 
-.conversation-message__tool[open] summary {
+.conversation-message__tool[open] summary,
+.conversation-message__reasoning[open] summary {
   border-bottom: 1px solid #1e293b;
+}
+
+.conversation-message__reasoning[open] summary {
+  border-bottom-color: #fde68a;
+}
+
+.conversation-message__reasoning-content {
+  max-height: 320px;
+  padding: 12px;
+  overflow: auto;
+  color: #78350f;
+  background: #fffdf5;
+  font-size: 13px;
+  line-height: 1.65;
 }
 
 .conversation-code-editor {

@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useCallback, useState, useEffect, useRef } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Button, message, Spin, Badge, Modal, Collapse, Segmented } from 'antd'
 import type { CollapseProps } from 'antd'
 import { ShareAltOutlined, ArrowLeftOutlined, CloudUploadOutlined } from '@ant-design/icons'
@@ -25,6 +25,7 @@ import {
 import type { Project } from '../models/Project'
 
 type WorkspaceView = 'requirements' | 'testCases'
+type WorkspaceRouteView = 'requirements' | 'test-cases' | 'knowledge-graph'
 
 // 中间区域视图类型
 type CenterView = 'overview' | 'editor' | 'create' | 'create-editor' | 'relationship'
@@ -87,9 +88,30 @@ const CREATE_SECTION_KEYS: SectionKey[] = [
   'dialogMap',
 ]
 
+function getWorkspaceRouteView(value: string | null): WorkspaceRouteView {
+  if (value === 'test-cases' || value === 'knowledge-graph') {
+    return value
+  }
+
+  return 'requirements'
+}
+
 function ProjectWorkSpace() {
   const { projectKey } = useParams<{ projectKey: string }>()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedWorkspaceView = searchParams.get('view')
+  const workspaceRouteView = getWorkspaceRouteView(requestedWorkspaceView)
+  const setWorkspaceRouteView = useCallback((
+    nextView: WorkspaceRouteView,
+    replace = false,
+  ) => {
+    setSearchParams((currentParams) => {
+      const nextParams = new URLSearchParams(currentParams)
+      nextParams.set('view', nextView)
+      return nextParams
+    }, { replace })
+  }, [setSearchParams])
 
   // 状态
   const [project, setProject] = useState<Project | null>(null)
@@ -121,11 +143,17 @@ function ProjectWorkSpace() {
   }
 
   // 项目工作区一级视图状态
-  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>('requirements')
-  const [hasOpenedTestCases, setHasOpenedTestCases] = useState(false)
+  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>(
+    workspaceRouteView === 'test-cases' ? 'testCases' : 'requirements',
+  )
+  const [hasOpenedTestCases, setHasOpenedTestCases] = useState(
+    workspaceRouteView === 'test-cases',
+  )
 
   // 中间区域视图状态
-  const [centerView, setCenterView] = useState<CenterView>('overview')
+  const [centerView, setCenterView] = useState<CenterView>(
+    workspaceRouteView === 'knowledge-graph' ? 'relationship' : 'overview',
+  )
   const isLeftCollapsed = centerView === 'editor' || centerView === 'create-editor'
 
   // 当前编辑的 section
@@ -137,18 +165,25 @@ function ProjectWorkSpace() {
   const [deleting, setDeleting] = useState(false)
   const [showPublishDialog, setShowPublishDialog] = useState(false)
 
-  const restorePreviousCenterView = () => {
+  const restorePreviousCenterView = useCallback(() => {
     const prev = prevViewStateRef.current
     setSelectedRequirement(prev.reqId)
     setEditingSection(prev.section)
     setCenterView(prev.view)
-  }
+  }, [])
 
   const handleWorkspaceViewChange = (nextView: WorkspaceView) => {
     if (nextView === 'testCases') {
       setHasOpenedTestCases(true)
+      setWorkspaceView(nextView)
+      setWorkspaceRouteView('test-cases')
+      return
     }
+
     setWorkspaceView(nextView)
+    setWorkspaceRouteView(
+      centerView === 'relationship' ? 'knowledge-graph' : 'requirements',
+    )
   }
 
   useEffect(() => {
@@ -156,6 +191,68 @@ function ProjectWorkSpace() {
     setHasOpenedTestCases(false)
     setProject(null)
   }, [projectKey])
+
+  const openRelationshipView = useCallback(() => {
+    if (centerView === 'relationship') {
+      return
+    }
+
+    prevViewStateRef.current = {
+      view: centerView,
+      reqId: selectedRequirement,
+      section: editingSection,
+    }
+    setSelectedRequirement(null)
+    setCenterView('relationship')
+  }, [centerView, editingSection, selectedRequirement])
+
+  const handleOpenRelationshipView = useCallback(() => {
+    openRelationshipView()
+    setWorkspaceRouteView('knowledge-graph')
+  }, [openRelationshipView, setWorkspaceRouteView])
+
+  const handleCloseRelationshipView = useCallback(() => {
+    restorePreviousCenterView()
+    setWorkspaceRouteView('requirements')
+  }, [restorePreviousCenterView, setWorkspaceRouteView])
+
+  useEffect(() => {
+    if (
+      requestedWorkspaceView
+      && requestedWorkspaceView !== workspaceRouteView
+    ) {
+      setWorkspaceRouteView('requirements', true)
+    }
+  }, [
+    requestedWorkspaceView,
+    setWorkspaceRouteView,
+    workspaceRouteView,
+  ])
+
+  useEffect(() => {
+    if (workspaceRouteView === 'test-cases') {
+      setHasOpenedTestCases(true)
+      setWorkspaceView('testCases')
+      return
+    }
+
+    setWorkspaceView('requirements')
+
+    if (workspaceRouteView === 'knowledge-graph') {
+      openRelationshipView()
+      return
+    }
+
+    if (centerView === 'relationship') {
+      restorePreviousCenterView()
+    }
+  }, [
+    centerView,
+    openRelationshipView,
+    projectKey,
+    restorePreviousCenterView,
+    workspaceRouteView,
+  ])
 
   // 初始化：获取项目元信息（仅 project，需求列表由 WebSocket 提供）
   useEffect(() => {
@@ -653,16 +750,7 @@ function ProjectWorkSpace() {
             type="default"
             icon={<ShareAltOutlined />}
             block
-            onClick={() => {
-              // 保存当前视图状态，以便从 relationship 返回时恢复
-              prevViewStateRef.current = {
-                view: centerView,
-                reqId: selectedRequirement,
-                section: editingSection
-              }
-              setSelectedRequirement(null)
-              setCenterView('relationship')
-            }}
+            onClick={handleOpenRelationshipView}
           >
             需求间关系
           </Button>
@@ -719,7 +807,7 @@ function ProjectWorkSpace() {
           {centerView === 'relationship' && (
             <ReqRelationShip
               requirements={requirements}
-              onBack={restorePreviousCenterView}
+              onBack={handleCloseRelationshipView}
             />
           )}
 

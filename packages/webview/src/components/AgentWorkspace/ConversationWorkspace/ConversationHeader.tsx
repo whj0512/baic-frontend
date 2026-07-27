@@ -17,6 +17,7 @@ import type {
   QwenPawHistoryStatus,
   QwenPawRegistrationState,
 } from '../qwenPaw/types'
+import type { WorkspaceNavigationTarget } from './types'
 
 interface ConversationHeaderProps {
   activeAgent: QwenPawAgent | null
@@ -26,14 +27,36 @@ interface ConversationHeaderProps {
   historyStatus: QwenPawHistoryStatus
   registrationState: QwenPawRegistrationState
   onOpenSidebar: () => void
+  onWorkspaceNavigate: (target: WorkspaceNavigationTarget) => void
 }
 
 const WORKSPACE_TABS = [
   { id: 'conversation', label: '对话', icon: MessageOutlined, active: true },
-  { id: 'model-editor', label: '模型编辑', icon: EditOutlined },
-  { id: 'testcase-overview', label: '测试用例', icon: FileDoneOutlined },
-  { id: 'knowledge-graph', label: '知识图谱', icon: ShareAltOutlined },
-]
+  {
+    id: 'model-editor',
+    label: '模型编辑',
+    icon: EditOutlined,
+    target: 'requirements',
+  },
+  {
+    id: 'testcase-overview',
+    label: '测试用例',
+    icon: FileDoneOutlined,
+    target: 'test-cases',
+  },
+  {
+    id: 'knowledge-graph',
+    label: '知识图谱',
+    icon: ShareAltOutlined,
+    target: 'knowledge-graph',
+  },
+] satisfies Array<{
+  id: string
+  label: string
+  icon: typeof MessageOutlined
+  active?: boolean
+  target?: WorkspaceNavigationTarget
+}>
 
 function getHeaderStatus(
   status: QwenPawConversationStatus,
@@ -99,6 +122,7 @@ function ConversationHeader({
   historyStatus,
   registrationState,
   onOpenSidebar,
+  onWorkspaceNavigate,
 }: ConversationHeaderProps) {
   const headerStatus = getHeaderStatus(
     conversationStatus,
@@ -146,8 +170,11 @@ function ConversationHeader({
                 tab.active ? ' conversation-tabs__item--active' : ''
               }`}
               aria-current={tab.active ? 'page' : undefined}
-              disabled={!tab.active}
-              title={tab.active ? undefined : '该功能将在后续版本开放'}
+              onClick={
+                tab.target
+                  ? () => onWorkspaceNavigate(tab.target)
+                  : undefined
+              }
             >
               <Icon />
               <span>{tab.label}</span>

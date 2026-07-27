@@ -12,7 +12,7 @@ import {
   RobotOutlined,
   SyncOutlined,
 } from '@ant-design/icons'
-import { Popover, Spin } from 'antd'
+import { Popover, Select, Spin } from 'antd'
 import type {
   QwenPawAgent,
   QwenPawChatSpec,
@@ -253,37 +253,41 @@ function AgentSidebar({
                 QwenPaw 暂无已配置智能体
               </div>
             ) : (
-              agents.map((agent) => {
-                const active = agent.id === activeAgentId
-                const modelName = agent.active_model?.model?.trim()
+              <Select
+                className="agent-list__select"
+                classNames={{ popup: { root: 'agent-list__dropdown' } }}
+                value={activeAgentId ?? undefined}
+                placeholder="请选择智能体"
+                aria-label="选择智能体"
+                options={agents.map((agent) => ({
+                  value: agent.id,
+                  label: agent.name || agent.id,
+                  disabled: !agent.enabled,
+                }))}
+                optionRender={(option) => {
+                  const agent = agents.find((item) => item.id === option.value)
+                  if (!agent) {
+                    return option.label
+                  }
 
-                return (
-                  <button
-                    key={agent.id}
-                    type="button"
-                    className={`agent-list__item${
-                      active ? ' agent-list__item--active' : ''
-                    }${agent.enabled ? '' : ' agent-list__item--disabled'}`}
-                    aria-pressed={active}
-                    disabled={!agent.enabled}
-                    title={modelName || agent.description}
-                    onClick={() => onAgentChange(agent.id)}
-                  >
-                    <span className="agent-list__icon" aria-hidden="true">
-                      <RobotOutlined />
-                    </span>
-                    <span className="agent-list__copy">
-                      <strong>{agent.name || agent.id}</strong>
-                      <small>{agent.description || modelName || '暂无描述'}</small>
-                    </span>
-                    {active ? (
-                      <span className="agent-list__current">当前</span>
-                    ) : !agent.enabled ? (
-                      <span className="agent-list__disabled-label">已禁用</span>
-                    ) : null}
-                  </button>
-                )
-              })
+                  const modelName = agent.active_model?.model?.trim()
+                  return (
+                    <div className="agent-list__option">
+                      <span className="agent-list__icon" aria-hidden="true">
+                        <RobotOutlined />
+                      </span>
+                      <span className="agent-list__copy">
+                        <strong>{agent.name || agent.id}</strong>
+                        <small>{agent.description || modelName || '暂无描述'}</small>
+                      </span>
+                      {!agent.enabled ? (
+                        <span className="agent-list__disabled-label">已禁用</span>
+                      ) : null}
+                    </div>
+                  )
+                }}
+                onChange={onAgentChange}
+              />
             )}
           </div>
         </section>

@@ -1,4 +1,5 @@
 import {
+  BulbOutlined,
   FileOutlined,
   InfoCircleOutlined,
   PictureOutlined,
@@ -28,6 +29,35 @@ const MARKDOWN_COMPONENTS: Components = {
   },
 }
 
+function getToolDetails(
+  part: Extract<ConversationPart, { type: 'tool' }>,
+): unknown {
+  if (part.input === undefined && part.output === undefined) {
+    return part.data
+  }
+
+  return {
+    callId: part.callId,
+    input: part.input,
+    output: part.output,
+  }
+}
+
+function getToolLabel(
+  part: Extract<ConversationPart, { type: 'tool' }>,
+): string {
+  if (part.name) {
+    return part.name
+  }
+  if (part.eventType === 'plugin_call_and_output') {
+    return '工具活动'
+  }
+  if (part.eventType === 'plugin_call_output') {
+    return '工具结果'
+  }
+  return '工具调用'
+}
+
 function MessagePartView({
   part,
   renderMarkdown,
@@ -49,6 +79,27 @@ function MessagePartView({
         </div>
       ) : (
         <div className="conversation-message__text">{part.text}</div>
+      )
+    case 'reasoning':
+      if (!part.text) {
+        return null
+      }
+
+      return (
+        <details className="conversation-message__reasoning">
+          <summary>
+            <BulbOutlined />
+            <span>智能体思考</span>
+          </summary>
+          <div className="conversation-message__reasoning-content conversation-markdown">
+            <ReactMarkdown
+              components={MARKDOWN_COMPONENTS}
+              remarkPlugins={MARKDOWN_PLUGINS}
+            >
+              {part.text}
+            </ReactMarkdown>
+          </div>
+        </details>
       )
     case 'file': {
       const fileSize = formatFileSize(part.size)
@@ -80,9 +131,9 @@ function MessagePartView({
         <details className="conversation-message__tool">
           <summary>
             <ToolOutlined />
-            <span>{part.eventType}</span>
+            <span>{getToolLabel(part)}</span>
           </summary>
-          <CodeDataView data={part.data} />
+          <CodeDataView data={getToolDetails(part)} />
         </details>
       )
     case 'unknown':

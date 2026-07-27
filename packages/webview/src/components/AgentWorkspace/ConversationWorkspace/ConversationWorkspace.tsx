@@ -28,6 +28,7 @@ function ConversationWorkspace({
   onStop,
   onHistoryRetry,
   onOpenSidebar,
+  onWorkspaceNavigate,
 }: ConversationWorkspaceProps) {
   const [draftText, setDraftText] = useState('')
   const [followingOutput, setFollowingOutput] = useState(true)
@@ -172,6 +173,7 @@ function ConversationWorkspace({
         historyStatus={historyStatus}
         registrationState={registrationState}
         onOpenSidebar={onOpenSidebar}
+        onWorkspaceNavigate={onWorkspaceNavigate}
       />
 
       <ConversationTimeline

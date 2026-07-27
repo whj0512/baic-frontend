@@ -9,6 +9,15 @@ const LOCAL_WINDOWS_PATH_PATTERN = /\/?[A-Za-z]:\\[^\r\n"]+/g
 const UPLOADED_FILE_PATH_MESSAGE_PATTERN =
   /^用户上传文件，已经下载到\s+\/?[A-Za-z]:\\/u
 
+interface NormalizedMessageRecord extends ConversationMessageView {
+  messageType?: string
+}
+
+interface MutableAssistantTurn {
+  message: ConversationMessageView
+  pendingToolIndices: Map<string, number>
+}
+
 function redactLocalPaths(value: string): string {
   return value.replace(
     LOCAL_WINDOWS_PATH_PATTERN,
@@ -83,30 +92,58 @@ function safeSummary(value: unknown): string {
   }
 }
 
+function normalizeToolPart(
+  value: unknown,
+  eventType: string,
+): ConversationPart {
+  const rawData =
+    isRecord(value) && value.type === 'data' ? value.data : value
+  const data = sanitizeData(rawData)
+  const toolData = isRecord(data) ? data : null
+  const input =
+    eventType === 'plugin_call'
+      ? toolData?.arguments ?? toolData?.input
+      : undefined
+  const output =
+    eventType === 'plugin_call_output'
+      ? toolData?.output ?? toolData?.result
+      : undefined
+
+  return {
+    type: 'tool',
+    eventType,
+    callId:
+      typeof toolData?.call_id === 'string' ? toolData.call_id : undefined,
+    name: typeof toolData?.name === 'string' ? toolData.name : undefined,
+    input,
+    output,
+    data,
+  }
+}
+
 function normalizePart(
   value: unknown,
   messageType?: string,
 ): ConversationPart {
-  if (!isRecord(value)) {
-    return { type: 'unknown', summary: safeSummary(value) }
-  }
-
   if (
     messageType === 'plugin_call'
     || messageType === 'plugin_call_output'
   ) {
-    return {
-      type: 'tool',
-      eventType: messageType,
-      data: sanitizeData(value.type === 'data' ? value.data : value),
-    }
+    return normalizeToolPart(value, messageType)
+  }
+
+  if (!isRecord(value)) {
+    return { type: 'unknown', summary: safeSummary(value) }
   }
 
   switch (value.type) {
     case 'text':
-      return typeof value.text === 'string'
-        ? { type: 'text', text: sanitizeText(value.text) }
-        : { type: 'unknown', summary: safeSummary(value) }
+      if (typeof value.text !== 'string') {
+        return { type: 'unknown', summary: safeSummary(value) }
+      }
+      return messageType === 'reasoning'
+        ? { type: 'reasoning', text: sanitizeText(value.text) }
+        : { type: 'text', text: sanitizeText(value.text) }
     case 'file': {
       const filename =
         typeof value.filename === 'string'
@@ -158,11 +195,43 @@ function getCreatedAt(message: Record<string, unknown>): string | undefined {
   return undefined
 }
 
+function getOriginalId(message: Record<string, unknown>): string | undefined {
+  if (
+    isRecord(message.metadata)
+    && typeof message.metadata.original_id === 'string'
+    && message.metadata.original_id.length > 0
+  ) {
+    return message.metadata.original_id
+  }
+
+  return undefined
+}
+
+function createStableMessageId(
+  message: Record<string, unknown>,
+  role: ConversationRole,
+  messageType: string | undefined,
+  index: number,
+  conversationKey: string,
+  idOccurrences: Map<string, number>,
+): string {
+  const sourceId =
+    getOriginalId(message)
+    ?? getCreatedAt(message)
+    ?? `${role}:${index}`
+  const occurrenceKey = `${sourceId}:${role}:${messageType ?? 'unknown'}`
+  const occurrence = idOccurrences.get(occurrenceKey) ?? 0
+  idOccurrences.set(occurrenceKey, occurrence + 1)
+
+  return `${conversationKey}:${occurrenceKey}:${occurrence}`
+}
+
 function normalizeMessage(
   value: unknown,
   index: number,
   conversationKey: string,
-): ConversationMessageView {
+  idOccurrences: Map<string, number>,
+): NormalizedMessageRecord {
   if (!isRecord(value)) {
     return {
       id: `${conversationKey}:${index}:unknown`,
@@ -179,61 +248,128 @@ function normalizeMessage(
   if (Array.isArray(value.content)) {
     parts = value.content.map((part) => normalizePart(part, messageType))
   } else if (typeof value.content === 'string') {
-    parts = [{ type: 'text', text: sanitizeText(value.content) }]
+    const text = sanitizeText(value.content)
+    parts = [
+      messageType === 'reasoning'
+        ? { type: 'reasoning', text }
+        : { type: 'text', text },
+    ]
   } else if (typeof value.text === 'string') {
-    parts = [{ type: 'text', text: sanitizeText(value.text) }]
+    const text = sanitizeText(value.text)
+    parts = [
+      messageType === 'reasoning'
+        ? { type: 'reasoning', text }
+        : { type: 'text', text },
+    ]
   } else {
     parts = [{ type: 'unknown', summary: safeSummary(value.content ?? value) }]
   }
 
   return {
-    id:
-      typeof value.id === 'string' && value.id.length > 0
-        ? value.id
-        : `${conversationKey}:${index}:${role}`,
+    id: createStableMessageId(
+      value,
+      role,
+      messageType,
+      index,
+      conversationKey,
+      idOccurrences,
+    ),
     role,
     parts,
+    messageType,
     createdAt: getCreatedAt(value),
     status: typeof value.status === 'string' ? value.status : undefined,
   }
 }
 
-function appendTurnParts(
-  currentParts: ConversationPart[],
-  nextParts: ConversationPart[],
-): ConversationPart[] {
-  const mergedParts = [...currentParts]
+function mergeToolParts(
+  callPart: Extract<ConversationPart, { type: 'tool' }>,
+  outputPart: Extract<ConversationPart, { type: 'tool' }>,
+): ConversationPart {
+  return {
+    type: 'tool',
+    eventType: 'plugin_call_and_output',
+    callId: callPart.callId ?? outputPart.callId,
+    name: callPart.name ?? outputPart.name,
+    input: callPart.input,
+    output: outputPart.output ?? outputPart.data,
+    data: {
+      call: callPart.data,
+      output: outputPart.data,
+    },
+  }
+}
 
-  nextParts.forEach((part) => {
-    const previousPart = mergedParts[mergedParts.length - 1]
-    if (previousPart?.type === 'text' && part.type === 'text') {
-      const separator =
-        previousPart.text.length > 0 && part.text.length > 0 ? '\n\n' : ''
-      mergedParts[mergedParts.length - 1] = {
-        type: 'text',
-        text: `${previousPart.text}${separator}${part.text}`,
-      }
+function appendPart(
+  turn: MutableAssistantTurn,
+  part: ConversationPart,
+): void {
+  const parts = turn.message.parts
+
+  if (part.type === 'tool' && part.callId) {
+    if (part.eventType === 'plugin_call') {
+      turn.pendingToolIndices.set(part.callId, parts.length)
+      parts.push(part)
       return
     }
 
-    mergedParts.push(part)
-  })
+    if (part.eventType === 'plugin_call_output') {
+      const callIndex = turn.pendingToolIndices.get(part.callId)
+      const callPart =
+        typeof callIndex === 'number' ? parts[callIndex] : undefined
+      if (callPart?.type === 'tool') {
+        parts[callIndex] = mergeToolParts(callPart, part)
+        turn.pendingToolIndices.delete(part.callId)
+        return
+      }
+    }
+  }
 
-  return mergedParts
+  const previousPart = parts[parts.length - 1]
+  if (previousPart?.type === 'text' && part.type === 'text') {
+    const separator =
+      previousPart.text.length > 0 && part.text.length > 0 ? '\n\n' : ''
+    previousPart.text = `${previousPart.text}${separator}${part.text}`
+    return
+  }
+
+  if (previousPart?.type === 'reasoning' && part.type === 'reasoning') {
+    const separator =
+      previousPart.text.length > 0 && part.text.length > 0 ? '\n\n' : ''
+    previousPart.text = `${previousPart.text}${separator}${part.text}`
+    return
+  }
+
+  parts.push(part)
+}
+
+function toMessageView(
+  message: NormalizedMessageRecord,
+): ConversationMessageView {
+  return {
+    id: message.id,
+    role: message.role,
+    parts: message.parts,
+    createdAt: message.createdAt,
+    status: message.status,
+    transient: message.transient,
+  }
 }
 
 function groupMessagesByTurn(
-  messages: ConversationMessageView[],
+  messages: NormalizedMessageRecord[],
+  conversationKey: string,
 ): ConversationMessageView[] {
-  // QwenPaw persists one assistant turn as multiple message/tool records.
-  // The next user message is the stable boundary between two visible turns.
+  // QwenPaw persists one visible turn as reasoning, message, and tool records.
+  // Preserve those semantics while using the next user message as the boundary.
   const groupedMessages: ConversationMessageView[] = []
   let userTurnStarted = false
-  let assistantTurn: ConversationMessageView | null = null
+  let currentUserId: string | null = null
+  let assistantTurn: MutableAssistantTurn | null = null
 
   const flushAssistantTurn = () => {
     if (assistantTurn) {
-      groupedMessages.push(assistantTurn)
+      groupedMessages.push(assistantTurn.message)
       assistantTurn = null
     }
   }
@@ -241,36 +377,38 @@ function groupMessagesByTurn(
   messages.forEach((message) => {
     if (message.role === 'user') {
       flushAssistantTurn()
-      groupedMessages.push(message)
+      groupedMessages.push(toMessageView(message))
       userTurnStarted = true
+      currentUserId = message.id
       return
     }
 
     if (!userTurnStarted) {
-      groupedMessages.push(message)
+      groupedMessages.push(toMessageView(message))
       return
     }
 
     if (!assistantTurn) {
       assistantTurn = {
-        ...message,
-        role: 'assistant',
-        parts: [...message.parts],
+        message: {
+          id: `${currentUserId ?? message.id}:assistant`,
+          role: 'assistant',
+          parts: [],
+          createdAt: message.createdAt,
+          status: message.status,
+        },
+        pendingToolIndices: new Map(),
       }
-      return
     }
 
-    assistantTurn = {
-      ...assistantTurn,
-      parts: appendTurnParts(assistantTurn.parts, message.parts),
-      createdAt:
-        message.role === 'assistant'
-          ? message.createdAt ?? assistantTurn.createdAt
-          : assistantTurn.createdAt ?? message.createdAt,
-      status:
-        message.role === 'assistant'
-          ? message.status ?? assistantTurn.status
-          : assistantTurn.status ?? message.status,
+    const currentTurn = assistantTurn
+    message.parts.forEach((part) => appendPart(currentTurn, part))
+
+    if (message.role === 'assistant' && message.messageType === 'message') {
+      currentTurn.message.createdAt =
+        message.createdAt ?? currentTurn.message.createdAt
+      currentTurn.message.status =
+        message.status ?? currentTurn.message.status
     }
   })
 
@@ -282,8 +420,14 @@ export function normalizeMessages(
   messages: unknown[],
   conversationKey: string,
 ): ConversationMessageView[] {
-  return groupMessagesByTurn(
-    messages.map((value, index) =>
-      normalizeMessage(value, index, conversationKey)),
-  )
+  const idOccurrences = new Map<string, number>()
+  const normalizedMessages = messages.map((value, index) =>
+    normalizeMessage(
+      value,
+      index,
+      conversationKey,
+      idOccurrences,
+    ))
+
+  return groupMessagesByTurn(normalizedMessages, conversationKey)
 }

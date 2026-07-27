@@ -15,6 +15,11 @@ export interface ConversationDraft {
   files: QwenPawUploadResponse[]
 }
 
+export type WorkspaceNavigationTarget =
+  | 'requirements'
+  | 'test-cases'
+  | 'knowledge-graph'
+
 export interface ConversationWorkspaceProps {
   activeAgent: QwenPawAgent | null
   activeConversation: ActiveConversationRef | null
@@ -32,4 +37,5 @@ export interface ConversationWorkspaceProps {
   onStop: () => void
   onHistoryRetry: () => void
   onOpenSidebar: () => void
+  onWorkspaceNavigate: (target: WorkspaceNavigationTarget) => void
 }

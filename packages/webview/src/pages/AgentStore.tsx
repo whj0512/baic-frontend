@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { MenuOutlined } from '@ant-design/icons'
 import { Input, Modal, message } from 'antd'
 import AgentSidebar from '../components/AgentWorkspace/AgentSidebar'
 import type { AgentProject } from '../components/AgentWorkspace/AgentSidebar'
 import ConversationWorkspace from '../components/AgentWorkspace/ConversationWorkspace'
-import type { ConversationDraft } from '../components/AgentWorkspace/ConversationWorkspace'
+import type {
+  ConversationDraft,
+  WorkspaceNavigationTarget,
+} from '../components/AgentWorkspace/ConversationWorkspace'
 import { useQwenPawWorkspace } from '../components/AgentWorkspace/qwenPaw/useQwenPawWorkspace'
 import { API_ENDPOINTS, authFetch } from '../config/api'
 import './AgentStore.css'
@@ -96,6 +100,7 @@ function AgentWelcome({
 }
 
 function AgentStore() {
+  const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [projects, setProjects] = useState<AgentProject[]>([])
   const [selectedProject, setSelectedProject] = useState<AgentProject | null>(null)
@@ -204,6 +209,16 @@ function AgentStore() {
         size: file.size,
       })),
     ])
+  }
+
+  const handleWorkspaceNavigate = (target: WorkspaceNavigationTarget) => {
+    if (!selectedProject) {
+      return
+    }
+
+    navigate(
+      `/workspace/${encodeURIComponent(selectedProject.id)}?view=${target}`,
+    )
   }
 
   const handleProjectSelect = (project: AgentProject) => {
@@ -413,6 +428,7 @@ function AgentStore() {
           onStop={qwenPawWorkspace.stop}
           onHistoryRetry={qwenPawWorkspace.retryHistory}
           onOpenSidebar={() => setSidebarOpen(true)}
+          onWorkspaceNavigate={handleWorkspaceNavigate}
         />
       ) : (
         <AgentWelcome
