@@ -21,6 +21,24 @@
   background-color: #f0f9ff;
 }
 
+.dimension-item:focus-visible {
+  border-color: #3b82f6;
+  outline: 2px solid rgb(59 130 246 / 20%);
+  outline-offset: 1px;
+}
+
+.dimension-item--disabled,
+.dimension-item--disabled:hover {
+  background-color: #f9fafb;
+  border-color: #e5e7eb;
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.dimension-item--disabled .dimension-arrow {
+  visibility: hidden;
+}
+
 .dimension-item-left,
 .dimension-item-right {
   display: flex;
@@ -139,6 +157,12 @@
   .dimension-item:hover {
     border-color: #60a5fa;
     background-color: #1e3a5f;
+  }
+
+  .dimension-item--disabled,
+  .dimension-item--disabled:hover {
+    background-color: #374151;
+    border-color: #4b5563;
   }
 
   .dimension-label {

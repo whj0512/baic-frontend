@@ -12,24 +12,44 @@ export interface DimensionListSection<Key extends string = string> {
 interface DimensionListProps<Section extends DimensionListSection = DimensionListSection> {
   sections: Section[]
   isSectionDefined: (section: Section) => boolean
+  isSectionDisabled?: (section: Section) => boolean
   onSectionClick?: (section: Section) => void
 }
 
 function DimensionList<Section extends DimensionListSection = DimensionListSection>({
   sections,
   isSectionDefined,
+  isSectionDisabled,
   onSectionClick,
 }: DimensionListProps<Section>) {
   return (
     <div className="dimension-list">
       {sections.map((section) => {
         const defined = isSectionDefined(section)
+        const disabled = isSectionDisabled?.(section) ?? false
+        const handleSectionClick = () => {
+          if (!disabled) {
+            onSectionClick?.(section)
+          }
+        }
 
         return (
           <div
             key={section.key}
-            className="dimension-item"
-            onClick={() => onSectionClick?.(section)}
+            className={`dimension-item${disabled ? ' dimension-item--disabled' : ''}`}
+            role="button"
+            tabIndex={disabled ? -1 : 0}
+            aria-disabled={disabled}
+            onClick={handleSectionClick}
+            onKeyDown={(event) => {
+              if (
+                event.target === event.currentTarget
+                && (event.key === 'Enter' || event.key === ' ')
+              ) {
+                event.preventDefault()
+                handleSectionClick()
+              }
+            }}
           >
             <div className="dimension-item-left">
               <span className={`dimension-tag tag-${section.dimensionCode}`}>{section.dimensionCode}</span>

@@ -29,10 +29,31 @@ export type DimensionSectionConfig = {
   dslField?: keyof Requirement
 }
 
-export interface DimensionEditorProps {
+export interface RequirementDimensionEditorProps {
+  mode?: 'requirement'
   draftProjectScope: string
   requirement: Requirement
   sectionKey: SectionKey
   onBack: () => void
   onSave?: (sectionKey: SectionKey, graphData: object, dslText: string, snapshot?: EditorSnapshot) => void
 }
+
+export interface DimensionArtifactDraft {
+  dslContent: string
+  graphData: object
+}
+
+export interface ArtifactDimensionEditorProps {
+  mode: 'artifact'
+  sectionKey: SectionKey
+  initialDslContent: string
+  initialGraphData?: object
+  ibdDsl?: string
+  visualDisabledReason?: string
+  onBack?: () => void
+  onDraftChange?: (draft: DimensionArtifactDraft) => void
+}
+
+export type DimensionEditorProps =
+  | RequirementDimensionEditorProps
+  | ArtifactDimensionEditorProps

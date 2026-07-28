@@ -1,15 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Button, ConfigProvider, message, Modal } from 'antd'
+import { Button, message, Modal } from 'antd'
 import { ArrowLeftOutlined, SaveOutlined, DownloadOutlined, FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons'
-import FlowGraph, { type FlowGraphRef } from '../graph'
-import DslEditor from '../dsl-editor'
+import type { FlowGraphRef } from '../graph'
 import { getModelStrategy } from '../../models/strategies'
 import { exportGraphToRBG } from '../../models/strategies/internalConstraints/exportGraph'
+import ArtifactDimensionEditor from './ArtifactDimensionEditor'
+import DimensionModelingSurface from './DimensionModelingSurface'
 import { SECTION_CONFIG } from './dimensionEditorConfig'
 import { useDimensionEditorConversions } from './useDimensionEditorConversions'
 import { useDimensionEditorSnapshot } from './useDimensionEditorSnapshot'
 import { useUnsavedChangesGuard } from './useUnsavedChangesGuard'
-import type { DimensionEditorProps, EditorSnapshot, SectionKey, ViewMode } from './types'
+import type {
+  DimensionEditorProps,
+  EditorSnapshot,
+  RequirementDimensionEditorProps,
+  SectionKey,
+  ViewMode,
+} from './types'
 import { cloneSerializableData, createEditorSnapshot } from './snapshot'
 import {
   clearDimensionEditorDraft,
@@ -19,7 +26,13 @@ import {
 } from '../../utils/editorDraftStorage'
 import './DimensionEditor.css'
 
-function DimensionEditor({ draftProjectScope, requirement, sectionKey, onBack, onSave }: DimensionEditorProps) {
+function RequirementDimensionEditor({
+  draftProjectScope,
+  requirement,
+  sectionKey,
+  onBack,
+  onSave,
+}: RequirementDimensionEditorProps) {
   const config = SECTION_CONFIG[sectionKey]
   const modelStrategy = getModelStrategy(sectionKey)
   const draftUserId = getDraftUserId()
@@ -334,6 +347,37 @@ function DimensionEditor({ draftProjectScope, requirement, sectionKey, onBack, o
     return document.body
   }, [isFullscreen])
 
+  const toolbarContent = (
+    <div className="dimension-editor-actions">
+      {viewMode === 'visual' && (
+        <>
+          {sectionKey === 'internalConstraints' && (
+            <Button
+              size="small"
+              onClick={handlePrintRBG}
+              title="在控制台打印生成的 RBG 格式 JSON"
+            >
+              控制台打印 RBG
+            </Button>
+          )}
+          <Button
+            size="small"
+            icon={<DownloadOutlined />}
+            onClick={handleDownloadJSON}
+          >
+            导出 JSON
+          </Button>
+        </>
+      )}
+      <Button
+        size="small"
+        icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+        onClick={() => setIsFullscreen((current) => !current)}
+        title={isFullscreen ? '退出全屏' : '全屏'}
+      />
+    </div>
+  )
+
   return (
     <div className="dimension-editor">
       <div className="dimension-editor-header">
@@ -366,82 +410,37 @@ function DimensionEditor({ draftProjectScope, requirement, sectionKey, onBack, o
           />
         </div>
 
-        <ConfigProvider getPopupContainer={getEditorPopupContainer}>
-          <div
-            ref={editorGroupRef}
-            className={`editor-group${isFullscreen ? ' editor-group--fullscreen' : ''}`}
-          >
-          <div className="editor-group-header">
-            <div className="editor-view-tabs">
-              <label
-                className={`editor-view-tab ${viewMode === 'dsl' ? 'active' : ''}`}
-                onClick={handleSwitchToDsl}
-              >
-                DSL语言描述
-              </label>
-              <label
-                className={`editor-view-tab ${viewMode === 'visual' ? 'active' : ''}`}
-                onClick={handleSwitchToVisual}
-              >
-                可视化模型(Flow/Logic)
-              </label>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              {viewMode === 'visual' && (
-                <>
-                  {sectionKey === 'internalConstraints' && (
-                    <Button
-                      size="small"
-                      onClick={handlePrintRBG}
-                      title="在控制台打印生成的 RBG 格式 JSON"
-                    >
-                      控制台打印 RBG
-                    </Button>
-                  )}
-                  <Button
-                    size="small"
-                    icon={<DownloadOutlined />}
-                    onClick={handleDownloadJSON}
-                  >
-                    导出 JSON
-                  </Button>
-                </>
-              )}
-              <Button
-                size="small"
-                icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
-                onClick={() => setIsFullscreen((f) => !f)}
-                title={isFullscreen ? '退出全屏' : '全屏'}
-              />
-            </div>
-          </div>
-          <div className="editor-canvas-container">
-            {viewMode === 'visual' ? (
-              <FlowGraph
-                ref={flowGraphRef}
-                sectionKey={sectionKey}
-                data={graphData}
-                onChange={handleGraphChange}
-                errorMessage={graphError}
-                onDismissError={handleDismissGraphError}
-              />
-            ) : (
-              <DslEditor
-                sectionKey={sectionKey}
-                value={dslContent}
-                loading={dslLoading}
-                error={dslError}
-                onDismissError={handleDismissError}
-                readOnly={false}
-                onChange={handleDslContentChange}
-              />
-            )}
-          </div>
-          </div>
-        </ConfigProvider>
+        <DimensionModelingSurface
+          sectionKey={sectionKey}
+          viewMode={viewMode}
+          graphData={graphData}
+          dslContent={dslContent}
+          dslLoading={dslLoading}
+          dslError={dslError}
+          graphError={graphError}
+          flowGraphRef={flowGraphRef}
+          editorGroupRef={editorGroupRef}
+          isFullscreen={isFullscreen}
+          toolbarContent={toolbarContent}
+          getPopupContainer={getEditorPopupContainer}
+          onSwitchToDsl={handleSwitchToDsl}
+          onSwitchToVisual={handleSwitchToVisual}
+          onGraphChange={handleGraphChange}
+          onDslContentChange={handleDslContentChange}
+          onDismissDslError={handleDismissError}
+          onDismissGraphError={handleDismissGraphError}
+        />
       </div>
     </div>
   )
+}
+
+function DimensionEditor(props: DimensionEditorProps) {
+  if (props.mode === 'artifact') {
+    return <ArtifactDimensionEditor {...props} />
+  }
+
+  return <RequirementDimensionEditor {...props} />
 }
 
 export default DimensionEditor

@@ -9,7 +9,6 @@ import {
   SearchOutlined,
 } from '@ant-design/icons'
 import {
-  type ChangeEvent,
   useCallback,
   lazy,
   memo,
@@ -24,11 +23,6 @@ import type {
   DimensionArtifactDraft,
   SectionKey,
 } from '../../../../DimensionEditor'
-import DimensionList from '../../../../DimensionList'
-import {
-  DEFAULT_REQUIREMENT_SECTIONS,
-  type RequirementDimensionSection,
-} from '../../../../DimensionList/requirementSections'
 import type { ToolPanelProps } from '../types'
 import type {
   RequirementDslArtifactsPanelPayload,
@@ -50,14 +44,6 @@ const TYPE_SECTION_KEYS: Record<RequirementDslArtifactType, SectionKey> = {
   statechart: 'internalConstraints',
 }
 
-const SECTION_ARTIFACT_TYPES: Partial<
-  Record<SectionKey, RequirementDslArtifactType>
-> = {
-  environment: 'environment',
-  interaction: 'external-scenario',
-  internalConstraints: 'statechart',
-}
-
 type TypeFilter = 'all' | RequirementDslArtifactType
 
 const FOCUSABLE_SELECTOR = [
@@ -75,16 +61,6 @@ interface RequirementListItem {
   description: string
   artifactIds: string[]
   searchText: string
-}
-
-interface RequirementDetailsDraft {
-  name: string
-  description: string
-}
-
-interface ActiveArtifactEditor {
-  requirementId: string
-  artifactId: string
 }
 
 function PanelState({
@@ -177,11 +153,6 @@ function RequirementDslArtifactsBrowser({
     null,
   )
   const [expanded, setExpanded] = useState(false)
-  const [activeArtifactEditor, setActiveArtifactEditor] =
-    useState<ActiveArtifactEditor | null>(null)
-  const [requirementDrafts, setRequirementDrafts] = useState(
-    () => new Map<string, RequirementDetailsDraft>(),
-  )
   const panelRef = useRef<HTMLElement | null>(null)
   const expandButtonRef = useRef<HTMLButtonElement | null>(null)
   const artifactDraftsRef = useRef(
@@ -200,7 +171,6 @@ function RequirementDslArtifactsBrowser({
     const previousCanvasOverflow = scrollContainer?.style.overflow
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setActiveArtifactEditor(null)
         setExpanded(false)
         return
       }
@@ -302,12 +272,6 @@ function RequirementDslArtifactsBrowser({
       requirement.artifactIds.length > 0)
     ?? filteredRequirements[0]
     ?? null
-  const effectiveRequirementDraft = effectiveRequirement
-    ? requirementDrafts.get(effectiveRequirement.id) ?? {
-        name: effectiveRequirement.name,
-        description: effectiveRequirement.description,
-      }
-    : null
 
   const visibleArtifactIds = effectiveRequirement?.artifactIds.filter(
     (artifactId) =>
@@ -321,22 +285,10 @@ function RequirementDslArtifactsBrowser({
   const effectiveArtifact = effectiveArtifactId
     ? envelope.artifacts[effectiveArtifactId]
     : null
-  const activeEditorArtifactId =
-    expanded
-    && activeArtifactEditor
-    && activeArtifactEditor.requirementId === effectiveRequirement?.id
-    && effectiveRequirement.artifactIds.includes(
-      activeArtifactEditor.artifactId,
-    )
-      ? activeArtifactEditor.artifactId
-      : null
-  const activeEditorArtifact = activeEditorArtifactId
-    ? envelope.artifacts[activeEditorArtifactId]
-    : null
-  const activeEditorArtifactDraft =
-    activeEditorArtifactId && activeEditorArtifact
-      ? artifactDraftsRef.current.get(activeEditorArtifactId) ?? {
-          dslContent: activeEditorArtifact.content,
+  const effectiveArtifactDraft =
+    effectiveArtifactId && effectiveArtifact
+      ? artifactDraftsRef.current.get(effectiveArtifactId) ?? {
+          dslContent: effectiveArtifact.content,
           graphData: {},
         }
       : null
@@ -353,7 +305,7 @@ function RequirementDslArtifactsBrowser({
         ?? environmentArtifact.content
       : ''
   const visualDisabledReason =
-    activeEditorArtifact?.type === 'external-scenario' && !environmentArtifact
+    effectiveArtifact?.type === 'external-scenario' && !environmentArtifact
       ? '缺少 Environment 制品，无法转换 ExternalScenario'
       : undefined
 
@@ -369,7 +321,6 @@ function RequirementDslArtifactsBrowser({
   ] as const
 
   const selectRequirement = (requirement: RequirementListItem) => {
-    setActiveArtifactEditor(null)
     setSelectedRequirementId(requirement.id)
     setSelectedArtifactId(
       requirement.artifactIds.find(
@@ -383,107 +334,9 @@ function RequirementDslArtifactsBrowser({
   const handleArtifactDraftChange = useCallback((
     draft: DimensionArtifactDraft,
   ) => {
-    if (!activeEditorArtifactId) return
-    artifactDraftsRef.current.set(activeEditorArtifactId, draft)
-  }, [activeEditorArtifactId])
-
-  const handleRequirementDraftChange = useCallback((
-    field: keyof RequirementDetailsDraft,
-    value: string,
-  ) => {
-    if (!effectiveRequirement) return
-
-    setRequirementDrafts((currentDrafts) => {
-      const nextDrafts = new Map(currentDrafts)
-      const currentDraft = nextDrafts.get(effectiveRequirement.id) ?? {
-        name: effectiveRequirement.name,
-        description: effectiveRequirement.description,
-      }
-      nextDrafts.set(effectiveRequirement.id, {
-        ...currentDraft,
-        [field]: value,
-      })
-      return nextDrafts
-    })
-  }, [effectiveRequirement])
-
-  const getSectionArtifactId = useCallback((
-    section: RequirementDimensionSection,
-  ) => {
-    if (!effectiveRequirement) return null
-    const artifactType = SECTION_ARTIFACT_TYPES[section.key]
-    if (!artifactType) return null
-
-    const currentArtifactId =
-      selectedArtifactId
-      && effectiveRequirement.artifactIds.includes(selectedArtifactId)
-        ? selectedArtifactId
-        : effectiveArtifactId
-    if (
-      currentArtifactId
-      && envelope.artifacts[currentArtifactId]?.type === artifactType
-    ) {
-      return currentArtifactId
-    }
-
-    return effectiveRequirement.artifactIds.find(
-      (artifactId) =>
-        envelope.artifacts[artifactId]?.type === artifactType,
-    ) ?? null
-  }, [
-    effectiveArtifactId,
-    effectiveRequirement,
-    envelope.artifacts,
-    selectedArtifactId,
-  ])
-
-  const handleDimensionClick = useCallback((
-    section: RequirementDimensionSection,
-  ) => {
-    if (!effectiveRequirement) return
-    const artifactType = SECTION_ARTIFACT_TYPES[section.key]
-    const artifactId = getSectionArtifactId(section)
-    if (!artifactType || !artifactId) return
-
-    setSelectedRequirementId(effectiveRequirement.id)
-    setTypeFilter(artifactType)
-    setSelectedArtifactId(artifactId)
-    setActiveArtifactEditor({
-      requirementId: effectiveRequirement.id,
-      artifactId,
-    })
-  }, [effectiveRequirement, getSectionArtifactId])
-
-  const handleExpandToggle = useCallback(() => {
-    setActiveArtifactEditor(null)
-    setExpanded((current) => !current)
-  }, [])
-
-  const handleQueryChange = useCallback((
-    event: ChangeEvent<HTMLInputElement>,
-  ) => {
-    setActiveArtifactEditor(null)
-    setQuery(event.target.value)
-  }, [])
-
-  const handleTypeFilterChange = useCallback((value: TypeFilter) => {
-    setActiveArtifactEditor(null)
-    setTypeFilter(value)
-  }, [])
-
-  const selectArtifact = useCallback((artifactId: string) => {
-    setSelectedArtifactId(artifactId)
-    if (expanded && activeArtifactEditor && effectiveRequirement) {
-      setActiveArtifactEditor({
-        requirementId: effectiveRequirement.id,
-        artifactId,
-      })
-    }
-  }, [activeArtifactEditor, effectiveRequirement, expanded])
-
-  const handleReturnToOverview = useCallback(() => {
-    setActiveArtifactEditor(null)
-  }, [])
+    if (!effectiveArtifactId) return
+    artifactDraftsRef.current.set(effectiveArtifactId, draft)
+  }, [effectiveArtifactId])
 
   const panel = (
     <section
@@ -514,7 +367,7 @@ function RequirementDslArtifactsBrowser({
             aria-label={expanded ? '退出放大查看' : '放大查看'}
             aria-pressed={expanded}
             title={expanded ? '退出放大查看（Esc）' : '放大查看'}
-            onClick={handleExpandToggle}
+            onClick={() => setExpanded((current) => !current)}
           >
             {expanded
               ? <FullscreenExitOutlined />
@@ -541,7 +394,7 @@ function RequirementDslArtifactsBrowser({
             type="search"
             value={query}
             placeholder="搜索需求 ID、名称、描述或制品路径"
-            onChange={handleQueryChange}
+            onChange={(event) => setQuery(event.target.value)}
           />
         </label>
         <div
@@ -563,7 +416,7 @@ function RequirementDslArtifactsBrowser({
                   : undefined
               }
               aria-pressed={typeFilter === value}
-              onClick={() => handleTypeFilterChange(value)}
+              onClick={() => setTypeFilter(value)}
             >
               {label}
             </button>
@@ -594,11 +447,7 @@ function RequirementDslArtifactsBrowser({
                     <code>{requirement.id}</code>
                     <em>{requirement.artifactIds.length} 个制品</em>
                   </span>
-                  <strong>
-                    {(requirementDrafts.get(requirement.id)?.name
-                      ?? requirement.name)
-                      || '未提供需求名称'}
-                  </strong>
+                  <strong>{requirement.name || '未提供需求名称'}</strong>
                 </button>
               ))
             ) : (
@@ -613,20 +462,18 @@ function RequirementDslArtifactsBrowser({
         <div className="requirement-dsl-panel__detail">
           {effectiveRequirement ? (
             <>
-              {!expanded && (
-                <div className="requirement-dsl-panel__requirement-detail">
-                  <div>
-                    <span>当前需求</span>
-                    <code>{effectiveRequirement.id}</code>
-                  </div>
-                  <h4>
-                    {effectiveRequirementDraft?.name || '未提供需求名称'}
-                  </h4>
-                  <p>
-                    {effectiveRequirementDraft?.description || '未提供需求描述'}
-                  </p>
+              <div className="requirement-dsl-panel__requirement-detail">
+                <div>
+                  <span>当前需求</span>
+                  <code>{effectiveRequirement.id}</code>
                 </div>
-              )}
+                <h4>
+                  {effectiveRequirement.name || '未提供需求名称'}
+                </h4>
+                <p>
+                  {effectiveRequirement.description || '未提供需求描述'}
+                </p>
+              </div>
 
               <div className="requirement-dsl-panel__artifact-layout">
                 <nav aria-label="关联 DSL 制品">
@@ -647,7 +494,7 @@ function RequirementDslArtifactsBrowser({
                                 ? 'requirement-dsl-panel__artifact--active'
                                 : undefined
                             }
-                            onClick={() => selectArtifact(artifactId)}
+                            onClick={() => setSelectedArtifactId(artifactId)}
                           >
                             <CodeOutlined />
                             <span>
@@ -666,119 +513,8 @@ function RequirementDslArtifactsBrowser({
                   </div>
                 </nav>
 
-                <div
-                  className={[
-                    'requirement-dsl-panel__viewer',
-                    expanded
-                      ? activeEditorArtifact && activeEditorArtifactDraft
-                        ? 'requirement-dsl-panel__viewer--editor'
-                        : 'requirement-dsl-panel__viewer--overview'
-                      : '',
-                  ].filter(Boolean).join(' ')}
-                >
-                  {expanded ? (
-                    activeEditorArtifact
-                    && activeEditorArtifactId
-                    && activeEditorArtifactDraft ? (
-                        <div className="requirement-dsl-panel__editor">
-                          <Suspense
-                            fallback={(
-                              <div className="requirement-dsl-panel__editor-loading">
-                                <LoadingOutlined spin />
-                                <span>正在加载建模编辑器</span>
-                              </div>
-                            )}
-                          >
-                            <DimensionEditor
-                              key={`artifact:${activeEditorArtifactId}`}
-                              mode="artifact"
-                              sectionKey={
-                                TYPE_SECTION_KEYS[activeEditorArtifact.type]
-                              }
-                              initialDslContent={
-                                activeEditorArtifactDraft.dslContent
-                              }
-                              initialGraphData={
-                                activeEditorArtifactDraft.graphData
-                              }
-                              ibdDsl={
-                                activeEditorArtifact.type === 'external-scenario'
-                                  ? environmentDsl
-                                  : undefined
-                              }
-                              visualDisabledReason={visualDisabledReason}
-                              onBack={handleReturnToOverview}
-                              onDraftChange={handleArtifactDraftChange}
-                            />
-                          </Suspense>
-                        </div>
-                      ) : (
-                        <section
-                          className="requirement-dsl-panel__overview"
-                          aria-label="当前需求概览"
-                        >
-                          <div className="requirement-dsl-panel__overview-heading">
-                            <div>
-                              <span>当前需求</span>
-                              <code>{effectiveRequirement.id}</code>
-                            </div>
-                            <h4>需求概览</h4>
-                          </div>
-
-                          <section
-                            className="requirement-dsl-panel__requirement-editor"
-                            aria-label="编辑当前需求信息"
-                          >
-                            <label>
-                              <span>需求名称</span>
-                              <input
-                                type="text"
-                                value={effectiveRequirementDraft?.name ?? ''}
-                                placeholder="请输入需求名称"
-                                onChange={(event) => {
-                                  handleRequirementDraftChange(
-                                    'name',
-                                    event.target.value,
-                                  )
-                                }}
-                              />
-                            </label>
-                            <label>
-                              <span>需求描述</span>
-                              <textarea
-                                rows={3}
-                                value={
-                                  effectiveRequirementDraft?.description ?? ''
-                                }
-                                placeholder="请输入需求描述"
-                                onChange={(event) => {
-                                  handleRequirementDraftChange(
-                                    'description',
-                                    event.target.value,
-                                  )
-                                }}
-                              />
-                            </label>
-                            <small>临时编辑，不会保存到需求</small>
-                          </section>
-
-                          <section className="requirement-dsl-panel__dimensions">
-                            <div className="requirement-dsl-panel__dimensions-heading">
-                              <strong>五维模型</strong>
-                              <span>选择已定义维度进入编辑器</span>
-                            </div>
-                            <DimensionList
-                              sections={DEFAULT_REQUIREMENT_SECTIONS}
-                              isSectionDefined={(section) =>
-                                Boolean(getSectionArtifactId(section))}
-                              isSectionDisabled={(section) =>
-                                !getSectionArtifactId(section)}
-                              onSectionClick={handleDimensionClick}
-                            />
-                          </section>
-                        </section>
-                      )
-                  ) : effectiveArtifact && effectiveArtifactId ? (
+                <div className="requirement-dsl-panel__viewer">
+                  {effectiveArtifact && effectiveArtifactId ? (
                     <>
                       <header>
                         <span>
@@ -791,18 +527,45 @@ function RequirementDslArtifactsBrowser({
                           fallback={(
                             <div className="requirement-dsl-panel__editor-loading">
                               <LoadingOutlined spin />
-                              <span>正在加载 DSL 阅读器</span>
+                              <span>
+                                {expanded
+                                  ? '正在加载建模编辑器'
+                                  : '正在加载 DSL 阅读器'}
+                              </span>
                             </div>
                           )}
                         >
-                          <DslEditor
-                            key={effectiveArtifactId}
-                            sectionKey={
-                              TYPE_SECTION_KEYS[effectiveArtifact.type]
-                            }
-                            value={effectiveArtifact.content}
-                            readOnly
-                          />
+                          {expanded && effectiveArtifactDraft ? (
+                            <DimensionEditor
+                              key={`artifact:${effectiveArtifactId}`}
+                              mode="artifact"
+                              sectionKey={
+                                TYPE_SECTION_KEYS[effectiveArtifact.type]
+                              }
+                              initialDslContent={
+                                effectiveArtifactDraft.dslContent
+                              }
+                              initialGraphData={
+                                effectiveArtifactDraft.graphData
+                              }
+                              ibdDsl={
+                                effectiveArtifact.type === 'external-scenario'
+                                  ? environmentDsl
+                                  : undefined
+                              }
+                              visualDisabledReason={visualDisabledReason}
+                              onDraftChange={handleArtifactDraftChange}
+                            />
+                          ) : (
+                            <DslEditor
+                              key={effectiveArtifactId}
+                              sectionKey={
+                                TYPE_SECTION_KEYS[effectiveArtifact.type]
+                              }
+                              value={effectiveArtifact.content}
+                              readOnly
+                            />
+                          )}
                         </Suspense>
                       </div>
                     </>
