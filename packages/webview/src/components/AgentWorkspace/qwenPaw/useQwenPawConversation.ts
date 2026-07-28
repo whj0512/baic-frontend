@@ -14,6 +14,7 @@ import {
   fetchChats,
   streamChat,
 } from './qwenPawClient'
+import { normalizeStreamingToolPart } from './normalizeMessages'
 import type {
   ActiveConversationRef,
   ConversationMessageView,
@@ -344,9 +345,23 @@ export function useQwenPawConversation({
     const requestId = streamRequestIdRef.current + 1
     streamRequestIdRef.current = requestId
     streamControllerRef.current = controller
-    const timeout = globalThis.setTimeout(() => {
-      controller.abort(new DOMException('Chat timeout', 'TimeoutError'))
-    }, getRuntimeConfig().qwenPawChatTimeoutMs)
+    const idleTimeoutMs = getRuntimeConfig().qwenPawChatTimeoutMs
+    let idleTimeout: ReturnType<typeof globalThis.setTimeout> | null = null
+    const clearIdleTimeout = () => {
+      if (idleTimeout !== null) {
+        globalThis.clearTimeout(idleTimeout)
+        idleTimeout = null
+      }
+    }
+    const resetIdleTimeout = () => {
+      clearIdleTimeout()
+      idleTimeout = globalThis.setTimeout(() => {
+        controller.abort(
+          new DOMException('Chat stream idle timeout', 'TimeoutError'),
+        )
+      }, idleTimeoutMs)
+    }
+    resetIdleTimeout()
 
     try {
       for await (const event of streamChat({
@@ -356,7 +371,7 @@ export function useQwenPawConversation({
         session_id: conversation.sessionId,
         user_id: conversation.userId,
         channel: conversation.channel,
-      }, controller.signal)) {
+      }, controller.signal, resetIdleTimeout)) {
         if (
           controller.signal.aborted
           || streamRequestIdRef.current !== requestId
@@ -376,6 +391,22 @@ export function useQwenPawConversation({
               ? 'replace'
               : 'append',
           )
+        } else if (
+          event.object === 'message'
+          && (
+            event.type === 'plugin_call'
+            || event.type === 'plugin_call_output'
+          )
+        ) {
+          const part = normalizeStreamingToolPart(event)
+          if (part) {
+            flushStreamText()
+            dispatch({
+              type: 'stream_tool',
+              assistantMessageId,
+              part,
+            })
+          }
         }
       }
 
@@ -386,7 +417,7 @@ export function useQwenPawConversation({
         return
       }
 
-      globalThis.clearTimeout(timeout)
+      clearIdleTimeout()
       flushStreamText()
       dispatch({
         type: 'send_completed',
@@ -456,7 +487,7 @@ export function useQwenPawConversation({
       }
       throw sendError
     } finally {
-      globalThis.clearTimeout(timeout)
+      clearIdleTimeout()
       if (streamRequestIdRef.current === requestId) {
         streamControllerRef.current = null
       }

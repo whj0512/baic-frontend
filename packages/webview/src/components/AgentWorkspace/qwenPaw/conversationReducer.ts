@@ -1,6 +1,7 @@
 import type {
   ActiveConversationRef,
   ConversationMessageView,
+  ConversationPart,
   QwenPawConversationStatus,
   QwenPawError,
   QwenPawRegistrationState,
@@ -48,6 +49,11 @@ export type QwenPawConversationAction =
       mode: 'append' | 'replace'
     }
   | {
+      type: 'stream_tool'
+      assistantMessageId: string
+      part: Extract<ConversationPart, { type: 'tool' }>
+    }
+  | {
       type: 'send_completed'
       userMessageId: string
       assistantMessageId: string
@@ -92,18 +98,97 @@ function updateAssistantText(
       return message
     }
 
-    const currentText = message.parts
-      .filter((part) => part.type === 'text')
-      .map((part) => part.text)
-      .join('')
+    const textIndex = message.parts.findIndex((part) => part.type === 'text')
+    const currentPart =
+      textIndex >= 0 ? message.parts[textIndex] : undefined
+    const currentText = currentPart?.type === 'text' ? currentPart.text : ''
+    const nextText = mode === 'append' ? `${currentText}${text}` : text
+    const parts = [...message.parts]
+    if (textIndex >= 0) {
+      parts[textIndex] = { type: 'text', text: nextText }
+    } else {
+      parts.push({ type: 'text', text: nextText })
+    }
 
     return {
       ...message,
-      parts: [{
-        type: 'text',
-        text: mode === 'append' ? `${currentText}${text}` : text,
-      }],
+      parts,
     }
+  })
+}
+
+function hasToolCall(
+  part: Extract<ConversationPart, { type: 'tool' }>,
+): boolean {
+  return (
+    part.eventType === 'plugin_call'
+    || part.eventType === 'plugin_call_and_output'
+  )
+}
+
+function hasToolOutput(
+  part: Extract<ConversationPart, { type: 'tool' }>,
+): boolean {
+  return (
+    part.eventType === 'plugin_call_output'
+    || part.eventType === 'plugin_call_and_output'
+  )
+}
+
+function mergeStreamingToolParts(
+  current: Extract<ConversationPart, { type: 'tool' }>,
+  incoming: Extract<ConversationPart, { type: 'tool' }>,
+): Extract<ConversationPart, { type: 'tool' }> {
+  const hasCall = hasToolCall(current) || hasToolCall(incoming)
+  const hasOutput = hasToolOutput(current) || hasToolOutput(incoming)
+
+  return {
+    type: 'tool',
+    eventType:
+      hasCall && hasOutput
+        ? 'plugin_call_and_output'
+        : incoming.eventType,
+    callId: incoming.callId ?? current.callId,
+    name: incoming.name ?? current.name,
+    input: incoming.input ?? current.input,
+    output: incoming.output ?? current.output,
+    data: {
+      previous: current.data,
+      latest: incoming.data,
+    },
+  }
+}
+
+function updateAssistantTool(
+  messages: ConversationMessageView[],
+  assistantMessageId: string,
+  incoming: Extract<ConversationPart, { type: 'tool' }>,
+): ConversationMessageView[] {
+  return messages.map((message) => {
+    if (message.id !== assistantMessageId) {
+      return message
+    }
+
+    const parts = message.parts.filter(
+      (part) => part.type !== 'text' || part.text.length > 0,
+    )
+    const partIndex = incoming.callId
+      ? parts.findIndex(
+        (part) =>
+          part.type === 'tool' && part.callId === incoming.callId,
+      )
+      : -1
+    const currentPart = partIndex >= 0 ? parts[partIndex] : undefined
+    if (currentPart?.type === 'tool') {
+      parts[partIndex] = mergeStreamingToolParts(
+        currentPart,
+        incoming,
+      )
+    } else {
+      parts.push(incoming)
+    }
+
+    return { ...message, parts }
   })
 }
 
@@ -187,6 +272,15 @@ export function qwenPawConversationReducer(
           action.assistantMessageId,
           action.text,
           action.mode,
+        ),
+      }
+    case 'stream_tool':
+      return {
+        ...state,
+        messages: updateAssistantTool(
+          state.messages,
+          action.assistantMessageId,
+          action.part,
         ),
       }
     case 'send_completed':

@@ -180,6 +180,32 @@ function normalizePart(
   }
 }
 
+export function normalizeStreamingToolPart(
+  value: unknown,
+): Extract<ConversationPart, { type: 'tool' }> | null {
+  if (
+    !isRecord(value)
+    || (value.type !== 'plugin_call' && value.type !== 'plugin_call_output')
+  ) {
+    return null
+  }
+
+  const candidates = Array.isArray(value.content)
+    ? value.content
+    : value.data === undefined
+      ? []
+      : [{ type: 'data', data: value.data }]
+
+  for (const candidate of candidates) {
+    const part = normalizePart(candidate, value.type)
+    if (part.type === 'tool') {
+      return part
+    }
+  }
+
+  return null
+}
+
 function getCreatedAt(message: Record<string, unknown>): string | undefined {
   if (typeof message.created_at === 'string') {
     return message.created_at

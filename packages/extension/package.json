@@ -94,7 +94,7 @@
           "type": "number",
           "default": 120000,
           "minimum": 1,
-          "description": "QwenPaw chat request timeout in milliseconds."
+          "description": "Maximum QwenPaw chat stream idle time and attachment upload request time in milliseconds; receiving chat stream data resets the chat timer."
         },
         "baic.qwenPawUploadMaxBytes": {
           "type": "number",

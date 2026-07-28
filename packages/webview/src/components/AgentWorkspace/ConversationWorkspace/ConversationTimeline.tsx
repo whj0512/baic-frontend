@@ -13,7 +13,7 @@ import type {
   QwenPawConversationStatus,
   QwenPawHistoryStatus,
 } from '../qwenPaw/types'
-import ConversationMessage from './ConversationMessage'
+import ConversationMessageEntry from './ConversationMessageEntry'
 
 interface ConversationTimelineProps {
   canvasRef: RefObject<HTMLElement | null>
@@ -94,7 +94,7 @@ function ConversationTimeline({
           </div>
         ) : (
           messages.map((message) => (
-            <ConversationMessage
+            <ConversationMessageEntry
               key={message.id}
               message={message}
               assistantName={assistantName}

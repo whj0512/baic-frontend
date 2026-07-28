@@ -8,12 +8,14 @@ import {
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { useState } from 'react'
 import type { ConversationPart } from '../qwenPaw/types'
 import CodeDataView from './CodeDataView'
 import {
   formatFileSize,
   stringifyData,
 } from './conversationUtils'
+import { isRequirementDslArtifactsToolPart } from './toolMessage/requirementDslArtifacts/parseRequirementDslArtifacts'
 
 interface MessagePartViewProps {
   part: ConversationPart
@@ -46,6 +48,9 @@ function getToolDetails(
 function getToolLabel(
   part: Extract<ConversationPart, { type: 'tool' }>,
 ): string {
+  if (isRequirementDslArtifactsToolPart(part)) {
+    return 'query-requirement-dsl-artifacts'
+  }
   if (part.name) {
     return part.name
   }
@@ -56,6 +61,27 @@ function getToolLabel(
     return '工具结果'
   }
   return '工具调用'
+}
+
+function ToolPartView({
+  part,
+}: {
+  part: Extract<ConversationPart, { type: 'tool' }>
+}) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <details
+      className="conversation-message__tool"
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      <summary>
+        <ToolOutlined />
+        <span>{getToolLabel(part)}</span>
+      </summary>
+      {open ? <CodeDataView data={getToolDetails(part)} /> : null}
+    </details>
+  )
 }
 
 function MessagePartView({
@@ -127,15 +153,7 @@ function MessagePartView({
         </pre>
       )
     case 'tool':
-      return (
-        <details className="conversation-message__tool">
-          <summary>
-            <ToolOutlined />
-            <span>{getToolLabel(part)}</span>
-          </summary>
-          <CodeDataView data={getToolDetails(part)} />
-        </details>
-      )
+      return <ToolPartView part={part} />
     case 'unknown':
       return (
         <div className="conversation-message__part-card">

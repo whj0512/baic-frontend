@@ -1,0 +1,6 @@
+fence handler
+1.  通过 AgentWorkspace/ConversationWorkspace/fencedMessage/registry.ts 下注册
+2. 调用逻辑：ConversationMessageEntry -> fencedMessage/extractFencedMessage -> ConversationMessageEntry 下进行渲染
+					--> extractFencedMessageWithResolver
+					--> extractFromText
+					--> return { displayMessage: , blocks（需要渲染的块）: }

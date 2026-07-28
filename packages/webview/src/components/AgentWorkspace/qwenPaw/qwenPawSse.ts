@@ -43,6 +43,7 @@ function getAbortError(signal: AbortSignal): QwenPawError {
 export async function* readQwenPawSse(
   body: ReadableStream<Uint8Array>,
   signal: AbortSignal,
+  onActivity?: () => void,
 ): AsyncGenerator<QwenPawSseEvent> {
   const reader = body.getReader()
   const decoder = new TextDecoder()
@@ -87,6 +88,9 @@ export async function* readQwenPawSse(
       }
 
       const { done, value } = await reader.read()
+      if (value && value.byteLength > 0) {
+        onActivity?.()
+      }
       buffer += decoder.decode(value, { stream: !done })
 
       let newlineIndex = buffer.indexOf('\n')

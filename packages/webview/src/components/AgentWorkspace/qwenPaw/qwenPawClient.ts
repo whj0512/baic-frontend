@@ -298,6 +298,7 @@ export async function uploadFile(
 export async function* streamChat(
   request: QwenPawChatRequest,
   signal: AbortSignal,
+  onActivity?: () => void,
 ): AsyncGenerator<QwenPawSseEvent> {
   const { agentId, ...payload } = request
   let terminalStatus: 'completed' | 'failed' | null = null
@@ -330,7 +331,9 @@ export async function* streamChat(
       throw new QwenPawError('protocol', 'QwenPaw 聊天响应没有可读数据流')
     }
 
-    for await (const event of readQwenPawSse(response.body, signal)) {
+    for await (
+      const event of readQwenPawSse(response.body, signal, onActivity)
+    ) {
       if (
         event.object === 'response'
         && (event.status === 'completed' || event.status === 'failed')

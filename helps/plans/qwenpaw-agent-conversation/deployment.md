@@ -48,7 +48,7 @@ application/json` 和 `multipart/form-data`。
 | 配置项 | 默认值 |
 | --- | --- |
 | `baic.qwenPawBaseUrl` | `http://localhost:7706` |
-| `baic.qwenPawChatTimeoutMs` | `120000` |
+| `baic.qwenPawChatTimeoutMs` | `120000`（对话流连续无数据、附件上传请求超时） |
 | `baic.qwenPawUploadMaxBytes` | `20971520` |
 
 `qwenPawBaseUrl` 的 origin 会加入 webview CSP `connect-src`。远程地址必须允许
