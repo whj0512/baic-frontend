@@ -1,8 +1,10 @@
 import type { ConversationPart } from '../../qwenPaw/types'
+import { ontologyInstancesToolPanelHandler } from './ontologyInstances/handler'
 import { requirementDslArtifactsToolPanelHandler } from './requirementDslArtifacts/handler'
 import type { RegisteredToolPanelHandler } from './types'
 
 const TOOL_PANEL_HANDLERS = [
+  ontologyInstancesToolPanelHandler,
   requirementDslArtifactsToolPanelHandler,
 ] satisfies RegisteredToolPanelHandler[]
 

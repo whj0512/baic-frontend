@@ -28,6 +28,8 @@ export const API_ENDPOINTS = {
     `${SERVICE_BASE_URL}/projects/${encodeURIComponent(projectId)}/snapshot?schema_version=1`,
   projectTestCases: (projectId: string) =>
     `${SERVICE_BASE_URL}/projects/${encodeURIComponent(projectId)}/test_cases`,
+  projectRequirements: (projectId: string) =>
+    `${SERVICE_BASE_URL}/projects/${encodeURIComponent(projectId)}/requirements`,
   requirements: `${SERVICE_BASE_URL}/requirements`,
   requirementById: (id: string) => `${SERVICE_BASE_URL}/requirements/${id}`,
   graphdbGraph: `${SERVICE_BASE_URL}/graphdb/graph`,

@@ -7,11 +7,13 @@ import { extractToolPanels } from './toolMessage/extractToolPanels'
 interface ConversationMessageEntryProps {
   message: ConversationMessageView
   assistantName: string
+  projectId?: string
 }
 
 function ConversationMessageEntry({
   message,
   assistantName,
+  projectId,
 }: ConversationMessageEntryProps) {
   const presentation = useMemo(() => {
     const fenced = extractFencedMessage(message)
@@ -80,6 +82,7 @@ function ConversationMessageEntry({
                 context={{
                   message,
                   assistantName,
+                  projectId,
                 }}
               />
             )

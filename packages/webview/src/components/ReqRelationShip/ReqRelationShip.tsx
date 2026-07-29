@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { Alert, Button, Card, Select, Spin, TreeSelect } from 'antd'
 import { ArrowLeftOutlined } from '@ant-design/icons'
 import type { GraphData } from '@antv/g6'
@@ -8,16 +16,23 @@ import type {
   GraphDBGraphMeta,
   GraphDBGraphOrigin,
   GraphDBGraphRequest,
+  GraphDBGraphResponse,
 } from '../../models/GraphDBGraph'
 import { fetchGraphDBGraph } from '../../config/graphdbGraph'
-import AntvG6GraphRenderer from './graph-renderers/AntvG6GraphRenderer'
 import { buildRequirementTreeData } from './requirementTreeData'
 
 import './ReqRelationShip.css'
 
+const AntvG6GraphRenderer = lazy(
+  () => import('./graph-renderers/AntvG6GraphRenderer'),
+)
+
 interface ReqRelationShipProps {
   requirements: Requirement[]
   onBack?: () => void
+  initialRequest?: GraphDBGraphRequest
+  initialGraph?: GraphDBGraphResponse
+  embedded?: boolean
 }
 
 type EdgeLabelMode = 'auto' | 'show' | 'hide'
@@ -74,27 +89,68 @@ const GRAPH_LEGEND = (
   </div>
 )
 
-function ReqRelationShip({ requirements, onBack }: ReqRelationShipProps) {
+function ReqRelationShip({
+  requirements,
+  onBack,
+  initialRequest,
+  initialGraph,
+  embedded = false,
+}: ReqRelationShipProps) {
+  const baseGraphRequest = useMemo<GraphDBGraphRequest>(
+    () => ({
+      ...DEFAULT_GRAPH_REQUEST,
+      ...initialRequest,
+    }),
+    [initialRequest],
+  )
+  const initialRoot =
+    initialGraph?.meta.root || baseGraphRequest.root || null
+  const initialGraphData = useMemo(
+    () => initialGraph
+      ? buildReadableGraphData(initialGraph)
+      : { nodes: [], edges: [] },
+    [initialGraph],
+  )
   const [loading, setLoading] = useState(false)
   const [graphRendering, setGraphRendering] = useState(false)
   const [layoutAnimating, setLayoutAnimating] = useState(false)
-  const [graphData, setGraphData] = useState<GraphData>({ nodes: [], edges: [] })
-  const [latestMeta, setLatestMeta] = useState<GraphDBGraphMeta | null>(null)
+  const [graphData, setGraphData] = useState<GraphData>(
+    () => initialGraphData,
+  )
+  const [latestMeta, setLatestMeta] = useState<GraphDBGraphMeta | null>(
+    () => initialGraph?.meta ?? null,
+  )
   const [queryError, setQueryError] = useState<string | null>(null)
-  const [focusNode, setFocusNode] = useState<string | null>(null)
-  const [layoutRevision, setLayoutRevision] = useState(0)
+  const [focusNode, setFocusNode] = useState<string | null>(() => initialRoot)
+  const [layoutRevision, setLayoutRevision] = useState(
+    () => initialGraph ? 1 : 0,
+  )
   const [expandingNodeId, setExpandingNodeId] = useState<string | null>(null)
-  const [expandedRootCount, setExpandedRootCount] = useState(0)
-  const [isTruncated, setIsTruncated] = useState(false)
-  const [draftRoot, setDraftRoot] = useState<string>()
-  const [draftDepth, setDraftDepth] = useState<GraphDBGraphDepth>(1)
-  const [originFilter, setOriginFilter] = useState<GraphDBGraphOrigin>('all')
+  const [expandedRootCount, setExpandedRootCount] = useState(
+    () => initialRoot ? 1 : 0,
+  )
+  const [isTruncated, setIsTruncated] = useState(
+    () => initialGraph ? isMetaTruncated(initialGraph.meta) : false,
+  )
+  const [draftRoot, setDraftRoot] = useState<string | undefined>(
+    () => typeof baseGraphRequest.root === 'string'
+      ? baseGraphRequest.root
+      : undefined,
+  )
+  const [draftDepth, setDraftDepth] = useState<GraphDBGraphDepth>(
+    () => baseGraphRequest.depth ?? 1,
+  )
+  const [originFilter, setOriginFilter] = useState<GraphDBGraphOrigin>(
+    () => baseGraphRequest.origin ?? 'all',
+  )
   const [edgeLabelMode, setEdgeLabelMode] = useState<EdgeLabelMode>('auto')
   const replaceAbortControllerRef = useRef<AbortController | null>(null)
   const expandAbortControllerRef = useRef<AbortController | null>(null)
   const replaceRequestSequenceRef = useRef(0)
   const expandRequestSequenceRef = useRef(0)
-  const expandedRootsRef = useRef<Set<string>>(new Set())
+  const expandedRootsRef = useRef<Set<string>>(
+    new Set(initialRoot ? [initialRoot] : []),
+  )
   const graphDataRef = useRef(graphData)
 
   graphDataRef.current = graphData
@@ -183,7 +239,7 @@ function ReqRelationShip({ requirements, onBack }: ReqRelationShipProps) {
 
     try {
       const response = await fetchGraphDBGraph({
-        ...DEFAULT_GRAPH_REQUEST,
+        ...baseGraphRequest,
         root,
       }, controller.signal)
       if (requestSequence !== expandRequestSequenceRef.current) return
@@ -220,16 +276,20 @@ function ReqRelationShip({ requirements, onBack }: ReqRelationShipProps) {
         }
       }
     }
-  }, [])
+  }, [baseGraphRequest])
 
   useEffect(() => {
     // 延迟到当前任务结束，避免 React StrictMode 在开发环境重复发起首屏请求。
-    const initialQueryTimer = window.setTimeout(() => {
-      void runReplaceQuery({ ...DEFAULT_GRAPH_REQUEST })
-    }, 0)
+    const initialQueryTimer = initialGraph
+      ? null
+      : window.setTimeout(() => {
+          void runReplaceQuery({ ...baseGraphRequest })
+        }, 0)
 
     return () => {
-      window.clearTimeout(initialQueryTimer)
+      if (initialQueryTimer !== null) {
+        window.clearTimeout(initialQueryTimer)
+      }
       replaceRequestSequenceRef.current += 1
       expandRequestSequenceRef.current += 1
       replaceAbortControllerRef.current?.abort()
@@ -237,16 +297,16 @@ function ReqRelationShip({ requirements, onBack }: ReqRelationShipProps) {
       replaceAbortControllerRef.current = null
       expandAbortControllerRef.current = null
     }
-  }, [runReplaceQuery])
+  }, [baseGraphRequest, initialGraph, runReplaceQuery])
 
   const handleRefresh = useCallback(() => {
     void runReplaceQuery({
-      ...DEFAULT_GRAPH_REQUEST,
+      ...baseGraphRequest,
       root: draftRoot || null,
       depth: draftRoot ? draftDepth : 1,
       origin: 'all',
     })
-  }, [draftDepth, draftRoot, runReplaceQuery])
+  }, [baseGraphRequest, draftDepth, draftRoot, runReplaceQuery])
 
   const handleNodeDoubleClick = useCallback((nodeId: string) => {
     if (loading || expandingNodeId === nodeId) return
@@ -270,20 +330,26 @@ function ReqRelationShip({ requirements, onBack }: ReqRelationShipProps) {
   const emptyText = queryError && !latestMeta ? '关系图加载失败' : '没有符合条件的关系数据'
 
   return (
-    <div className="req-relationship-container">
-      <div className="req-relationship-header">
-        {onBack && (
-          <Button
-            type="text"
-            icon={<ArrowLeftOutlined />}
-            onClick={onBack}
-            className="req-relationship-back-btn"
-          >
-            返回
-          </Button>
-        )}
-        <h2>需求间关系</h2>
-      </div>
+    <div
+      className={`req-relationship-container${
+        embedded ? ' req-relationship-container--embedded' : ''
+      }`}
+    >
+      {!embedded ? (
+        <div className="req-relationship-header">
+          {onBack && (
+            <Button
+              type="text"
+              icon={<ArrowLeftOutlined />}
+              onClick={onBack}
+              className="req-relationship-back-btn"
+            >
+              返回
+            </Button>
+          )}
+          <h2>需求间关系</h2>
+        </div>
+      ) : null}
 
       <div className="req-relationship-operation">
         <span className="operation-label">聚焦需求：</span>
@@ -364,16 +430,25 @@ function ReqRelationShip({ requirements, onBack }: ReqRelationShipProps) {
       <div className="req-relationship-content">
         <Card className="req-relationship-card">
           {hasGraphData ? (
-            <AntvG6GraphRenderer
-              graphData={graphData}
-              visibleEdgeIds={visibleEdgeIds}
-              edgeLabelsVisible={showEdgeLabels}
-              focusNode={focusNode}
-              layoutRevision={layoutRevision}
-              expandingNodeId={expandingNodeId}
-              onNodeDoubleClick={handleNodeDoubleClick}
-              onRenderStateChange={handleGraphRenderStateChange}
-            />
+            <Suspense
+              fallback={(
+                <div className="req-relationship-loading-overlay">
+                  <Spin size="large" />
+                  <span>正在加载图渲染模块</span>
+                </div>
+              )}
+            >
+              <AntvG6GraphRenderer
+                graphData={graphData}
+                visibleEdgeIds={visibleEdgeIds}
+                edgeLabelsVisible={showEdgeLabels}
+                focusNode={focusNode}
+                layoutRevision={layoutRevision}
+                expandingNodeId={expandingNodeId}
+                onNodeDoubleClick={handleNodeDoubleClick}
+                onRenderStateChange={handleGraphRenderStateChange}
+              />
+            </Suspense>
           ) : (
             !busy && <div className="empty-tip">{emptyText}</div>
           )}

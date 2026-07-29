@@ -7,6 +7,7 @@ import type {
 export interface ToolPanelContext {
   message: ConversationMessageView
   assistantName: string
+  projectId?: string
 }
 
 export interface ToolPanelProps<T> {

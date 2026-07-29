@@ -98,6 +98,7 @@ function ConversationTimeline({
               key={message.id}
               message={message}
               assistantName={assistantName}
+              projectId={activeConversation?.projectId}
             />
           ))
         )}

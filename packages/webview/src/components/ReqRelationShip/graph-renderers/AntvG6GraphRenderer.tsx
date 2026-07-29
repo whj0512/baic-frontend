@@ -222,7 +222,9 @@ function AntvG6GraphRenderer({
     if (!container) return
 
     let resizeObserver: ResizeObserver | null = null
-    let syncZoomOriginFrame: number | null = null
+    let syncViewportFrame: number | null = null
+    let previousContainerWidth = container.clientWidth
+    let previousContainerHeight = container.clientHeight
 
     // 延迟初始化可跳过 React StrictMode 的首次探测挂载，避免完整创建并销毁两次 G6。
     const initializeTimer = window.setTimeout(() => {
@@ -238,12 +240,45 @@ function AntvG6GraphRenderer({
         graph.on(eventName, scheduleLoadingIndicatorPosition)
       })
 
-      const syncZoomOrigin = () => {
-        updateZoomCanvasOrigin(graph, container)
-        scheduleLoadingIndicatorPosition()
+      const scheduleViewportSync = () => {
+        const width = container.clientWidth
+        const height = container.clientHeight
+        if (
+          width <= 0
+          || height <= 0
+          || (
+            width === previousContainerWidth
+            && height === previousContainerHeight
+          )
+        ) {
+          return
+        }
+
+        previousContainerWidth = width
+        previousContainerHeight = height
+        if (syncViewportFrame !== null) {
+          window.cancelAnimationFrame(syncViewportFrame)
+        }
+
+        syncViewportFrame = window.requestAnimationFrame(() => {
+          syncViewportFrame = null
+          if (graph.destroyed) return
+
+          graph.resize(width, height)
+          updateZoomCanvasOrigin(graph, container)
+          scheduleLoadingIndicatorPosition()
+          if (graph.rendered) {
+            void graph.fitView(
+              { when: 'always', direction: 'both' },
+              false,
+            ).catch((error) => {
+              console.debug('[ReqRelationShip][G6 resize fit error]', error)
+            })
+          }
+        })
       }
-      resizeObserver = observeContainerResize(container, syncZoomOrigin)
-      syncZoomOriginFrame = window.requestAnimationFrame(syncZoomOrigin)
+      resizeObserver = observeContainerResize(container, scheduleViewportSync)
+      updateZoomCanvasOrigin(graph, container)
       appliedLayoutRevisionRef.current = layoutRevisionRef.current
       renderGraphData(graph)
     }, 0)
@@ -251,8 +286,8 @@ function AntvG6GraphRenderer({
     return () => {
       window.clearTimeout(initializeTimer)
       resizeObserver?.disconnect()
-      if (syncZoomOriginFrame !== null) {
-        window.cancelAnimationFrame(syncZoomOriginFrame)
+      if (syncViewportFrame !== null) {
+        window.cancelAnimationFrame(syncViewportFrame)
       }
       if (renderFrameRef.current !== null) {
         window.cancelAnimationFrame(renderFrameRef.current)

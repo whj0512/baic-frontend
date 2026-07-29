@@ -15,6 +15,7 @@ import {
   formatFileSize,
   stringifyData,
 } from './conversationUtils'
+import { isOntologyInstancesToolPart } from './toolMessage/ontologyInstances/parseOntologyInstances'
 import { isRequirementDslArtifactsToolPart } from './toolMessage/requirementDslArtifacts/parseRequirementDslArtifacts'
 
 interface MessagePartViewProps {
@@ -50,6 +51,9 @@ function getToolLabel(
 ): string {
   if (isRequirementDslArtifactsToolPart(part)) {
     return 'query-requirement-dsl-artifacts'
+  }
+  if (isOntologyInstancesToolPart(part)) {
+    return 'query-project-ontology-instances'
   }
   if (part.name) {
     return part.name
