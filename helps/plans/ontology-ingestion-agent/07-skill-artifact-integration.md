@@ -292,6 +292,29 @@ Agent 工作目录中可能存在的 tool result 临时文件。
 人工检查点：三个现有面板均能从真实 QwenPaw 消息打开，且本地路径不会成为浏览器
 链接。
 
+#### 2026-07-30 实测预算与契约冻结
+
+标准项目
+`E:\baic-frontend\智能化需求建模\测试结果001\多媒体中心功能规范V1.0-20250722`
+的实测结果如下：
+
+| 查询 | 工具 payload | 最终文本 | 历史详情 | 原始 SSE |
+| --- | ---: | ---: | ---: | ---: |
+| chunks summary | 21,251 B | 17,962 B | 59,229 B | 1,080,461 B |
+| chunks full | 30,567 B | 27,018 B | 76,805 B | 1,567,879 B |
+| DSL v1 | 161,160 B | 245 B | 195,546 B | 737,970 B |
+| ontology marker | 251 B | 49 B | 11,491 B | 80,002 B |
+
+第一版自动查询预算冻结为：单次结构化工具 payload 不超过 `256 KiB`，单次完整 SSE
+不超过 `2 MiB`。超过任一预算时不得自动批量查询，必须等待第三阶段的 filtered /
+summary 契约。DSL v1 在该标准项目内低于预算，但仍只能在整个批次完成后查询一次，
+不能在每个功能 Job 结束时重复查询。
+
+历史消息中的工具调用与结果使用嵌套
+`content[0].data.call_id` 配对，不能使用不同的 message `id` 配对。v2 DSL 与新增
+`query-project-ontology-artifacts` 的字段契约维持本文既定设计，不修改现有 v1
+输出。
+
 ### 第一阶段：任务聚合与查询绑定
 
 1. 在 `BusinessAgentDefinition` 增加 `artifactQueries`。

@@ -24,6 +24,27 @@ Session 文档对应 QwenPaw Desktop `1.1.12.post3` 的本地实现。后续若�
 
 第零阶段只使用专用测试标识，不复用用户正式 Run。冒烟结果通过人工确认后再实现第一阶段；实际契约与文档不一致时，以受控实测为准并同步更新本文件。
 
+### 2026-07-30 当前实例实测
+
+- 实例地址：`http://localhost:42112`；版本为 `1.1.12.post3`。
+- `/api/agents` 返回 15 个 Agent；本体定义声明的 12 个 Agent 全部存在、启用并配置
+  `active_model`。
+- 三个入口 Agent 的 chats 接口均返回 ChatSpec 数组。
+- 隔离的 Text + Data 请求返回 `200 text/event-stream`，共 53 个事件，最终收到
+  `response:completed`；随后可通过精确 `user_id + channel` 找到 ChatSpec。
+- 新 ChatSpec 的 `id` 与请求使用的 `session_id` 不同；详情必须使用 `id`，详情返回
+  `messages + status`。
+- Markdown 上传返回 `{ url, file_name, size }`，其中当前本机实例的 `url` 是 QwenPaw
+  workspace 下的 Windows 本地路径。该值只作为后续 `FileContent.file_url` 输入，不得
+  直接渲染成浏览器链接。
+- Text + FileContent 请求返回完整 SSE 终态。
+- 不含 TextContent 的 Data-only 请求稳定复现 `HTTP 200 + 0 字节 SSE + 无 response
+  终态`，前端必须继续将其视为协议错误。
+- 不存在的 Agent 与 Chat 均返回 `404` JSON `detail`。全部目标 Agent 当前已启用，
+  因此未通过修改配置诱导 `403`；也未破坏底层 Session 文件以诱导空历史。
+- 完整证据、隔离会话标识和 payload 体积见
+  [phase-0-contract-smoke-report.md](./phase-0-contract-smoke-report.md)。
+
 ## 能力矩阵
 
 | QwenPaw 能力 | 文档结论 | 本计划用途 | 实施约束 |
