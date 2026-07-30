@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => ({
   server: {
     proxy: {
       '/qwenpaw': {
-        target: 'http://localhost:42112',
+        target: 'http://localhost:7706',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/qwenpaw/, ''),
       },
