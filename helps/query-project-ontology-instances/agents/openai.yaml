@@ -1,0 +1,4 @@
+interface:
+  display_name: "当前项目本体实例"
+  short_description: "只读查询当前项目本体实例并在 Agent 客户端打开交互式需求关系图"
+  default_prompt: "Use $query-project-ontology-instances to load the current project ontology instance relationship graph."
