@@ -216,6 +216,25 @@ async function handleWebviewMessage(
         })
         return
       }
+
+      case 'path:select': {
+        const selection = await vscode.window.showOpenDialog({
+          title: message.payload.title,
+          openLabel: message.payload.openLabel,
+          canSelectFiles: message.payload.kind === 'file',
+          canSelectFolders: message.payload.kind === 'folder',
+          canSelectMany: false,
+          filters: message.payload.filters,
+        })
+        postToWebview(webview, {
+          type: 'path:selected',
+          payload: {
+            requestId: message.payload.requestId,
+            path: selection?.[0]?.fsPath ?? null,
+          },
+        })
+        return
+      }
     }
   } catch (error) {
     if (message.type === 'clipboard:readText') {
@@ -232,6 +251,17 @@ async function handleWebviewMessage(
     if (message.type === 'installation:get') {
       postToWebview(webview, {
         type: 'installation:error',
+        payload: {
+          requestId: message.payload.requestId,
+          message: getErrorMessage(error),
+        },
+      })
+      return
+    }
+
+    if (message.type === 'path:select') {
+      postToWebview(webview, {
+        type: 'path:error',
         payload: {
           requestId: message.payload.requestId,
           message: getErrorMessage(error),

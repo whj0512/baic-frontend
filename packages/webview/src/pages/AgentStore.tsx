@@ -23,6 +23,8 @@ const EMPTY_PROJECT_FORM: NewProjectForm = {
   description: '',
 }
 
+const EXPOSED_AGENT_IDS = ['tqqRiu'] as const
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
@@ -110,7 +112,10 @@ function AgentStore() {
   const [creatingProject, setCreatingProject] = useState(false)
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null)
   const [newProjectForm, setNewProjectForm] = useState<NewProjectForm>(EMPTY_PROJECT_FORM)
-  const qwenPawWorkspace = useQwenPawWorkspace(selectedProject?.id ?? null)
+  const qwenPawWorkspace = useQwenPawWorkspace(
+    selectedProject?.id ?? null,
+    { allowedAgentIds: EXPOSED_AGENT_IDS },
+  )
 
   const fetchProjects = useCallback(async (signal?: AbortSignal) => {
     setProjectsLoading(true)
@@ -376,6 +381,7 @@ function AgentStore() {
         agents={qwenPawWorkspace.agents}
         agentsLoading={qwenPawWorkspace.agentsLoading}
         agentsError={qwenPawWorkspace.agentsError?.message ?? null}
+        expectedAgentId={EXPOSED_AGENT_IDS[0]}
         activeAgentId={qwenPawWorkspace.activeAgentId}
         sessions={qwenPawWorkspace.sessions}
         sessionsLoading={qwenPawWorkspace.sessionsLoading}
@@ -423,6 +429,11 @@ function AgentStore() {
           streamError={qwenPawWorkspace.error?.message ?? null}
           conversationStatus={qwenPawWorkspace.status}
           registrationState={qwenPawWorkspace.registrationState}
+          workflowMode={
+            qwenPawWorkspace.activeAgentId === EXPOSED_AGENT_IDS[0]
+              ? 'ontology-ingestion'
+              : undefined
+          }
           onSend={handleConversationSend}
           onRetry={qwenPawWorkspace.retry}
           onStop={qwenPawWorkspace.stop}

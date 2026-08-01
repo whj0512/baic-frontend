@@ -20,6 +20,8 @@ export type WorkspaceNavigationTarget =
   | 'test-cases'
   | 'knowledge-graph'
 
+export type ConversationWorkflowMode = 'ontology-ingestion'
+
 export interface ConversationWorkspaceProps {
   activeAgent: QwenPawAgent | null
   activeConversation: ActiveConversationRef | null
@@ -32,6 +34,7 @@ export interface ConversationWorkspaceProps {
   streamError: string | null
   conversationStatus: QwenPawConversationStatus
   registrationState: QwenPawRegistrationState
+  workflowMode?: ConversationWorkflowMode
   onSend: (draft: ConversationDraft) => Promise<void>
   onRetry: () => Promise<void>
   onStop: () => void

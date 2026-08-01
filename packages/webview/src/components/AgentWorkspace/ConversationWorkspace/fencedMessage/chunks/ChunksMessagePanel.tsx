@@ -11,6 +11,8 @@ import {
   WarningOutlined,
 } from '@ant-design/icons'
 import type { ReactNode } from 'react'
+import { useOntologyWorkflowInteraction } from '../../ontologyWorkflow/interactionContext'
+import { resolveWorkflowMarkdownPath } from '../../ontologyWorkflow/deriveWorkflowState'
 import CodeDataView from '../../CodeDataView'
 import {
   formatMessageTime,
@@ -861,14 +863,34 @@ function ChunkDetails({ chunk }: { chunk: ChunkRecord }) {
   )
 }
 
-function ChunkCard({ chunk }: { chunk: ChunkRecord }) {
+function ChunkCard({
+  chunk,
+  projectRoot,
+  workflowEnabled,
+}: {
+  chunk: ChunkRecord
+  projectRoot: string
+  workflowEnabled: boolean
+}) {
   const title = toDisplayText(chunk.title) ?? '未命名分块'
   const chunkType = toDisplayText(chunk.chunk_type) ?? 'unknown'
   const requirementId = toDisplayText(chunk.req_id)
   const subElementCount = getArrayLength(chunk.sub_elements)
+  const interaction = useOntologyWorkflowInteraction()
+  const isFunctionalRequirement = chunk.chunk_type === 'functional_requirement'
+  const modeled = interaction?.modeledChunkIds.has(chunk.chunk_id) ?? false
+  const name =
+    toDisplayText(chunk.canonical_function_name)
+    ?? toDisplayText(chunk.title)
+    ?? chunk.chunk_id
+  const sourceRelativePath = toDisplayText(chunk.source_relative_path)
 
   return (
-    <details className="chunks-panel__chunk">
+    <details className={`chunks-panel__chunk${
+      interaction?.selectedChunkId === chunk.chunk_id
+        ? ' chunks-panel__chunk--workflow-selected'
+        : ''
+    }`}>
       <summary>
         <span className="chunks-panel__chunk-icon" aria-hidden="true">
           <AppstoreOutlined />
@@ -882,6 +904,31 @@ function ChunkCard({ chunk }: { chunk: ChunkRecord }) {
           </span>
         </span>
         <span className="chunks-panel__type">{chunkType}</span>
+        {workflowEnabled && isFunctionalRequirement ? (
+          <span className="chunks-panel__workflow-action">
+            <em>{modeled ? '已发起功能' : '待建模功能'}</em>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                interaction?.onSelectFunction({
+                  chunkId: chunk.chunk_id,
+                  requirementId,
+                  name,
+                  sourceRelativePath,
+                  projectRoot,
+                  resolvedMarkdownPath: resolveWorkflowMarkdownPath(
+                    projectRoot,
+                    sourceRelativePath,
+                  ),
+                })
+              }}
+            >
+              {modeled ? '重新建模' : '建模此功能'}
+            </button>
+          </span>
+        ) : null}
       </summary>
       <ChunkDetails chunk={chunk} />
     </details>
@@ -933,6 +980,12 @@ function ChunksMessagePanel({
   const statusLabel = getStatusLabel(message.status)
   const errorDetails =
     payload.status === 'error' ? getErrorDetails(payload.error) : null
+  const workflowInteraction = useOntologyWorkflowInteraction()
+  const workflowEnabled = Boolean(
+    workflowInteraction?.enabled
+    && workflowInteraction.activeChunksMessageId === message.id,
+  )
+  const projectRoot = toDisplayText(payload.project_root) ?? ''
 
   return (
     <section
@@ -1020,7 +1073,12 @@ function ChunksMessagePanel({
 
           <div className="chunks-panel__list">
             {chunks.map((chunk) => (
-              <ChunkCard key={chunk.chunk_id} chunk={chunk} />
+              <ChunkCard
+                key={chunk.chunk_id}
+                chunk={chunk}
+                projectRoot={projectRoot}
+                workflowEnabled={workflowEnabled}
+              />
             ))}
           </div>
         </>

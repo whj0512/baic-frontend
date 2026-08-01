@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useMemo,
   useState,
 } from 'react'
 import {
@@ -9,12 +10,29 @@ import {
 import { useQwenPawConversation } from './useQwenPawConversation'
 import { useQwenPawSessions } from './useQwenPawSessions'
 
-export function useQwenPawWorkspace(projectId: string | null) {
+export interface QwenPawWorkspaceOptions {
+  allowedAgentIds?: readonly string[]
+}
+
+export function useQwenPawWorkspace(
+  projectId: string | null,
+  options?: QwenPawWorkspaceOptions,
+) {
   const agentState = useQwenPawAgents()
+  const allowedAgentIds = options?.allowedAgentIds
+  const eligibleAgents = useMemo(() => {
+    if (!allowedAgentIds) {
+      return agentState.agents
+    }
+
+    const allowedAgentIdSet = new Set(allowedAgentIds)
+    return agentState.agents.filter((agent) => allowedAgentIdSet.has(agent.id))
+  }, [agentState.agents, allowedAgentIds])
   const [activeAgentId, setActiveAgentId] = useState<string | null>(null)
-  const activeAgent = agentState.agents.find(
+  const selectedAgent = eligibleAgents.find(
     (agent) => agent.id === activeAgentId,
   ) ?? null
+  const activeAgent = selectedAgent?.enabled ? selectedAgent : null
   const sessionsState = useQwenPawSessions(
     activeAgent?.enabled ? activeAgent.id : null,
   )
@@ -37,8 +55,8 @@ export function useQwenPawWorkspace(projectId: string | null) {
 
   useEffect(() => {
     setActiveAgentId((currentAgentId) =>
-      selectActiveAgentId(agentState.agents, currentAgentId))
-  }, [agentState.agents])
+      selectActiveAgentId(eligibleAgents, currentAgentId))
+  }, [eligibleAgents])
 
   useEffect(() => {
     clearSelection()
@@ -58,7 +76,7 @@ export function useQwenPawWorkspace(projectId: string | null) {
   ])
 
   const selectAgent = (agentId: string) => {
-    const agent = agentState.agents.find(
+    const agent = eligibleAgents.find(
       (candidate) => candidate.id === agentId,
     )
     if (!agent?.enabled || agent.id === activeAgentId) {
@@ -110,12 +128,12 @@ export function useQwenPawWorkspace(projectId: string | null) {
     : null
 
   return {
-    agents: agentState.agents,
+    agents: eligibleAgents,
     agentsLoading: agentState.loading,
     agentsError: agentState.error,
     connectionState: agentState.connectionState,
     reloadAgents: agentState.reload,
-    activeAgentId,
+    activeAgentId: activeAgent?.id ?? null,
     activeAgent,
     selectAgent,
     ...sessionsState,

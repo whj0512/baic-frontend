@@ -8,6 +8,18 @@ const MAX_UNKNOWN_SUMMARY_LENGTH = 1000
 const LOCAL_WINDOWS_PATH_PATTERN = /\/?[A-Za-z]:\\[^\r\n"]+/g
 const UPLOADED_FILE_PATH_MESSAGE_PATTERN =
   /^用户上传文件，已经下载到\s+\/?[A-Za-z]:\\/u
+const ONTOLOGY_WORKFLOW_USER_PREFIXES = [
+  '请使用 requirement_itemizer 对系统需求文档进行条目化。',
+  '请使用 $query-project-chunks 查询以下项目根目录的 chunks.json。',
+  '请使用 requirement_analysis_pipeline 对一个功能进行完整建模。',
+  '请使用 $query-requirement-dsl-artifacts 查询以下项目根目录中已生成的需求 DSL 产物。',
+  '请将该项目已验证的 DSL 和 requirement_relations.json 转换为 TTL。',
+  '我明确授权向 GraphDB 写入本项目 ABox。',
+  '我明确授权在 GraphDB 仓库',
+  '请使用 $query-project-ontology-instances 加载当前项目的本体实例关系图。',
+] as const
+const CHUNKS_PROJECT_ROOT_PATTERN =
+  /"project_root"\s*:\s*"(?:\\.|[^"\\])*"/g
 
 interface NormalizedMessageRecord extends ConversationMessageView {
   messageType?: string
@@ -25,9 +37,49 @@ function redactLocalPaths(value: string): string {
   )
 }
 
-function sanitizeText(value: string): string {
+function isOntologyWorkflowUserText(value: string): boolean {
+  const trimmed = value.trim()
+  return ONTOLOGY_WORKFLOW_USER_PREFIXES.some((prefix) =>
+    trimmed.startsWith(prefix))
+}
+
+function preserveChunksProjectRoot(value: string): string {
+  const protectedValues: string[] = []
+  const protectedText = value.replace(CHUNKS_PROJECT_ROOT_PATTERN, (match) => {
+    const index = protectedValues.push(match) - 1
+    return `__BAIC_CHUNKS_PROJECT_ROOT_${index}__`
+  })
+  const redacted = redactLocalPaths(protectedText)
+  return protectedValues.reduce(
+    (text, protectedValue, index) =>
+      text.replace(`__BAIC_CHUNKS_PROJECT_ROOT_${index}__`, protectedValue),
+    redacted,
+  )
+}
+
+function sanitizeText(
+  value: string,
+  role?: ConversationRole,
+  messageType?: string,
+): string {
   if (UPLOADED_FILE_PATH_MESSAGE_PATTERN.test(value.trim())) {
     return '用户上传文件已就绪。'
+  }
+
+  if (
+    role === 'user'
+    && messageType !== 'reasoning'
+    && isOntologyWorkflowUserText(value)
+  ) {
+    return value
+  }
+
+  if (
+    role === 'assistant'
+    && messageType !== 'reasoning'
+    && value.includes('```chunks')
+  ) {
+    return preserveChunksProjectRoot(value)
   }
 
   return redactLocalPaths(value)
@@ -124,6 +176,7 @@ function normalizeToolPart(
 function normalizePart(
   value: unknown,
   messageType?: string,
+  role?: ConversationRole,
 ): ConversationPart {
   if (
     messageType === 'plugin_call'
@@ -142,8 +195,8 @@ function normalizePart(
         return { type: 'unknown', summary: safeSummary(value) }
       }
       return messageType === 'reasoning'
-        ? { type: 'reasoning', text: sanitizeText(value.text) }
-        : { type: 'text', text: sanitizeText(value.text) }
+        ? { type: 'reasoning', text: sanitizeText(value.text, role, messageType) }
+        : { type: 'text', text: sanitizeText(value.text, role, messageType) }
     case 'file': {
       const filename =
         typeof value.filename === 'string'
@@ -272,16 +325,16 @@ function normalizeMessage(
   let parts: ConversationPart[]
 
   if (Array.isArray(value.content)) {
-    parts = value.content.map((part) => normalizePart(part, messageType))
+    parts = value.content.map((part) => normalizePart(part, messageType, role))
   } else if (typeof value.content === 'string') {
-    const text = sanitizeText(value.content)
+    const text = sanitizeText(value.content, role, messageType)
     parts = [
       messageType === 'reasoning'
         ? { type: 'reasoning', text }
         : { type: 'text', text },
     ]
   } else if (typeof value.text === 'string') {
-    const text = sanitizeText(value.text)
+    const text = sanitizeText(value.text, role, messageType)
     parts = [
       messageType === 'reasoning'
         ? { type: 'reasoning', text }

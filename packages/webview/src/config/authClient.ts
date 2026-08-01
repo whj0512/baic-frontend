@@ -1,12 +1,25 @@
 type WebviewToExtensionMessage =
   | { type: 'clipboard:readText'; payload: { requestId: string } }
   | { type: 'installation:get'; payload: { requestId: string } }
+  | {
+      type: 'path:select'
+      payload: ExtensionPathSelectionOptions & { requestId: string }
+    }
 
 type ExtensionToWebviewMessage =
   | { type: 'clipboard:text'; payload: { requestId: string; text: string } }
   | { type: 'clipboard:error'; payload: { requestId: string; message: string } }
   | { type: 'installation:id'; payload: { requestId: string; installationId: string } }
   | { type: 'installation:error'; payload: { requestId: string; message: string } }
+  | { type: 'path:selected'; payload: { requestId: string; path: string | null } }
+  | { type: 'path:error'; payload: { requestId: string; message: string } }
+
+export interface ExtensionPathSelectionOptions {
+  kind: 'file' | 'folder'
+  title: string
+  openLabel: string
+  filters?: Record<string, string[]>
+}
 
 interface VsCodeApi {
   postMessage(message: WebviewToExtensionMessage): void
@@ -29,6 +42,11 @@ const pendingClipboardReads = new Map<string, {
 }>()
 const pendingInstallationReads = new Map<string, {
   resolve: (installationId: string) => void
+  reject: (error: Error) => void
+  timer: ReturnType<typeof setTimeout>
+}>()
+const pendingPathSelections = new Map<string, {
+  resolve: (path: string | null) => void
   reject: (error: Error) => void
   timer: ReturnType<typeof setTimeout>
 }>()
@@ -73,6 +91,28 @@ export function getSourceInstallationId(): Promise<string> {
   })
 }
 
+export function selectExtensionPath(
+  options: ExtensionPathSelectionOptions,
+): Promise<string | null> {
+  if (!isExtensionAuthMode()) {
+    return Promise.reject(new Error('当前浏览器环境不支持读取本地绝对路径'))
+  }
+
+  attachExtensionMessageListener()
+  return new Promise((resolve, reject) => {
+    const requestId = createRequestId()
+    const timer = setTimeout(() => {
+      pendingPathSelections.delete(requestId)
+      reject(new Error('路径选择请求超时'))
+    }, 120000)
+    pendingPathSelections.set(requestId, { resolve, reject, timer })
+    postToExtension({
+      type: 'path:select',
+      payload: { ...options, requestId },
+    })
+  })
+}
+
 function postToExtension(message: WebviewToExtensionMessage): void {
   getVsCodeApi()?.postMessage(message)
 }
@@ -92,6 +132,8 @@ function attachExtensionMessageListener(): void {
     if (message.type === 'clipboard:error') rejectClipboardRead(message.payload.requestId, new Error(message.payload.message))
     if (message.type === 'installation:id') resolveInstallationRead(message.payload.requestId, message.payload.installationId)
     if (message.type === 'installation:error') rejectInstallationRead(message.payload.requestId, new Error(message.payload.message))
+    if (message.type === 'path:selected') resolvePathSelection(message.payload.requestId, message.payload.path)
+    if (message.type === 'path:error') rejectPathSelection(message.payload.requestId, new Error(message.payload.message))
   })
 }
 
@@ -124,6 +166,22 @@ function rejectInstallationRead(requestId: string, error: Error): void {
   if (!pending) return
   clearTimeout(pending.timer)
   pendingInstallationReads.delete(requestId)
+  pending.reject(error)
+}
+
+function resolvePathSelection(requestId: string, path: string | null): void {
+  const pending = pendingPathSelections.get(requestId)
+  if (!pending) return
+  clearTimeout(pending.timer)
+  pendingPathSelections.delete(requestId)
+  pending.resolve(path)
+}
+
+function rejectPathSelection(requestId: string, error: Error): void {
+  const pending = pendingPathSelections.get(requestId)
+  if (!pending) return
+  clearTimeout(pending.timer)
+  pendingPathSelections.delete(requestId)
   pending.reject(error)
 }
 

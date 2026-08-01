@@ -32,6 +32,7 @@ interface AgentSidebarProps {
   agents: QwenPawAgent[]
   agentsLoading: boolean
   agentsError: string | null
+  expectedAgentId?: string
   activeAgentId: string | null
   sessions: QwenPawChatSpec[]
   sessionsLoading: boolean
@@ -79,6 +80,7 @@ function AgentSidebar({
   agents,
   agentsLoading,
   agentsError,
+  expectedAgentId,
   activeAgentId,
   sessions,
   sessionsLoading,
@@ -105,7 +107,8 @@ function AgentSidebar({
   const [projectPickerOpen, setProjectPickerOpen] = useState(false)
   const activeAgent =
     agents.find((agent) => agent.id === activeAgentId) ?? null
-  const currentModel = activeAgent?.active_model?.model?.trim()
+  const displayedAgent = activeAgent ?? (agents.length === 1 ? agents[0] : null)
+  const currentModel = displayedAgent?.active_model?.model?.trim()
   const canStartChat =
     Boolean(selectedProject)
     && Boolean(activeAgent?.enabled)
@@ -250,7 +253,36 @@ function AgentSidebar({
               </div>
             ) : agents.length === 0 ? (
               <div className="agent-sidebar__list-state">
-                QwenPaw 暂无已配置智能体
+                <span>
+                  {expectedAgentId
+                    ? `未找到本体建模智能体 ${expectedAgentId}`
+                    : 'QwenPaw 暂无已配置智能体'}
+                </span>
+                {expectedAgentId ? (
+                  <button type="button" onClick={onAgentsRetry}>刷新智能体</button>
+                ) : null}
+              </div>
+            ) : agents.length === 1 ? (
+              <div
+                className={`agent-list__identity${
+                  displayedAgent?.enabled ? '' : ' agent-list__identity--disabled'
+                }`}
+              >
+                <span className="agent-list__icon" aria-hidden="true">
+                  <RobotOutlined />
+                </span>
+                <span className="agent-list__copy">
+                  <strong>{displayedAgent?.name || displayedAgent?.id}</strong>
+                  <small>
+                    {displayedAgent?.description || currentModel || '暂无描述'}
+                  </small>
+                  {displayedAgent?.description && currentModel ? (
+                    <small>{currentModel}</small>
+                  ) : null}
+                </span>
+                {!displayedAgent?.enabled ? (
+                  <span className="agent-list__disabled-label">已禁用</span>
+                ) : null}
               </div>
             ) : (
               <Select

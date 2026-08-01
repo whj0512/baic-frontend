@@ -1,11 +1,26 @@
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react'
 import ConversationComposer from './ConversationComposer'
 import ConversationHeader from './ConversationHeader'
 import ConversationTimeline from './ConversationTimeline'
+import OntologyWorkflowPanel, {
+  deriveOntologyWorkflowEvidence,
+  OntologyWorkflowInteractionContext,
+} from './ontologyWorkflow'
+import type { WorkflowFunctionSelection } from './ontologyWorkflow'
+import {
+  checkpointsEqual,
+  clearOntologyWorkflowCheckpoint,
+  createOntologyWorkflowCheckpoint,
+  mergeOntologyWorkflowMessages,
+  readOntologyWorkflowCheckpoint,
+  saveOntologyWorkflowCheckpoint,
+} from './ontologyWorkflow/workflowCheckpointStorage'
+import type { OntologyWorkflowCheckpoint } from './ontologyWorkflow/workflowCheckpointStorage'
 import { QwenPawError } from '../qwenPaw/types'
 import { useQwenPawAttachments } from '../qwenPaw/useQwenPawAttachments'
 import type { ConversationWorkspaceProps } from './types'
@@ -23,6 +38,7 @@ function ConversationWorkspace({
   streamError,
   conversationStatus,
   registrationState,
+  workflowMode,
   onSend,
   onRetry,
   onStop,
@@ -30,14 +46,44 @@ function ConversationWorkspace({
   onOpenSidebar,
   onWorkspaceNavigate,
 }: ConversationWorkspaceProps) {
-  const [draftText, setDraftText] = useState('')
-  const [followingOutput, setFollowingOutput] = useState(true)
-  const [localError, setLocalError] = useState<string | null>(null)
-  const canvasRef = useRef<HTMLElement | null>(null)
   const conversationKind = activeConversation?.kind
   const conversationKey = activeConversation
     ? `${activeConversation.agentId}:${activeConversation.sessionId}`
     : null
+  const loadedWorkflowCheckpoint = useMemo(
+    () => workflowMode === 'ontology-ingestion'
+      ? readOntologyWorkflowCheckpoint(conversationKey)
+      : null,
+    [conversationKey, workflowMode],
+  )
+  const [workflowRuntime, setWorkflowRuntime] = useState<{
+    conversationKey: string | null
+    checkpoint: OntologyWorkflowCheckpoint | null
+    itemizationConfirmed: boolean
+    functionModelingConfirmed: boolean
+  }>(() => ({
+    conversationKey,
+    checkpoint: loadedWorkflowCheckpoint,
+    itemizationConfirmed: loadedWorkflowCheckpoint?.itemizationConfirmed ?? false,
+    functionModelingConfirmed:
+      loadedWorkflowCheckpoint?.functionModelingConfirmed ?? false,
+  }))
+  const activeWorkflowRuntime = workflowRuntime.conversationKey === conversationKey
+    ? workflowRuntime
+    : {
+        conversationKey,
+        checkpoint: loadedWorkflowCheckpoint,
+        itemizationConfirmed:
+          loadedWorkflowCheckpoint?.itemizationConfirmed ?? false,
+        functionModelingConfirmed:
+          loadedWorkflowCheckpoint?.functionModelingConfirmed ?? false,
+      }
+  const [draftText, setDraftText] = useState('')
+  const [followingOutput, setFollowingOutput] = useState(true)
+  const [localError, setLocalError] = useState<string | null>(null)
+  const [workflowSelection, setWorkflowSelection] =
+    useState<WorkflowFunctionSelection | null>(null)
+  const canvasRef = useRef<HTMLElement | null>(null)
   const attachmentState = useQwenPawAttachments(
     activeAgent?.id ?? null,
     conversationKey,
@@ -67,6 +113,41 @@ function ConversationWorkspace({
     && hasRetryableAssistant
     && (conversationStatus === 'failed' || conversationStatus === 'stopped')
   const displayedError = localError || streamError
+  const workflowMessages = useMemo(
+    () => mergeOntologyWorkflowMessages(
+      activeWorkflowRuntime.checkpoint,
+      messages,
+    ),
+    [activeWorkflowRuntime.checkpoint, messages],
+  )
+  const workflowEvidence = useMemo(
+    () => deriveOntologyWorkflowEvidence(workflowMessages),
+    [workflowMessages],
+  )
+  const workflowRestoredFromCheckpoint = Boolean(
+    activeWorkflowRuntime.checkpoint
+    && workflowEvidence.chunksMessageId
+    && !messages.some((message) => message.id === workflowEvidence.chunksMessageId),
+  )
+  const effectiveItemizationConfirmed =
+    activeWorkflowRuntime.itemizationConfirmed
+    || workflowEvidence.latestModelingMessageIndex !== null
+    || workflowEvidence.dslQueryIndex !== null
+  const workflowInteraction = useMemo(() => ({
+    enabled:
+      workflowMode === 'ontology-ingestion'
+      && effectiveItemizationConfirmed,
+    activeChunksMessageId: workflowEvidence.chunksMessageId,
+    selectedChunkId: workflowSelection?.chunkId ?? null,
+    modeledChunkIds: workflowEvidence.modeledChunkIds,
+    onSelectFunction: setWorkflowSelection,
+  }), [
+    effectiveItemizationConfirmed,
+    workflowEvidence.chunksMessageId,
+    workflowEvidence.modeledChunkIds,
+    workflowMode,
+    workflowSelection?.chunkId,
+  ])
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -78,6 +159,105 @@ function ConversationWorkspace({
 
     return () => cancelAnimationFrame(frame)
   }, [conversationKind])
+
+  useEffect(() => {
+    setWorkflowRuntime({
+      conversationKey,
+      checkpoint: loadedWorkflowCheckpoint,
+      itemizationConfirmed:
+        loadedWorkflowCheckpoint?.itemizationConfirmed ?? false,
+      functionModelingConfirmed:
+        loadedWorkflowCheckpoint?.functionModelingConfirmed ?? false,
+    })
+    setWorkflowSelection(null)
+  }, [conversationKey, loadedWorkflowCheckpoint])
+
+  useEffect(() => {
+    if (
+      workflowEvidence.chunksEvidenceKey
+      === activeWorkflowRuntime.checkpoint?.chunksEvidenceKey
+    ) {
+      return
+    }
+    setWorkflowRuntime((current) => current.conversationKey === conversationKey
+      ? {
+          ...current,
+          itemizationConfirmed: false,
+          functionModelingConfirmed: false,
+        }
+      : current)
+    setWorkflowSelection(null)
+  }, [
+    activeWorkflowRuntime.checkpoint?.chunksEvidenceKey,
+    conversationKey,
+    workflowEvidence.chunksEvidenceKey,
+  ])
+
+  useEffect(() => {
+    if (
+      workflowEvidence.latestModelingEvidenceKey
+        === activeWorkflowRuntime.checkpoint?.latestModelingEvidenceKey
+      && workflowEvidence.dslEvidenceKey
+        === activeWorkflowRuntime.checkpoint?.dslEvidenceKey
+    ) {
+      return
+    }
+    setWorkflowRuntime((current) => current.conversationKey === conversationKey
+      ? { ...current, functionModelingConfirmed: false }
+      : current)
+  }, [
+    activeWorkflowRuntime.checkpoint?.dslEvidenceKey,
+    activeWorkflowRuntime.checkpoint?.latestModelingEvidenceKey,
+    conversationKey,
+    workflowEvidence.dslEvidenceKey,
+    workflowEvidence.latestModelingEvidenceKey,
+  ])
+
+  useEffect(() => {
+    if (workflowMode !== 'ontology-ingestion' || !conversationKey) {
+      return
+    }
+    const nextCheckpoint = createOntologyWorkflowCheckpoint(
+      conversationKey,
+      workflowMessages,
+      workflowEvidence,
+      {
+        itemizationConfirmed: effectiveItemizationConfirmed,
+        functionModelingConfirmed:
+          activeWorkflowRuntime.functionModelingConfirmed,
+      },
+    )
+    if (!nextCheckpoint) {
+      if (
+        activeWorkflowRuntime.checkpoint
+        && (
+          workflowEvidence.chunksQueryIndex !== null
+          || workflowEvidence.sceneOne !== null
+        )
+      ) {
+        clearOntologyWorkflowCheckpoint(conversationKey)
+        setWorkflowRuntime((current) => current.conversationKey === conversationKey
+          ? { ...current, checkpoint: null }
+          : current)
+      }
+      return
+    }
+    if (checkpointsEqual(activeWorkflowRuntime.checkpoint, nextCheckpoint)) {
+      return
+    }
+    saveOntologyWorkflowCheckpoint(nextCheckpoint)
+    setWorkflowRuntime((current) => current.conversationKey === conversationKey
+      ? { ...current, checkpoint: nextCheckpoint }
+      : current)
+  }, [
+    activeWorkflowRuntime.checkpoint,
+    activeWorkflowRuntime.functionModelingConfirmed,
+    conversationKey,
+    effectiveItemizationConfirmed,
+    workflowEvidence,
+    workflowMessages,
+    workflowMode,
+  ])
 
   useEffect(() => {
     if (!followingOutput) {
@@ -163,6 +343,65 @@ function ConversationWorkspace({
     }
   }
 
+  const workflowPanel = workflowMode === 'ontology-ingestion' ? (
+    <OntologyWorkflowPanel
+      conversationKey={conversationKey}
+      evidence={workflowEvidence}
+      restoredFromCheckpoint={workflowRestoredFromCheckpoint}
+      canSend={canCompose}
+      streaming={streaming}
+      itemizationConfirmed={effectiveItemizationConfirmed}
+      functionModelingConfirmed={activeWorkflowRuntime.functionModelingConfirmed}
+      onSendText={(text) => onSend({ text, files: [] })}
+      onConfirmItemization={() => setWorkflowRuntime((current) => ({
+        ...(current.conversationKey === conversationKey
+          ? current
+          : activeWorkflowRuntime),
+        itemizationConfirmed: true,
+      }))}
+      onConfirmFunctionModeling={() => setWorkflowRuntime((current) => ({
+        ...(current.conversationKey === conversationKey
+          ? current
+          : activeWorkflowRuntime),
+        functionModelingConfirmed: true,
+      }))}
+    />
+  ) : null
+
+  const timeline = (
+    <ConversationTimeline
+      canvasRef={canvasRef}
+      activeConversation={activeConversation}
+      assistantName={assistantName}
+      emptyStateName={emptyStateName}
+      messages={messages}
+      historyStatus={historyStatus}
+      historyError={historyError}
+      displayedError={displayedError}
+      conversationStatus={conversationStatus}
+      canRetry={canRetry}
+      followingOutput={followingOutput}
+      onCanvasScroll={handleCanvasScroll}
+      onScrollToBottom={scrollToBottom}
+      onRetry={retryLastSend}
+      onHistoryRetry={onHistoryRetry}
+    />
+  )
+
+  const workspaceContent = (
+    <div className="conversation-workspace__content">
+      {timeline}
+      {workflowPanel ? (
+        <aside
+          className="conversation-workspace__workflow-panel"
+          aria-label="本体建模工作流"
+        >
+          {workflowPanel}
+        </aside>
+      ) : null}
+    </div>
+  )
+
   return (
     <main className="conversation-workspace">
       <ConversationHeader
@@ -176,23 +415,11 @@ function ConversationWorkspace({
         onWorkspaceNavigate={onWorkspaceNavigate}
       />
 
-      <ConversationTimeline
-        canvasRef={canvasRef}
-        activeConversation={activeConversation}
-        assistantName={assistantName}
-        emptyStateName={emptyStateName}
-        messages={messages}
-        historyStatus={historyStatus}
-        historyError={historyError}
-        displayedError={displayedError}
-        conversationStatus={conversationStatus}
-        canRetry={canRetry}
-        followingOutput={followingOutput}
-        onCanvasScroll={handleCanvasScroll}
-        onScrollToBottom={scrollToBottom}
-        onRetry={retryLastSend}
-        onHistoryRetry={onHistoryRetry}
-      />
+      {workflowMode === 'ontology-ingestion' ? (
+        <OntologyWorkflowInteractionContext.Provider value={workflowInteraction}>
+          {workspaceContent}
+        </OntologyWorkflowInteractionContext.Provider>
+      ) : workspaceContent}
 
       <ConversationComposer
         conversationKind={conversationKind}
