@@ -1,7 +1,7 @@
 import type { ConversationMessageView } from '../../qwenPaw/types'
 import type { OntologyWorkflowEvidence } from './deriveWorkflowState'
 import {
-  DSL_QUERY_MARKER,
+  DSL_QUERY_OPENING,
   SCENE_THREE_OPENING,
 } from './deriveWorkflowState'
 
@@ -158,28 +158,42 @@ function collectCheckpointMessages(
   messages: ConversationMessageView[],
   evidence: OntologyWorkflowEvidence,
 ): ConversationMessageView[] {
+  const chunksQueryIndex = evidence.chunksQueryIndex
+  const chunksMessageIndex = evidence.chunksMessageIndex
   if (
     evidence.chunksEnvelope?.status !== 'success'
-    || evidence.chunksQueryIndex === null
-    || evidence.chunksMessageIndex === null
+    || chunksQueryIndex === null
+    || chunksMessageIndex === null
   ) {
     return []
   }
 
   const selected: ConversationMessageView[] = []
-  for (let index = evidence.chunksQueryIndex; index < messages.length; index += 1) {
+  const coreIndices = new Set([chunksQueryIndex, chunksMessageIndex])
+  for (const index of coreIndices) {
     const message = messages[index]
+    const textMessage = keepTextParts(message)
+    if (textMessage) {
+      selected.push(textMessage)
+    }
+  }
+  for (let index = 0; index < messages.length; index += 1) {
+    if (coreIndices.has(index)) {
+      continue
+    }
+    const message = messages[index]
+    if (message.role !== 'user') {
+      continue
+    }
     const text = getText(message)
-    const keep =
-      index === evidence.chunksQueryIndex
-      || index === evidence.chunksMessageIndex
-      || (index > evidence.chunksMessageIndex
-        && message.role === 'user'
-        && (
-          text.startsWith(SCENE_THREE_OPENING)
-          || text.includes(DSL_QUERY_MARKER)
-        ))
-    if (!keep) {
+    const keepSceneThree =
+      text.startsWith(SCENE_THREE_OPENING)
+      && (evidence.chunksRecoveredFromCompression
+        || index > chunksMessageIndex)
+    const keepDslQuery =
+      index > chunksMessageIndex
+      && text.startsWith(DSL_QUERY_OPENING)
+    if (!keepSceneThree && !keepDslQuery) {
       continue
     }
     const textMessage = keepTextParts(message)

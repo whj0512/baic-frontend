@@ -44,8 +44,8 @@ export function useQwenPawWorkspace(
     historyStatus: sessionsState.historyStatus,
     historyError: sessionsState.historyError,
     adoptChat: sessionsState.adoptChat,
+    reconcileHistory: sessionsState.reconcileHistory,
     reloadSessions: sessionsState.reloadSessions,
-    retryHistory: sessionsState.retryHistory,
   })
   const { clearSelection } = sessionsState
   const {

@@ -2,6 +2,7 @@ import { LeftOutlined, RightOutlined } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
 import {
   buildChunksQueryPrompt,
+  buildChunksRecoveryPrompt,
   buildDslQueryPrompt,
   buildSceneOnePrompt,
   buildSceneThreePrompt,
@@ -243,6 +244,32 @@ function OntologyWorkflowPanel({
                 </div>
                 {evidence.sceneOne ? <em>场景 1 已发起</em> : null}
               </div>
+
+              {!chunksSucceeded && evidence.compressedChunksArchiveDetected ? (
+                <div className="ontology-workflow__checkpoint ontology-workflow__checkpoint--stacked">
+                  <div>
+                    <strong>检测到上下文压缩归档</strong>
+                    <span>
+                      原 chunks 围栏已不在当前窗口；检测到
+                      {evidence.recoverableSceneThreeCount} 条可恢复的场景 3 消息。
+                    </span>
+                    {!evidence.recoveryProjectRoot ? (
+                      <small role="alert">
+                        幸存消息中的项目根目录缺失或不一致，无法安全自动选择查询范围。
+                      </small>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!evidence.recoveryProjectRoot || !canSend || streaming}
+                    onClick={() => void sendText(buildChunksRecoveryPrompt(
+                      evidence.recoveryProjectRoot ?? '',
+                    ))}
+                  >
+                    重新查询并恢复功能清单
+                  </button>
+                </div>
+              ) : null}
 
               <div className="ontology-workflow__form-grid">
                 <label>

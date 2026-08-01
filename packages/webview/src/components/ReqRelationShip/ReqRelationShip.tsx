@@ -8,7 +8,11 @@ import {
   useState,
 } from 'react'
 import { Alert, Button, Card, Select, Spin, TreeSelect } from 'antd'
-import { ArrowLeftOutlined } from '@ant-design/icons'
+import {
+  ArrowLeftOutlined,
+  DownOutlined,
+  RightOutlined,
+} from '@ant-design/icons'
 import type { GraphData } from '@antv/g6'
 import type { Requirement } from '../../models/Requirement'
 import type {
@@ -19,7 +23,6 @@ import type {
   GraphDBGraphResponse,
 } from '../../models/GraphDBGraph'
 import { fetchGraphDBGraph } from '../../config/graphdbGraph'
-import { buildRequirementTreeData } from './requirementTreeData'
 
 import './ReqRelationShip.css'
 
@@ -41,6 +44,7 @@ const DEFAULT_GRAPH_REQUEST: GraphDBGraphRequest = {
   root: "http://example.org/requirement-ontology#418-UserReq001",
   depth: 1,
   origin: 'all',
+  node_types: [],
   node_limit: 200,
   edge_limit: 500,
   include_properties: false,
@@ -66,31 +70,21 @@ const EDGE_LABEL_OPTIONS: Array<{ label: string, value: EdgeLabelMode }> = [
 ]
 
 const DENSE_GRAPH_EDGE_LIMIT = 120
+const NODE_TYPE_FILTER_LIMIT = 50
 
-const GRAPH_LEGEND = (
-  <div className="req-relationship-legend" aria-label="关系图图例">
-    <span className="req-relationship-legend__item">
-      <span className="req-relationship-legend__node" />
-      节点颜色区分实例类型
-    </span>
-    <span className="req-relationship-legend__item">
-      <span className="req-relationship-legend__edge req-relationship-legend__edge--explicit" />
-      显式关系
-    </span>
-    <span className="req-relationship-legend__item">
-      <span className="req-relationship-legend__edge req-relationship-legend__edge--inferred" />
-      推理关系
-    </span>
-    <span className="req-relationship-legend__item">
-      <span className="req-relationship-legend__edge req-relationship-legend__edge--both" />
-      显式且推理
-    </span>
-    <span className="req-relationship-legend__hint">单击查看属性，双击节点继续展开</span>
-  </div>
-)
+interface GraphLegendItem {
+  label: string
+  color: string
+  stroke?: string
+  dashed?: boolean
+}
+
+interface GraphLegendData {
+  nodes: GraphLegendItem[]
+  edges: GraphLegendItem[]
+}
 
 function ReqRelationShip({
-  requirements,
   onBack,
   initialRequest,
   initialGraph,
@@ -143,6 +137,12 @@ function ReqRelationShip({
   const [originFilter, setOriginFilter] = useState<GraphDBGraphOrigin>(
     () => baseGraphRequest.origin ?? 'all',
   )
+  const [nodeTypeFilter, setNodeTypeFilter] = useState<string[]>(
+    () => [...(baseGraphRequest.node_types || [])],
+  )
+  const [nodeTypeOptions, setNodeTypeOptions] = useState(
+    () => buildNodeTypeOptions(initialGraphData.nodes || []),
+  )
   const [edgeLabelMode, setEdgeLabelMode] = useState<EdgeLabelMode>('auto')
   const replaceAbortControllerRef = useRef<AbortController | null>(null)
   const expandAbortControllerRef = useRef<AbortController | null>(null)
@@ -155,7 +155,10 @@ function ReqRelationShip({
 
   graphDataRef.current = graphData
 
-  const treeData = useMemo(() => buildRequirementTreeData(requirements), [requirements])
+  const focusNodeTreeData = useMemo(
+    () => buildGraphNodeTreeData(graphData.nodes || []),
+    [graphData.nodes],
+  )
   const visibleGraphData = useMemo(
     () => filterGraphDataByOrigin(graphData, originFilter),
     [graphData, originFilter],
@@ -163,6 +166,13 @@ function ReqRelationShip({
   const visibleEdgeIds = useMemo(
     () => (visibleGraphData.edges || []).map((edge) => edge.id),
     [visibleGraphData],
+  )
+  const graphLegendData = useMemo(
+    () => buildGraphLegendData(
+      graphData.nodes || [],
+      visibleGraphData.edges || [],
+    ),
+    [graphData.nodes, visibleGraphData.edges],
   )
   const edgeCount = visibleGraphData.edges?.length || 0
   const nodeCount = visibleGraphData.nodes?.length || 0
@@ -204,6 +214,7 @@ function ReqRelationShip({
       if (canonicalRoot) nextExpandedRoots.add(canonicalRoot)
 
       const nextGraphData = buildReadableGraphData(response)
+      setNodeTypeOptions(buildNodeTypeOptions(response.nodes))
       expandedRootsRef.current = nextExpandedRoots
       graphDataRef.current = nextGraphData
       setGraphData(nextGraphData)
@@ -241,6 +252,7 @@ function ReqRelationShip({
       const response = await fetchGraphDBGraph({
         ...baseGraphRequest,
         root,
+        node_types: nodeTypeFilter,
       }, controller.signal)
       if (requestSequence !== expandRequestSequenceRef.current) return
 
@@ -276,7 +288,7 @@ function ReqRelationShip({
         }
       }
     }
-  }, [baseGraphRequest])
+  }, [baseGraphRequest, nodeTypeFilter])
 
   useEffect(() => {
     // 延迟到当前任务结束，避免 React StrictMode 在开发环境重复发起首屏请求。
@@ -299,14 +311,42 @@ function ReqRelationShip({
     }
   }, [baseGraphRequest, initialGraph, runReplaceQuery])
 
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = useCallback((requestOverrides?: Partial<GraphDBGraphRequest>) => {
+    const root = requestOverrides?.root === undefined
+      ? draftRoot || null
+      : requestOverrides.root
+
     void runReplaceQuery({
       ...baseGraphRequest,
-      root: draftRoot || null,
-      depth: draftRoot ? draftDepth : 1,
-      origin: 'all',
+      root,
+      depth: root ? requestOverrides?.depth ?? draftDepth : 1,
+      origin: requestOverrides?.origin ?? originFilter,
+      node_types: requestOverrides?.node_types ?? nodeTypeFilter,
     })
-  }, [baseGraphRequest, draftDepth, draftRoot, runReplaceQuery])
+  }, [baseGraphRequest, draftDepth, draftRoot, nodeTypeFilter, originFilter, runReplaceQuery])
+
+  const handleFocusNodeChange = useCallback((value: unknown) => {
+    const root = typeof value === 'string' ? value : undefined
+    if (root === draftRoot) return
+
+    setDraftRoot(root)
+    handleRefresh({ root: root || null })
+  }, [draftRoot, handleRefresh])
+
+  const handleDepthChange = useCallback((depth: GraphDBGraphDepth) => {
+    setDraftDepth(depth)
+    handleRefresh({ depth })
+  }, [handleRefresh])
+
+  const handleOriginChange = useCallback((origin: GraphDBGraphOrigin) => {
+    setOriginFilter(origin)
+    handleRefresh({ origin })
+  }, [handleRefresh])
+
+  const handleNodeTypesChange = useCallback((nodeTypes: string[]) => {
+    setNodeTypeFilter(nodeTypes)
+    handleRefresh({ node_types: nodeTypes })
+  }, [handleRefresh])
 
   const handleNodeDoubleClick = useCallback((nodeId: string) => {
     if (loading || expandingNodeId === nodeId) return
@@ -352,16 +392,16 @@ function ReqRelationShip({
       ) : null}
 
       <div className="req-relationship-operation">
-        <span className="operation-label">聚焦需求：</span>
+        <span className="operation-label">聚焦节点：</span>
         <TreeSelect
           className="req-relationship-root-select"
-          treeData={treeData}
+          treeData={focusNodeTreeData}
           showSearch
           treeNodeFilterProp="title"
           allowClear
           placeholder="不选择时展示受限全局概览"
           value={draftRoot}
-          onChange={(value) => setDraftRoot(typeof value === 'string' ? value : undefined)}
+          onChange={handleFocusNodeChange}
           maxTagCount="responsive"
         />
 
@@ -371,7 +411,7 @@ function ReqRelationShip({
             value={draftDepth}
             options={DEPTH_OPTIONS}
             disabled={!draftRoot}
-            onChange={setDraftDepth}
+            onChange={handleDepthChange}
           />
         </div>
 
@@ -380,7 +420,22 @@ function ReqRelationShip({
           <Select<GraphDBGraphOrigin>
             value={originFilter}
             options={ORIGIN_OPTIONS}
-            onChange={setOriginFilter}
+            onChange={handleOriginChange}
+          />
+        </div>
+
+        <div className="req-relationship-operation__field">
+          <span>节点类型：</span>
+          <Select<string[]>
+            className="req-relationship-node-types-select"
+            mode="multiple"
+            value={nodeTypeFilter}
+            options={nodeTypeOptions}
+            allowClear
+            maxCount={NODE_TYPE_FILTER_LIMIT}
+            maxTagCount="responsive"
+            placeholder="全部类型"
+            onChange={handleNodeTypesChange}
           />
         </div>
 
@@ -393,7 +448,7 @@ function ReqRelationShip({
           />
         </div>
 
-        <Button type="primary" onClick={handleRefresh} loading={loading}>
+        <Button type="primary" onClick={() => handleRefresh()} loading={loading}>
           刷新关系图
         </Button>
       </div>
@@ -424,7 +479,7 @@ function ReqRelationShip({
             {expandingNodeId ? `正在展开：${expandingNodeName}` : ''}
           </span>
         </div>
-        {GRAPH_LEGEND}
+        <GraphLegend data={graphLegendData} />
       </div>
 
       <div className="req-relationship-content">
@@ -476,6 +531,73 @@ function ReqRelationShip({
   )
 }
 
+function GraphLegend({ data }: { data: GraphLegendData }) {
+  const [collapsed, setCollapsed] = useState(true)
+
+  return (
+    <div className="req-relationship-legend" aria-label="关系图图例">
+      <div className="req-relationship-legend__toolbar">
+        <Button
+          type="text"
+          size="small"
+          className="req-relationship-legend__toggle"
+          icon={collapsed ? <RightOutlined /> : <DownOutlined />}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? '展开图例' : '收起图例'}
+          onClick={() => setCollapsed((current) => !current)}
+        >
+          图例
+        </Button>
+        <span className="req-relationship-legend__summary">
+          节点类型 {data.nodes.length} · 关系类型 {data.edges.length}
+        </span>
+        <span className="req-relationship-legend__hint">单击查看属性，双击节点继续展开</span>
+      </div>
+
+      {!collapsed ? (
+        <div className="req-relationship-legend__content">
+          {data.nodes.length > 0 ? (
+            <div className="req-relationship-legend__group">
+              <span className="req-relationship-legend__heading">节点</span>
+              {data.nodes.map((item) => (
+                <span key={item.label} className="req-relationship-legend__item">
+                  <span
+                    className="req-relationship-legend__node"
+                    style={{
+                      backgroundColor: item.color,
+                      borderColor: item.stroke || item.color,
+                      boxShadow: `0 0 0 1px ${item.stroke || item.color}`,
+                    }}
+                  />
+                  {item.label}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          {data.edges.length > 0 ? (
+            <div className="req-relationship-legend__group">
+              <span className="req-relationship-legend__heading">关系</span>
+              {data.edges.map((item) => (
+                <span key={item.label} className="req-relationship-legend__item">
+                  <span
+                    className="req-relationship-legend__edge"
+                    style={{
+                      borderColor: item.color,
+                      borderTopStyle: item.dashed ? 'dashed' : 'solid',
+                    }}
+                  />
+                  {item.label}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function buildReadableGraphData(graphResponse: GraphData): GraphData {
   return {
     nodes: graphResponse.nodes || [],
@@ -495,6 +617,84 @@ function buildReadableGraphData(graphResponse: GraphData): GraphData {
       } as NonNullable<GraphData['edges']>[number]
     }),
   }
+}
+
+function buildGraphLegendData(
+  nodes: NonNullable<GraphData['nodes']>,
+  edges: NonNullable<GraphData['edges']>,
+): GraphLegendData {
+  const nodeLegendItems = new Map<string, GraphLegendItem>()
+  const edgeLegendItems = new Map<string, GraphLegendItem>()
+
+  nodes.forEach((node) => {
+    const label = getGraphNodeType(node) || '未分类'
+    if (nodeLegendItems.has(label)) return
+
+    const style = isRecord(node.style) ? node.style : {}
+    const color = getString(style.fill) || '#5b8ff9'
+    nodeLegendItems.set(label, {
+      label,
+      color,
+      stroke: getString(style.stroke) || color,
+    })
+  })
+
+  edges.forEach((edge) => {
+    const data = isRecord(edge.data) ? edge.data : {}
+    const label = getString(data.relationType) || '未分类'
+    if (edgeLegendItems.has(label)) return
+
+    const style = isRecord(edge.style) ? edge.style : {}
+    edgeLegendItems.set(label, {
+      label,
+      color: getString(style.stroke) || '#8c8c8c',
+      dashed: Array.isArray(style.lineDash) && style.lineDash.length > 0,
+    })
+  })
+
+  return {
+    nodes: Array.from(nodeLegendItems.values()),
+    edges: Array.from(edgeLegendItems.values()),
+  }
+}
+
+function buildGraphNodeTreeData(nodes: NonNullable<GraphData['nodes']>) {
+  const groupedNodes = new Map<string, NonNullable<GraphData['nodes']>>()
+
+  nodes.forEach((node) => {
+    const type = getGraphNodeType(node) || '未分类'
+    const group = groupedNodes.get(type)
+
+    if (group) {
+      group.push(node)
+    } else {
+      groupedNodes.set(type, [node])
+    }
+  })
+
+  return Array.from(groupedNodes, ([type, grouped]) => ({
+    title: type,
+    value: `type:${type}`,
+    selectable: false,
+    children: grouped.map((node) => ({
+      title: getGraphNodeDisplayName(node),
+      value: node.id,
+    })),
+  }))
+}
+
+function buildNodeTypeOptions(nodes: NonNullable<GraphData['nodes']>) {
+  const nodeTypes = new Set<string>()
+
+  nodes.forEach((node) => {
+    const type = getGraphNodeType(node)
+    if (type) nodeTypes.add(type)
+  })
+
+  return Array.from(nodeTypes, (type) => ({
+    label: type,
+    value: type,
+  }))
 }
 
 function mergeGraphData(current: GraphData, incoming: GraphData): GraphData {
@@ -545,12 +745,21 @@ function getNodeDisplayName(graphData: GraphData, nodeId: string | null) {
   const node = (graphData.nodes || []).find((item) => item.id === nodeId)
   if (!node) return nodeId
 
+  return getGraphNodeDisplayName(node)
+}
+
+function getGraphNodeDisplayName(node: NonNullable<GraphData['nodes']>[number]) {
   const data = isRecord(node.data) ? node.data : {}
   const style = isRecord(node.style) ? node.style : {}
   return getString(data.name)
     || getString(data.identifier)
     || getString(style.labelText)
-    || nodeId
+    || node.id
+}
+
+function getGraphNodeType(node: NonNullable<GraphData['nodes']>[number]) {
+  const data = isRecord(node.data) ? node.data : {}
+  return getString(data.type)
 }
 
 function isMetaTruncated(meta: GraphDBGraphMeta) {

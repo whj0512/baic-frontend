@@ -31,6 +31,7 @@ export interface ConversationWorkspaceProps {
   historyStatus: QwenPawHistoryStatus
   historyError: string | null
   streaming: boolean
+  canSend: boolean
   streamError: string | null
   conversationStatus: QwenPawConversationStatus
   registrationState: QwenPawRegistrationState

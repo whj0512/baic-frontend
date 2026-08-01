@@ -54,6 +54,15 @@ export type QwenPawConversationAction =
       part: Extract<ConversationPart, { type: 'tool' }>
     }
   | {
+      type: 'send_finalizing'
+      userMessageId: string
+      assistantMessageId: string
+    }
+  | {
+      type: 'history_reconciled'
+      messages: ConversationMessageView[]
+    }
+  | {
       type: 'send_completed'
       userMessageId: string
       assistantMessageId: string
@@ -98,16 +107,17 @@ function updateAssistantText(
       return message
     }
 
-    const textIndex = message.parts.findIndex((part) => part.type === 'text')
-    const currentPart =
-      textIndex >= 0 ? message.parts[textIndex] : undefined
-    const currentText = currentPart?.type === 'text' ? currentPart.text : ''
-    const nextText = mode === 'append' ? `${currentText}${text}` : text
     const parts = [...message.parts]
-    if (textIndex >= 0) {
-      parts[textIndex] = { type: 'text', text: nextText }
+    const activePartIndex = parts.length - 1
+    const activePart = parts[activePartIndex]
+
+    if (activePart?.type === 'text') {
+      parts[activePartIndex] = {
+        type: 'text',
+        text: mode === 'append' ? `${activePart.text}${text}` : text,
+      }
     } else {
-      parts.push({ type: 'text', text: nextText })
+      parts.push({ type: 'text', text })
     }
 
     return {
@@ -214,6 +224,7 @@ export function qwenPawConversationReducer(
         getConversationKey(state.activeConversation)
         !== action.conversationKey
         || state.status === 'generating'
+        || state.status === 'finalizing'
       ) {
         return state
       }
@@ -229,6 +240,7 @@ export function qwenPawConversationReducer(
         getConversationKey(state.activeConversation)
         !== action.conversationKey
         || state.status === 'generating'
+        || state.status === 'finalizing'
       ) {
         return state
       }
@@ -282,6 +294,33 @@ export function qwenPawConversationReducer(
           action.assistantMessageId,
           action.part,
         ),
+      }
+    case 'send_finalizing':
+      if (state.status !== 'generating') {
+        return state
+      }
+
+      return {
+        ...state,
+        messages: state.messages.map((message) =>
+          message.id === action.assistantMessageId
+            ? { ...message, transient: false, status: 'syncing' }
+            : message.id === action.userMessageId
+              ? { ...message, transient: false, status: 'sent' }
+              : message),
+        status: 'finalizing',
+        error: null,
+      }
+    case 'history_reconciled':
+      if (state.status !== 'generating' && state.status !== 'finalizing') {
+        return state
+      }
+
+      return {
+        ...state,
+        messages: action.messages,
+        status: 'completed',
+        error: null,
       }
     case 'send_completed':
       return {

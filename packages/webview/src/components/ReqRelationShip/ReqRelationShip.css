@@ -85,6 +85,15 @@
   contain: strict;
 }
 
+.antv-g6-pin-control {
+  position: absolute;
+  z-index: 3;
+  top: 12px;
+  right: 12px;
+  min-width: 82px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.14);
+}
+
 .antv-g6-node-loading-indicator {
   position: absolute;
   z-index: 2;
@@ -306,10 +315,49 @@
 
 .req-relationship-legend {
   display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #68717d;
+}
+
+.req-relationship-legend__toolbar {
+  display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 7px 18px;
+  gap: 6px 12px;
+  min-height: 24px;
+}
+
+.req-relationship-legend__toggle {
+  height: 24px;
+  padding: 0 4px;
+  color: #434b56;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.req-relationship-legend__summary {
   color: #68717d;
+  white-space: nowrap;
+}
+
+.req-relationship-legend__content {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 7px 18px;
+}
+
+.req-relationship-legend__group {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px 12px;
+}
+
+.req-relationship-legend__heading {
+  color: #434b56;
+  font-weight: 600;
 }
 
 .req-relationship-legend__item {
@@ -332,19 +380,6 @@
   width: 28px;
   height: 0;
   border-top: 2px solid;
-}
-
-.req-relationship-legend__edge--explicit {
-  border-color: #5b8ff9;
-}
-
-.req-relationship-legend__edge--inferred {
-  border-color: #f6903d;
-  border-top-style: dashed;
-}
-
-.req-relationship-legend__edge--both {
-  border-color: #9254de;
 }
 
 .req-relationship-legend__hint {
@@ -386,6 +421,10 @@
 
 .req-relationship-operation__field .ant-select {
   width: 128px;
+}
+
+.req-relationship-operation__field .req-relationship-node-types-select {
+  width: 220px;
 }
 
 @media (max-width: 900px) {

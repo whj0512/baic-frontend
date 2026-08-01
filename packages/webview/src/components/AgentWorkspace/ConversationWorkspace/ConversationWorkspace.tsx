@@ -35,6 +35,7 @@ function ConversationWorkspace({
   historyStatus,
   historyError,
   streaming,
+  canSend,
   streamError,
   conversationStatus,
   registrationState,
@@ -98,6 +99,7 @@ function ConversationWorkspace({
     && Boolean(activeAgent?.enabled)
     && Boolean(activeConversation)
     && activeConversation?.channel === 'console'
+    && canSend
     && registrationState !== 'syncing'
   const hasDraftContent =
     draftText.trim().length > 0 || attachmentState.attachments.length > 0

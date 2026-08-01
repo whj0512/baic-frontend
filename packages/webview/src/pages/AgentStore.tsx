@@ -426,6 +426,7 @@ function AgentStore() {
           historyStatus={qwenPawWorkspace.historyStatus}
           historyError={qwenPawWorkspace.historyError?.message ?? null}
           streaming={qwenPawWorkspace.streaming}
+          canSend={qwenPawWorkspace.canSend}
           streamError={qwenPawWorkspace.error?.message ?? null}
           conversationStatus={qwenPawWorkspace.status}
           registrationState={qwenPawWorkspace.registrationState}

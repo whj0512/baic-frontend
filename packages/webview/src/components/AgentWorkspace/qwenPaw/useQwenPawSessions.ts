@@ -87,6 +87,74 @@ export function useQwenPawSessions(activeAgentId: string | null) {
     setHistoryReloadVersion((version) => version + 1)
   }, [])
 
+  const reconcileHistory = useCallback(async (
+    agentId: string,
+    chatId: string,
+    signal: AbortSignal,
+    surfaceStatus = false,
+  ): Promise<{
+    history: QwenPawChatHistory
+    messages: ConversationMessageView[]
+  }> => {
+    const cacheKey = `${agentId}:${chatId}`
+    if (surfaceStatus && activeAgentId === agentId && selectedChatId === chatId) {
+      setHistoryError(null)
+      setHistoryStatus('refreshing')
+    }
+
+    try {
+      const nextHistory = await fetchChatHistory(agentId, chatId, signal)
+      if (signal.aborted) {
+        throw signal.reason
+      }
+
+      const nextMessages = normalizeMessages(nextHistory.messages, chatId)
+      historyCacheRef.current.delete(cacheKey)
+      historyCacheRef.current.set(cacheKey, {
+        history: nextHistory,
+        messages: nextMessages,
+      })
+      while (historyCacheRef.current.size > HISTORY_CACHE_LIMIT) {
+        const oldestKey = historyCacheRef.current.keys().next().value
+        if (typeof oldestKey !== 'string') {
+          break
+        }
+        historyCacheRef.current.delete(oldestKey)
+      }
+
+      if (activeAgentId === agentId && selectedChatId === chatId) {
+        setHistory(nextHistory)
+        setHistoryChatId(chatId)
+        setMessages(nextMessages)
+        historyIdentityRef.current = { agentId, chatId }
+        if (surfaceStatus) {
+          setHistoryStatus('ready')
+        }
+      }
+
+      return { history: nextHistory, messages: nextMessages }
+    } catch (requestError) {
+      if (signal.aborted) {
+        throw requestError
+      }
+
+      const nextError = requestError instanceof QwenPawError
+        ? requestError
+        : new QwenPawError('network', '无法同步 QwenPaw 会话详情', {
+            cause: requestError,
+          })
+      if (
+        surfaceStatus
+        && activeAgentId === agentId
+        && selectedChatId === chatId
+      ) {
+        setHistoryError(nextError)
+        setHistoryStatus('error')
+      }
+      throw nextError
+    }
+  }, [activeAgentId, selectedChatId])
+
   const clearSelection = useCallback(() => {
     setSelection(null)
   }, [])
@@ -319,6 +387,7 @@ export function useQwenPawSessions(activeAgentId: string | null) {
     selectChat,
     clearSelection,
     adoptChat,
+    reconcileHistory,
     reloadSessions,
     retryHistory,
   }

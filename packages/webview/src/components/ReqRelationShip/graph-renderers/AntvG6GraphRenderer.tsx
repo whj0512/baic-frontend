@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Graph, GraphEvent, NodeEvent } from '@antv/g6'
 import type { GraphData, IPointerEvent } from '@antv/g6'
+import { PushpinFilled, PushpinOutlined } from '@ant-design/icons'
+import { Button } from 'antd'
 import G6PropertiesPanel, { createPanelData } from './G6PropertiesPanel'
 import type { GraphElementPanelData } from './G6PropertiesPanel'
 import {
   createG6GraphOptions,
-  createG6RadialLayoutOptions,
+  createG6RelationshipLayoutOptions,
   updateZoomCanvasOrigin,
 } from './g6GraphOptions'
 
@@ -30,6 +32,26 @@ const LOADING_POSITION_EVENTS = [
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
 const DEFAULT_NODE_SIZE = 48
 const LOADING_INDICATOR_PADDING_RATIO = 0.24
+
+interface ForceLayoutInstance {
+  id?: string
+  options?: {
+    onTick?: unknown
+  }
+  stop?: () => unknown
+  tick?: (iterations?: number) => unknown
+}
+
+interface LayoutControllerAccess {
+  getLayoutInstance?: () => ForceLayoutInstance[]
+  updateElementPosition?: (layoutResult: ForceLayoutInstance, animation: boolean) => unknown
+}
+
+interface GraphWithLayoutContext {
+  context?: {
+    layout?: LayoutControllerAccess
+  }
+}
 
 function observeContainerResize(container: HTMLElement, onResize: () => void) {
   if (typeof ResizeObserver === 'undefined') return null
@@ -65,7 +87,11 @@ function AntvG6GraphRenderer({
   const loadingPositionFrameRef = useRef<number | null>(null)
   const renderSequenceRef = useRef(0)
   const layoutInProgressRef = useRef(false)
+  const repulsionFrameRef = useRef<number | null>(null)
+  const layoutPinnedRef = useRef(false)
   const [panelData, setPanelData] = useState<GraphElementPanelData | null>(null)
+  const [layoutPinned, setLayoutPinned] = useState(false)
+  const [layoutRendering, setLayoutRendering] = useState(false)
 
   graphDataRef.current = graphData
   visibleEdgeIdsRef.current = visibleEdgeIds
@@ -74,6 +100,7 @@ function AntvG6GraphRenderer({
   layoutRevisionRef.current = layoutRevision
   expandingNodeIdRef.current = expandingNodeId
   onNodeDoubleClickRef.current = onNodeDoubleClick
+  layoutPinnedRef.current = layoutPinned
 
   const handleElementClick = useCallback((event: IPointerEvent) => {
     if (event.targetType !== 'node' && event.targetType !== 'edge') {
@@ -150,10 +177,63 @@ function AntvG6GraphRenderer({
     })
   }, [syncLoadingIndicatorPosition])
 
+  const stopContinuousRepulsion = useCallback(() => {
+    if (repulsionFrameRef.current !== null) {
+      window.cancelAnimationFrame(repulsionFrameRef.current)
+      repulsionFrameRef.current = null
+    }
+
+    const graph = graphRef.current
+    if (!graph || graph.destroyed) return
+    getForceLayoutInstance(graph)?.stop?.()
+  }, [])
+
+  const startContinuousRepulsion = useCallback((graph: Graph) => {
+    stopContinuousRepulsion()
+    if (graph.destroyed || layoutPinnedRef.current) return
+
+    const tick = () => {
+      if (graph.destroyed || layoutPinnedRef.current) {
+        repulsionFrameRef.current = null
+        return
+      }
+
+      const forceLayout = getForceLayoutInstance(graph)
+      if (!forceLayout?.tick) {
+        repulsionFrameRef.current = null
+        return
+      }
+
+      forceLayout.tick(1)
+      if (typeof forceLayout.options?.onTick !== 'function') {
+        getLayoutController(graph)?.updateElementPosition?.(forceLayout, false)
+      }
+      repulsionFrameRef.current = window.requestAnimationFrame(tick)
+    }
+
+    repulsionFrameRef.current = window.requestAnimationFrame(tick)
+  }, [stopContinuousRepulsion])
+
+  const toggleLayoutPinned = useCallback(() => {
+    const graph = graphRef.current
+    if (!graph || graph.destroyed || layoutInProgressRef.current) return
+
+    const nextPinned = !layoutPinnedRef.current
+    layoutPinnedRef.current = nextPinned
+    setLayoutPinned(nextPinned)
+    if (nextPinned) {
+      stopContinuousRepulsion()
+      graph.stopLayout()
+    } else {
+      startContinuousRepulsion(graph)
+    }
+  }, [startContinuousRepulsion, stopContinuousRepulsion])
+
   const renderGraphData = useCallback((graph: Graph) => {
     if (renderFrameRef.current !== null) {
       window.cancelAnimationFrame(renderFrameRef.current)
     }
+    stopContinuousRepulsion()
     if (layoutInProgressRef.current) {
       graph.stopLayout()
     }
@@ -162,6 +242,7 @@ function AntvG6GraphRenderer({
     const animateLayout = graph.rendered && !window.matchMedia?.(REDUCED_MOTION_QUERY).matches
     renderSequenceRef.current = renderSequence
     layoutInProgressRef.current = true
+    setLayoutRendering(true)
     onRenderStateChange?.(true, animateLayout)
 
     // 先显示 loading 遮罩，再执行 G6 内置 Radial 布局。
@@ -172,7 +253,11 @@ function AntvG6GraphRenderer({
       const latestGraphData = graphDataRef.current
       const labelsVisible = edgeLabelsVisibleRef.current
       const nodeCount = latestGraphData.nodes?.length || 0
-      graph.setLayout(createG6RadialLayoutOptions(focusNodeRef.current, animateLayout, nodeCount))
+      graph.setLayout(createG6RelationshipLayoutOptions(
+        focusNodeRef.current,
+        animateLayout,
+        nodeCount,
+      ))
       graph.setData(applyEdgePresentation(latestGraphData, labelsVisible, visibleEdgeIdsRef.current))
       appliedEdgeLabelsVisibleRef.current = labelsVisible
 
@@ -184,6 +269,10 @@ function AntvG6GraphRenderer({
             await updateEdgeLabelVisibility(graph, edgeLabelsVisibleRef.current)
             appliedEdgeLabelsVisibleRef.current = edgeLabelsVisibleRef.current
           }
+
+          if (!layoutPinnedRef.current) {
+            startContinuousRepulsion(graph)
+          }
         })
         .catch((error) => {
           console.debug('[ReqRelationShip][G6 radial render error]', error)
@@ -191,11 +280,12 @@ function AntvG6GraphRenderer({
         .finally(() => {
           if (renderSequence === renderSequenceRef.current) {
             layoutInProgressRef.current = false
+            setLayoutRendering(false)
             onRenderStateChange?.(false, animateLayout)
           }
         })
     })
-  }, [onRenderStateChange])
+  }, [onRenderStateChange, startContinuousRepulsion, stopContinuousRepulsion])
 
   const updateGraphDataWithoutLayout = useCallback(async (graph: Graph, nextGraphData: GraphData) => {
     // 若完整布局仍在下一帧等待执行，它会直接读取最新 graphData，无需额外 draw。
@@ -297,6 +387,7 @@ function AntvG6GraphRenderer({
         window.cancelAnimationFrame(loadingPositionFrameRef.current)
         loadingPositionFrameRef.current = null
       }
+      stopContinuousRepulsion()
       renderSequenceRef.current += 1
       const graph = graphRef.current
       if (graph && !graph.destroyed) {
@@ -310,7 +401,13 @@ function AntvG6GraphRenderer({
       graphRef.current = null
       container.replaceChildren()
     }
-  }, [handleElementClick, handleNodeDoubleClick, renderGraphData, scheduleLoadingIndicatorPosition])
+  }, [
+    handleElementClick,
+    handleNodeDoubleClick,
+    renderGraphData,
+    scheduleLoadingIndicatorPosition,
+    stopContinuousRepulsion,
+  ])
 
   useEffect(() => {
     const graph = graphRef.current
@@ -361,6 +458,18 @@ function AntvG6GraphRenderer({
     <div className="antv-g6-graph-layout">
       <div className="antv-g6-graph-stage">
         <div ref={containerRef} className="antv-g6-graph-container" />
+        <Button
+          className="antv-g6-pin-control"
+          type={layoutPinned ? 'primary' : 'default'}
+          icon={layoutPinned ? <PushpinFilled /> : <PushpinOutlined />}
+          disabled={layoutRendering}
+          aria-label={layoutPinned ? '恢复节点动态斥力' : '固定节点'}
+          aria-pressed={layoutPinned}
+          title={layoutPinned ? '恢复节点动态斥力' : '固定节点'}
+          onClick={toggleLayoutPinned}
+        >
+          {layoutPinned ? '已固定' : 'Pin'}
+        </Button>
         <div
           ref={loadingIndicatorRef}
           className="antv-g6-node-loading-indicator"
@@ -373,6 +482,20 @@ function AntvG6GraphRenderer({
       <G6PropertiesPanel panelData={panelData} />
     </div>
   )
+}
+
+function getForceLayoutInstance(graph: Graph): ForceLayoutInstance | null {
+  const layoutInstances = getLayoutController(graph)?.getLayoutInstance?.()
+
+  if (!layoutInstances) return null
+  for (let index = layoutInstances.length - 1; index >= 0; index -= 1) {
+    if (layoutInstances[index]?.id === 'force') return layoutInstances[index]
+  }
+  return null
+}
+
+function getLayoutController(graph: Graph): LayoutControllerAccess | null {
+  return (graph as unknown as GraphWithLayoutContext).context?.layout || null
 }
 
 function applyEdgePresentation(

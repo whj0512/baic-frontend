@@ -173,6 +173,7 @@ export type QwenPawConversationStatus =
   | 'loading'
   | 'ready'
   | 'generating'
+  | 'finalizing'
   | 'completed'
   | 'failed'
   | 'stopped'

@@ -14,6 +14,7 @@ import {
   fetchChats,
   streamChat,
 } from './qwenPawClient'
+import { shouldReconcileConversationHistory } from './conversationReconciliation'
 import { normalizeStreamingToolPart } from './normalizeMessages'
 import type {
   ActiveConversationRef,
@@ -24,12 +25,15 @@ import type {
 } from './types'
 import { QwenPawError } from './types'
 
-const REGISTRATION_DELAYS_MS = [0, 250, 500, 1000]
+const REGISTRATION_DELAYS_MS = [500, 1000, 2000, 3000]
+const HISTORY_RECONCILE_INTERVAL_MS = 2000
+const RECONCILED_ABORT_NAME = 'QwenPawHistoryReconciled'
 
 interface LastSendRequest {
   contents: QwenPawContent[]
   userMessageId: string
   assistantMessageId: string
+  baselineHistoryCount: number
 }
 
 function toRequestContents(contents: QwenPawContent[]): QwenPawContent[] {
@@ -117,8 +121,16 @@ interface UseQwenPawConversationOptions {
   historyStatus: QwenPawHistoryStatus
   historyError: QwenPawError | null
   adoptChat: (chat: QwenPawChatSpec) => void
+  reconcileHistory: (
+    agentId: string,
+    chatId: string,
+    signal: AbortSignal,
+    surfaceStatus?: boolean,
+  ) => Promise<{
+    history: { status: string }
+    messages: ConversationMessageView[]
+  }>
   reloadSessions: () => void
-  retryHistory: () => void
 }
 
 export function useQwenPawConversation({
@@ -129,8 +141,8 @@ export function useQwenPawConversation({
   historyStatus,
   historyError,
   adoptChat,
+  reconcileHistory,
   reloadSessions,
-  retryHistory,
 }: UseQwenPawConversationOptions) {
   const [state, dispatch] = useReducer(
     qwenPawConversationReducer,
@@ -316,30 +328,12 @@ export function useQwenPawConversation({
     pendingStreamRef.current = null
   }, [])
 
-  const findRegistration = useCallback(async (
-    conversation: ActiveConversationRef,
-    signal: AbortSignal,
-  ): Promise<QwenPawChatSpec | null> => {
-    for (const delayMs of REGISTRATION_DELAYS_MS) {
-      await abortableDelay(delayMs, signal)
-      const chats = await fetchChats(conversation.agentId, {
-        userId: conversation.userId,
-        channel: conversation.channel,
-      }, signal)
-      const match = matchRegisteredChat(chats, conversation)
-      if (match) {
-        return match
-      }
-    }
-
-    return null
-  }, [])
-
   const executeSend = useCallback(async (
     conversation: ActiveConversationRef,
     contents: QwenPawContent[],
     userMessageId: string,
     assistantMessageId: string,
+    baselineHistoryCount: number,
   ): Promise<void> => {
     const controller = new AbortController()
     const requestId = streamRequestIdRef.current + 1
@@ -347,6 +341,8 @@ export function useQwenPawConversation({
     streamControllerRef.current = controller
     const idleTimeoutMs = getRuntimeConfig().qwenPawChatTimeoutMs
     let idleTimeout: ReturnType<typeof globalThis.setTimeout> | null = null
+    let terminalStatus: 'completed' | 'failed' | null = null
+    let reconciliationDone = false
     const clearIdleTimeout = () => {
       if (idleTimeout !== null) {
         globalThis.clearTimeout(idleTimeout)
@@ -362,6 +358,119 @@ export function useQwenPawConversation({
       }, idleTimeoutMs)
     }
     resetIdleTimeout()
+
+    const markFinalizing = () => {
+      dispatch({
+        type: 'send_finalizing',
+        userMessageId,
+        assistantMessageId,
+      })
+    }
+    const reconcileConversation = async () => {
+      let currentConversation = conversation
+      let observedRunning = false
+      let registrationAttempt = 0
+
+      try {
+        while (!controller.signal.aborted) {
+          if (!currentConversation.chatId) {
+            const delayMs = REGISTRATION_DELAYS_MS[
+              Math.min(registrationAttempt, REGISTRATION_DELAYS_MS.length - 1)
+            ]
+            await abortableDelay(delayMs, controller.signal)
+
+            try {
+              const chats = await fetchChats(currentConversation.agentId, {
+                userId: currentConversation.userId,
+                channel: currentConversation.channel,
+              }, controller.signal)
+              const registeredChat = matchRegisteredChat(
+                chats,
+                currentConversation,
+              )
+              if (registeredChat) {
+                const persisted = createPersistedConversation(
+                  currentConversation.agentId,
+                  registeredChat,
+                  currentConversation.projectId,
+                )
+                currentConversation = persisted
+                activeConversationRef.current = persisted
+                adoptChat(registeredChat)
+                dispatch({ type: 'registered', conversation: persisted })
+              } else {
+                registrationAttempt += 1
+                if (registrationAttempt >= REGISTRATION_DELAYS_MS.length) {
+                  dispatch({ type: 'registration_pending' })
+                }
+                continue
+              }
+            } catch {
+              if (controller.signal.aborted) {
+                return
+              }
+              registrationAttempt += 1
+              continue
+            }
+          } else {
+            await abortableDelay(
+              HISTORY_RECONCILE_INTERVAL_MS,
+              controller.signal,
+            )
+          }
+
+          if (!currentConversation.chatId || controller.signal.aborted) {
+            continue
+          }
+
+          try {
+            const snapshot = await reconcileHistory(
+              currentConversation.agentId,
+              currentConversation.chatId,
+              controller.signal,
+              terminalStatus === 'completed',
+            )
+            if (snapshot.history.status === 'running') {
+              observedRunning = true
+              continue
+            }
+            if (!shouldReconcileConversationHistory({
+              historyStatus: snapshot.history.status,
+              historyMessageCount: snapshot.messages.length,
+              baselineHistoryCount,
+              observedRunning,
+              terminalStatus,
+            })) {
+              continue
+            }
+
+            markFinalizing()
+            reconciliationDone = true
+            dispatch({
+              type: 'history_reconciled',
+              messages: snapshot.messages,
+            })
+            reloadSessions()
+            controller.abort(new DOMException(
+              'QwenPaw history reconciled',
+              RECONCILED_ABORT_NAME,
+            ))
+            return
+          } catch {
+            if (controller.signal.aborted) {
+              return
+            }
+            // A transient detail failure must not turn a healthy SSE into a
+            // failed send. The next polling interval retries reconciliation.
+          }
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          throw error
+        }
+      }
+    }
+    const reconciliationPromise = reconcileConversation()
 
     try {
       for await (const event of streamChat({
@@ -407,6 +516,15 @@ export function useQwenPawConversation({
               part,
             })
           }
+        } else if (
+          event.object === 'response'
+          && (event.status === 'completed' || event.status === 'failed')
+        ) {
+          terminalStatus = event.status
+          if (terminalStatus === 'completed') {
+            flushStreamText()
+            markFinalizing()
+          }
         }
       }
 
@@ -419,45 +537,18 @@ export function useQwenPawConversation({
 
       clearIdleTimeout()
       flushStreamText()
-      dispatch({
-        type: 'send_completed',
-        userMessageId,
-        assistantMessageId,
-      })
-
-      if (conversation.kind === 'draft') {
-        dispatch({ type: 'registration_syncing' })
-        const registeredChat = await findRegistration(
-          conversation,
-          controller.signal,
-        )
-
-        if (
-          controller.signal.aborted
-          || streamRequestIdRef.current !== requestId
-        ) {
-          return
-        }
-
-        if (registeredChat) {
-          const persisted = createPersistedConversation(
-            conversation.agentId,
-            registeredChat,
-            conversation.projectId,
-          )
-          activeConversationRef.current = persisted
-          adoptChat(registeredChat)
-          dispatch({ type: 'registered', conversation: persisted })
-        } else {
-          dispatch({ type: 'registration_pending' })
-          reloadSessions()
-        }
-      } else {
-        reloadSessions()
-        retryHistory()
-      }
+      markFinalizing()
+      await reconciliationPromise
     } catch (error) {
       if (streamRequestIdRef.current !== requestId) {
+        return
+      }
+
+      const internallyReconciled =
+        reconciliationDone
+        && controller.signal.reason instanceof DOMException
+        && controller.signal.reason.name === RECONCILED_ABORT_NAME
+      if (internallyReconciled) {
         return
       }
 
@@ -485,6 +576,9 @@ export function useQwenPawConversation({
           status: sendError.status,
         })
       }
+      if (!controller.signal.aborted) {
+        controller.abort(sendError)
+      }
       throw sendError
     } finally {
       clearIdleTimeout()
@@ -494,11 +588,10 @@ export function useQwenPawConversation({
     }
   }, [
     adoptChat,
-    findRegistration,
     flushStreamText,
     queueStreamText,
+    reconcileHistory,
     reloadSessions,
-    retryHistory,
   ])
 
   const send = useCallback(async (
@@ -556,6 +649,7 @@ export function useQwenPawConversation({
       contents,
       userMessageId,
       assistantMessageId,
+      baselineHistoryCount: historyMessages.length,
     }
     dispatch({ type: 'send_started', userMessage, assistantMessage })
     await executeSend(
@@ -563,8 +657,9 @@ export function useQwenPawConversation({
       contents,
       userMessageId,
       assistantMessageId,
+      historyMessages.length,
     )
-  }, [executeSend])
+  }, [executeSend, historyMessages.length])
 
   const retry = useCallback(async (): Promise<void> => {
     const conversation = activeConversationRef.current
@@ -585,6 +680,7 @@ export function useQwenPawConversation({
       lastSend.contents,
       lastSend.userMessageId,
       lastSend.assistantMessageId,
+      lastSend.baselineHistoryCount,
     )
   }, [executeSend])
 
@@ -599,7 +695,8 @@ export function useQwenPawConversation({
     canSend:
       state.activeConversation !== null
       && state.activeConversation.channel === 'console'
-      && state.status !== 'generating',
+      && state.status !== 'generating'
+      && state.status !== 'finalizing',
     startDraft,
     openPersisted,
     send,

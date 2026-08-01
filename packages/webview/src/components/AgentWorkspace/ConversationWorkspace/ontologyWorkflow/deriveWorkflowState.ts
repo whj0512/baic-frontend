@@ -14,10 +14,14 @@ import { ONTOLOGY_WORKFLOW_STAGES } from './workflowDefinition'
 
 export const SCENE_ONE_OPENING =
   '请使用 requirement_itemizer 对系统需求文档进行条目化。'
-export const CHUNKS_QUERY_MARKER = '$query-project-chunks'
+export const CHUNKS_QUERY_OPENING =
+  '请使用 $query-project-chunks 查询以下项目根目录的 chunks.json。'
 export const SCENE_THREE_OPENING =
   '请使用 requirement_analysis_pipeline 对一个功能进行完整建模。'
-export const DSL_QUERY_MARKER = '$query-requirement-dsl-artifacts'
+export const DSL_QUERY_OPENING =
+  '请使用 $query-requirement-dsl-artifacts 查询以下项目根目录中已生成的需求 DSL 产物。'
+export const CHUNKS_RECOVERY_REASON =
+  '恢复原因：上下文压缩后的工作流检查点重建。'
 
 interface SceneThreeEvidence extends SceneThreeFormValues {
   chunkId: string
@@ -43,6 +47,10 @@ export interface OntologyWorkflowEvidence {
   dslQueryIndex: number | null
   dslPayload: RequirementDslArtifactsPanelPayload | null
   dslEvidenceKey: string | null
+  compressedChunksArchiveDetected: boolean
+  recoveryProjectRoot: string | null
+  recoverableSceneThreeCount: number
+  chunksRecoveredFromCompression: boolean
 }
 
 function getMessageText(message: ConversationMessageView): string {
@@ -170,17 +178,38 @@ export function deriveOntologyWorkflowEvidence(
   messages: ConversationMessageView[],
 ): OntologyWorkflowEvidence {
   let sceneOne: OntologyWorkflowEvidence['sceneOne'] = null
+  let compressedChunksArchiveDetected = false
+  const recoverableSceneThreeMessages: SceneThreeEvidence[] = []
 
   for (let messageIndex = 0; messageIndex < messages.length; messageIndex += 1) {
     const message = messages[messageIndex]
     if (message.role !== 'user') {
       continue
     }
-    const parsed = parseSceneOneMessage(getMessageText(message))
+    const text = getMessageText(message)
+    const parsed = parseSceneOneMessage(text)
     if (parsed) {
       sceneOne = { ...parsed, messageIndex }
     }
+    if (
+      text.includes('[context compressed]')
+      && text.includes('$query-project-chunks')
+    ) {
+      compressedChunksArchiveDetected = true
+    }
+    const sceneThree = parseSceneThreeMessage(text)
+    if (sceneThree) {
+      recoverableSceneThreeMessages.push(sceneThree)
+    }
   }
+  const recoveryProjectRoots = new Set(
+    recoverableSceneThreeMessages
+      .map((item) => item.projectRoot)
+      .filter(Boolean),
+  )
+  const recoveryProjectRoot = recoveryProjectRoots.size === 1
+    ? recoverableSceneThreeMessages.find((item) => item.projectRoot)?.projectRoot ?? null
+    : null
 
   let chunksQueryIndex: number | null = null
   for (let messageIndex = 0; messageIndex < messages.length; messageIndex += 1) {
@@ -191,7 +220,7 @@ export function deriveOntologyWorkflowEvidence(
       // the recovery anchor for the review checkpoint.
       messageIndex > (sceneOne?.messageIndex ?? -1)
       && message.role === 'user'
-      && getMessageText(message).includes(CHUNKS_QUERY_MARKER)
+      && getMessageText(message).startsWith(CHUNKS_QUERY_OPENING)
     ) {
       chunksQueryIndex = messageIndex
     }
@@ -201,6 +230,8 @@ export function deriveOntologyWorkflowEvidence(
   let chunksMessageId: string | null = null
   let chunksMessageIndex: number | null = null
   let chunksEvidenceKey: string | null = null
+  const chunksRecoveredFromCompression = chunksQueryIndex !== null
+    && getMessageText(messages[chunksQueryIndex]).includes(CHUNKS_RECOVERY_REASON)
   if (chunksQueryIndex !== null) {
     for (let messageIndex = chunksQueryIndex + 1; messageIndex < messages.length; messageIndex += 1) {
       const message = messages[messageIndex]
@@ -221,7 +252,10 @@ export function deriveOntologyWorkflowEvidence(
   const functionProgress = new Map<string, WorkflowFunctionProgress>()
   const unknownSceneThreeChunkIds = new Set<string>()
   if (chunksMessageIndex !== null) {
-    for (let messageIndex = chunksMessageIndex + 1; messageIndex < messages.length; messageIndex += 1) {
+    const progressStartIndex = chunksRecoveredFromCompression
+      ? 0
+      : chunksMessageIndex + 1
+    for (let messageIndex = progressStartIndex; messageIndex < messages.length; messageIndex += 1) {
       const message = messages[messageIndex]
       if (message.role !== 'user') {
         continue
@@ -275,7 +309,7 @@ export function deriveOntologyWorkflowEvidence(
       const message = messages[messageIndex]
       if (
         message.role === 'user'
-        && getMessageText(message).includes(DSL_QUERY_MARKER)
+        && getMessageText(message).startsWith(DSL_QUERY_OPENING)
       ) {
         dslQueryIndex = messageIndex
       }
@@ -319,6 +353,10 @@ export function deriveOntologyWorkflowEvidence(
     dslQueryIndex,
     dslPayload,
     dslEvidenceKey,
+    compressedChunksArchiveDetected,
+    recoveryProjectRoot,
+    recoverableSceneThreeCount: recoverableSceneThreeMessages.length,
+    chunksRecoveredFromCompression,
   }
 }
 
@@ -366,7 +404,7 @@ export function buildSceneThreePrompt(
 
 export function buildDslQueryPrompt(projectRoot: string): string {
   return [
-    '请使用 $query-requirement-dsl-artifacts 查询以下项目根目录中已生成的需求 DSL 产物。',
+    DSL_QUERY_OPENING,
     `项目根目录：${projectRoot.trim()}`,
     '请将完整结构化结果保留在工具结果中，最终回答只显示 Skill 规定的统计信息。',
   ].join('\n')
@@ -392,9 +430,19 @@ export function buildSceneOnePrompt(values: SceneOneFormValues): string {
 
 export function buildChunksQueryPrompt(projectRoot: string): string {
   return [
-    '请使用 $query-project-chunks 查询以下项目根目录的 chunks.json。',
+    CHUNKS_QUERY_OPENING,
     `项目根目录：${projectRoot.trim()}`,
     '详细度：detail=summary',
+    '请严格按 Skill 契约在最终 assistant text 中只返回 chunks 围栏。',
+  ].join('\n')
+}
+
+export function buildChunksRecoveryPrompt(projectRoot: string): string {
+  return [
+    CHUNKS_QUERY_OPENING,
+    `项目根目录：${projectRoot.trim()}`,
+    '详细度：detail=summary',
+    CHUNKS_RECOVERY_REASON,
     '请严格按 Skill 契约在最终 assistant text 中只返回 chunks 围栏。',
   ].join('\n')
 }

@@ -74,6 +74,13 @@ function getHeaderStatus(
   if (status === 'generating') {
     return { label: '智能体处理中', tone: 'pending', icon: LoadingOutlined }
   }
+  if (status === 'finalizing') {
+    return {
+      label: '回复已完成，正在同步会话记录',
+      tone: 'pending',
+      icon: LoadingOutlined,
+    }
+  }
   if (status === 'failed') {
     return { label: '同步未完成', tone: 'error', icon: ExclamationCircleOutlined }
   }
