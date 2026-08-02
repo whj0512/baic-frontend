@@ -3,8 +3,8 @@ import { useRef, useState } from 'react'
 import {
   isExtensionAuthMode,
   selectExtensionPath,
-} from '../../../../config/authClient'
-import type { ExtensionPathSelectionOptions } from '../../../../config/authClient'
+} from '../../../../../../config/authClient'
+import type { ExtensionPathSelectionOptions } from '../../../../../../config/authClient'
 
 interface WorkflowPathPickerProps {
   value: string

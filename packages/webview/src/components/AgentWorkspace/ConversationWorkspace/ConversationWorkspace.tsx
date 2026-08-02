@@ -8,19 +8,19 @@ import ConversationComposer from './ConversationComposer'
 import ConversationHeader from './ConversationHeader'
 import ConversationTimeline from './ConversationTimeline'
 import OntologyWorkflowPanel, {
-  deriveOntologyWorkflowEvidence,
-  OntologyWorkflowInteractionContext,
-} from './ontologyWorkflow'
-import type { WorkflowFunctionSelection } from './ontologyWorkflow'
-import {
   checkpointsEqual,
   clearOntologyWorkflowCheckpoint,
   createOntologyWorkflowCheckpoint,
+  deriveOntologyWorkflowEvidence,
   mergeOntologyWorkflowMessages,
+  OntologyWorkflowInteractionContext,
   readOntologyWorkflowCheckpoint,
   saveOntologyWorkflowCheckpoint,
-} from './ontologyWorkflow/workflowCheckpointStorage'
-import type { OntologyWorkflowCheckpoint } from './ontologyWorkflow/workflowCheckpointStorage'
+} from './ontologyWorkflow'
+import type {
+  OntologyWorkflowCheckpoint,
+  WorkflowFunctionSelection,
+} from './ontologyWorkflow'
 import { QwenPawError } from '../qwenPaw/types'
 import { useQwenPawAttachments } from '../qwenPaw/useQwenPawAttachments'
 import type { ConversationWorkspaceProps } from './types'
@@ -182,6 +182,7 @@ function ConversationWorkspace({
       return
     }
     setWorkflowRuntime((current) => current.conversationKey === conversationKey
+      && (current.itemizationConfirmed || current.functionModelingConfirmed)
       ? {
           ...current,
           itemizationConfirmed: false,
@@ -196,15 +197,25 @@ function ConversationWorkspace({
   ])
 
   useEffect(() => {
-    if (
+    const checkpoint = activeWorkflowRuntime.checkpoint
+    const modelingEvidenceUnchanged =
       workflowEvidence.latestModelingEvidenceKey
-        === activeWorkflowRuntime.checkpoint?.latestModelingEvidenceKey
-      && workflowEvidence.dslEvidenceKey
-        === activeWorkflowRuntime.checkpoint?.dslEvidenceKey
+        === checkpoint?.latestModelingEvidenceKey
+    const dslEvidenceUnchanged =
+      workflowEvidence.dslEvidenceKey === checkpoint?.dslEvidenceKey
+    const confirmedDslWasCompacted = Boolean(
+      checkpoint?.functionModelingConfirmed
+      && modelingEvidenceUnchanged
+      && workflowEvidence.dslEvidenceKey === null,
+    )
+    if (
+      modelingEvidenceUnchanged
+      && (dslEvidenceUnchanged || confirmedDslWasCompacted)
     ) {
       return
     }
     setWorkflowRuntime((current) => current.conversationKey === conversationKey
+      && current.functionModelingConfirmed
       ? { ...current, functionModelingConfirmed: false }
       : current)
   }, [
@@ -239,6 +250,7 @@ function ConversationWorkspace({
       ) {
         clearOntologyWorkflowCheckpoint(conversationKey)
         setWorkflowRuntime((current) => current.conversationKey === conversationKey
+          && current.checkpoint
           ? { ...current, checkpoint: null }
           : current)
       }
@@ -249,6 +261,7 @@ function ConversationWorkspace({
     }
     saveOntologyWorkflowCheckpoint(nextCheckpoint)
     setWorkflowRuntime((current) => current.conversationKey === conversationKey
+      && !checkpointsEqual(current.checkpoint, nextCheckpoint)
       ? { ...current, checkpoint: nextCheckpoint }
       : current)
   }, [

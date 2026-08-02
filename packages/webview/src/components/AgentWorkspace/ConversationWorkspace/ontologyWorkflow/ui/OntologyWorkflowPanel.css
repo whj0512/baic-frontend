@@ -192,6 +192,10 @@
   font-size: 12px;
 }
 
+.ontology-workflow__guidance[hidden] {
+  display: none;
+}
+
 .ontology-workflow__restored {
   margin-bottom: 10px;
   padding: 8px 10px;
@@ -548,6 +552,41 @@
   color: #b42318;
   background: #fef3f2;
   border: 1px solid #fecdca;
+}
+
+.ontology-workflow__management-step {
+  margin-top: 12px;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+}
+
+.ontology-workflow__authorization {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px;
+  color: #334155;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 7px;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.ontology-workflow__authorization input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  margin: 2px 0 0;
+  accent-color: var(--agent-accent);
+}
+
+.ontology-workflow__authorization input:focus-visible {
+  outline: 2px solid var(--agent-accent);
+  outline-offset: 2px;
 }
 
 .ontology-workflow__placeholder {

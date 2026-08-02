@@ -61,6 +61,10 @@ function getProjectDisplayName(project: AgentProject): string {
   return project.name?.trim() || project.key?.trim() || '未命名项目'
 }
 
+function getProjectConversationUserId(project: AgentProject): string {
+  return `baic-project:${project.id}`
+}
+
 function formatSessionTime(value: string): string {
   const timestamp = Date.parse(value)
   if (!Number.isFinite(timestamp)) {
@@ -113,6 +117,11 @@ function AgentSidebar({
     Boolean(selectedProject)
     && Boolean(activeAgent?.enabled)
     && connectionState === 'online'
+  const projectSessions = selectedProject
+    ? sessions.filter((session) => (
+        session.user_id === getProjectConversationUserId(selectedProject)
+      ))
+    : []
 
   useEffect(() => {
     if (!open) {
@@ -391,7 +400,7 @@ function AgentSidebar({
               <ClockCircleOutlined />
               <span>历史对话</span>
             </h2>
-            <span className="agent-sidebar__history-count">{sessions.length}</span>
+            <span className="agent-sidebar__history-count">{projectSessions.length}</span>
           </div>
           <div className="agent-sidebar__history-list">
             {sessionsLoading ? (
@@ -406,10 +415,12 @@ function AgentSidebar({
               </div>
             ) : !activeAgentId ? (
               <div className="agent-sidebar__list-state">请先选择可用智能体</div>
-            ) : sessions.length === 0 ? (
-              <div className="agent-sidebar__list-state">暂无历史对话</div>
+            ) : !selectedProject ? (
+              <div className="agent-sidebar__list-state">请先选择项目工作区</div>
+            ) : projectSessions.length === 0 ? (
+              <div className="agent-sidebar__list-state">当前项目暂无历史对话</div>
             ) : (
-              sessions.map((session) => {
+              projectSessions.map((session) => {
                 const active = session.id === activeChatId
                 return (
                   <button

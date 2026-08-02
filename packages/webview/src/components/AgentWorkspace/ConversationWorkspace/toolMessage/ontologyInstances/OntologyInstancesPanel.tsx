@@ -12,6 +12,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -132,6 +133,21 @@ function OntologyInstancesBrowser({
   const [expanded, setExpanded] = useState(false)
   const [retryRevision, setRetryRevision] = useState(0)
   const [dataState, setDataState] = useState<DataState>({ state: 'idle' })
+  const graphRequest = useMemo(() => ({
+    root: envelope.query.root,
+    depth: envelope.query.depth,
+    origin: envelope.query.origin,
+    node_limit: envelope.query.node_limit,
+    edge_limit: envelope.query.edge_limit,
+    include_properties: envelope.query.include_properties,
+  }), [
+    envelope.query.depth,
+    envelope.query.edge_limit,
+    envelope.query.include_properties,
+    envelope.query.node_limit,
+    envelope.query.origin,
+    envelope.query.root,
+  ])
 
   useEffect(() => {
     if (activated) {
@@ -162,7 +178,6 @@ function OntologyInstancesBrowser({
 
   useEffect(() => {
     if (!activated) {
-      setDataState({ state: 'idle' })
       return
     }
 
@@ -171,7 +186,7 @@ function OntologyInstancesBrowser({
 
     void Promise.all([
       fetchProjectRequirements(projectId, controller.signal),
-      fetchGraphDBGraph(envelope.query, controller.signal),
+      fetchGraphDBGraph(graphRequest, controller.signal),
     ]).then(([requirements, graph]) => {
       if (!controller.signal.aborted) {
         setDataState({ state: 'ready', requirements, graph })
@@ -193,7 +208,7 @@ function OntologyInstancesBrowser({
     })
 
     return () => controller.abort()
-  }, [activated, envelope.query, projectId, retryRevision])
+  }, [activated, graphRequest, projectId, retryRevision])
 
   useEffect(() => {
     if (!expanded) {
@@ -346,7 +361,7 @@ function OntologyInstancesBrowser({
           >
             <ReqRelationShip
               requirements={dataState.requirements}
-              initialRequest={envelope.query}
+              initialRequest={graphRequest}
               initialGraph={dataState.graph}
               embedded
             />

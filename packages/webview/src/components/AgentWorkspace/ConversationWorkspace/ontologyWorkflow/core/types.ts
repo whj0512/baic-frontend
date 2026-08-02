@@ -24,6 +24,24 @@ export interface SceneThreeFormValues {
   additionalRequirements: string
 }
 
+export interface SceneSevenFormValues {
+  projectRoot: string
+  ttlOutputPath: string
+  additionalRequirements: string
+}
+
+export interface SceneEightFormValues {
+  ttlPath: string
+  graphDbUrl: string
+  repository: string
+}
+
+export interface SceneNineFormValues {
+  projectIdentifier: string
+  graphDbUrl: string
+  repository: string
+}
+
 export type WorkflowFunctionModelingStatus =
   | 'pending'
   | 'started'

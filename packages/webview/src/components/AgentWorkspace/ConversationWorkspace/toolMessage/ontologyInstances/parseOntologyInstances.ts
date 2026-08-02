@@ -6,8 +6,12 @@ import type {
 
 type ToolPart = Extract<ConversationPart, { type: 'tool' }>
 
+// Local workspace paths are redacted before tool parts reach this matcher.
+// Match the Skill's unique executable basename so both absolute and
+// `cd ... && python emit_ontology_instance_panel.py` commands survive that
+// sanitization boundary. The output marker is still validated strictly below.
 const SKILL_SCRIPT_PATTERN =
-  /(?:^|[\/\s"'])(?:query-project-ontology-instances\/)?scripts\/emit_ontology_instance_panel\.py(?:["'\s]|$)/iu
+  /(?:^|[\/\s"'])emit_ontology_instance_panel\.py\b/iu
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)

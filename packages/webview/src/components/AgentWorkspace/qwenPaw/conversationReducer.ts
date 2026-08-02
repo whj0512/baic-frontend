@@ -45,6 +45,7 @@ export type QwenPawConversationAction =
   | {
       type: 'stream_text'
       assistantMessageId: string
+      partType: 'text' | 'reasoning'
       text: string
       mode: 'append' | 'replace'
     }
@@ -99,6 +100,7 @@ export function getConversationKey(
 function updateAssistantText(
   messages: ConversationMessageView[],
   assistantMessageId: string,
+  partType: 'text' | 'reasoning',
   text: string,
   mode: 'append' | 'replace',
 ): ConversationMessageView[] {
@@ -111,13 +113,13 @@ function updateAssistantText(
     const activePartIndex = parts.length - 1
     const activePart = parts[activePartIndex]
 
-    if (activePart?.type === 'text') {
+    if (activePart?.type === partType) {
       parts[activePartIndex] = {
-        type: 'text',
+        type: partType,
         text: mode === 'append' ? `${activePart.text}${text}` : text,
       }
     } else {
-      parts.push({ type: 'text', text })
+      parts.push({ type: partType, text })
     }
 
     return {
@@ -282,6 +284,7 @@ export function qwenPawConversationReducer(
         messages: updateAssistantText(
           state.messages,
           action.assistantMessageId,
+          action.partType,
           action.text,
           action.mode,
         ),

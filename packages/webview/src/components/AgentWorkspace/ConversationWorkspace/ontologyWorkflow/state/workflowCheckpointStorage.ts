@@ -1,9 +1,14 @@
-import type { ConversationMessageView } from '../../qwenPaw/types'
+import type { ConversationMessageView } from '../../../qwenPaw/types'
+import { isOntologyInstancesToolPart } from '../../toolMessage/ontologyInstances/parseOntologyInstances'
 import type { OntologyWorkflowEvidence } from './deriveWorkflowState'
 import {
   DSL_QUERY_OPENING,
+  ONTOLOGY_QUERY_OPENING,
+  SCENE_EIGHT_OPENING,
+  SCENE_NINE_OPENING,
+  SCENE_SEVEN_OPENING,
   SCENE_THREE_OPENING,
-} from './deriveWorkflowState'
+} from '../core/workflowProtocol'
 
 const CHECKPOINT_SCHEMA_VERSION = 1
 const CHECKPOINT_KEY_PREFIX = 'baic:ontology-workflow-checkpoint'
@@ -52,9 +57,15 @@ function isCheckpointMessage(value: unknown): value is ConversationMessageView {
   if (value.role !== 'user' && value.role !== 'assistant') {
     return false
   }
-  return value.parts.length > 0 && value.parts.every((part) => (
-    isRecord(part) && part.type === 'text' && typeof part.text === 'string'
-  ))
+  return value.parts.length > 0 && value.parts.every((part) => {
+    if (!isRecord(part)) {
+      return false
+    }
+    if (part.type === 'text') {
+      return typeof part.text === 'string'
+    }
+    return part.type === 'tool' && typeof part.eventType === 'string'
+  })
 }
 
 function isCheckpoint(value: unknown): value is OntologyWorkflowCheckpoint {
@@ -126,19 +137,14 @@ export function mergeOntologyWorkflowMessages(
   if (!checkpoint || checkpoint.messages.length === 0) {
     return messages
   }
-  const currentById = new Map(
-    messages.map((message) => [message.id, message] as const),
+  const currentIds = new Set(messages.map((message) => message.id))
+  const restoredEvidenceChain = checkpoint.messages.filter(
+    (message) => !currentIds.has(message.id),
   )
-  const checkpointIds = new Set(
-    checkpoint.messages.map((message) => message.id),
-  )
-  const restoredEvidenceChain = checkpoint.messages.map(
-    (message) => currentById.get(message.id) ?? message,
-  )
-  const currentRemainder = messages.filter(
-    (message) => !checkpointIds.has(message.id),
-  )
-  return [...restoredEvidenceChain, ...currentRemainder]
+  if (restoredEvidenceChain.length === 0) {
+    return messages
+  }
+  return [...restoredEvidenceChain, ...messages]
 }
 
 function getText(message: ConversationMessageView): string {
@@ -151,6 +157,15 @@ function getText(message: ConversationMessageView): string {
 
 function keepTextParts(message: ConversationMessageView): ConversationMessageView | null {
   const parts = message.parts.filter((part) => part.type === 'text')
+  return parts.length > 0 ? { ...message, parts } : null
+}
+
+function keepOntologyToolParts(
+  message: ConversationMessageView,
+): ConversationMessageView | null {
+  const parts = message.parts.filter((part) => (
+    part.type === 'tool' && isOntologyInstancesToolPart(part)
+  ))
   return parts.length > 0 ? { ...message, parts } : null
 }
 
@@ -178,7 +193,7 @@ function collectCheckpointMessages(
     }
   }
   for (let index = 0; index < messages.length; index += 1) {
-    if (coreIndices.has(index)) {
+    if (coreIndices.has(index) || index === evidence.ontologyMessageIndex) {
       continue
     }
     const message = messages[index]
@@ -193,12 +208,25 @@ function collectCheckpointMessages(
     const keepDslQuery =
       index > chunksMessageIndex
       && text.startsWith(DSL_QUERY_OPENING)
-    if (!keepSceneThree && !keepDslQuery) {
+    const keepOntologyWorkflowMessage =
+      text.startsWith(SCENE_SEVEN_OPENING)
+      || text.startsWith(SCENE_EIGHT_OPENING)
+      || text.startsWith(SCENE_NINE_OPENING)
+      || text.startsWith(ONTOLOGY_QUERY_OPENING)
+    if (!keepSceneThree && !keepDslQuery && !keepOntologyWorkflowMessage) {
       continue
     }
     const textMessage = keepTextParts(message)
     if (textMessage) {
       selected.push(textMessage)
+    }
+  }
+  if (evidence.ontologyMessageIndex !== null) {
+    const ontologyMessage = keepOntologyToolParts(
+      messages[evidence.ontologyMessageIndex],
+    )
+    if (ontologyMessage) {
+      selected.push(ontologyMessage)
     }
   }
   return selected

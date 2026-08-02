@@ -11,8 +11,8 @@ import {
   WarningOutlined,
 } from '@ant-design/icons'
 import type { ReactNode } from 'react'
-import { useOntologyWorkflowInteraction } from '../../ontologyWorkflow/interactionContext'
-import { resolveWorkflowMarkdownPath } from '../../ontologyWorkflow/deriveWorkflowState'
+import { useOntologyWorkflowInteraction } from '../../ontologyWorkflow/context/interactionContext'
+import { resolveWorkflowMarkdownPath } from '../../ontologyWorkflow/core/workflowPath'
 import CodeDataView from '../../CodeDataView'
 import {
   formatMessageTime,

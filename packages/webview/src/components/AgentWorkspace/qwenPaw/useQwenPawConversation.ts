@@ -156,6 +156,8 @@ export function useQwenPawConversation({
   const streamFrameRef = useRef<number | null>(null)
   const pendingStreamRef = useRef<{
     assistantMessageId: string
+    partType: 'text' | 'reasoning'
+    segmentKey: string
     text: string
     mode: 'append' | 'replace'
   } | null>(null)
@@ -178,16 +180,35 @@ export function useQwenPawConversation({
 
   const queueStreamText = useCallback((
     assistantMessageId: string,
+    partType: 'text' | 'reasoning',
+    segmentKey: string,
     text: string,
     mode: 'append' | 'replace',
   ) => {
-    const pendingStream = pendingStreamRef.current
+    let pendingStream = pendingStreamRef.current
+    if (
+      pendingStream
+      && (
+        pendingStream.assistantMessageId !== assistantMessageId
+        || pendingStream.partType !== partType
+        || pendingStream.segmentKey !== segmentKey
+      )
+    ) {
+      flushStreamText()
+      pendingStream = null
+    }
+
     if (
       !pendingStream
-      || pendingStream.assistantMessageId !== assistantMessageId
       || mode === 'replace'
     ) {
-      pendingStreamRef.current = { assistantMessageId, text, mode }
+      pendingStreamRef.current = {
+        assistantMessageId,
+        partType,
+        segmentKey,
+        text,
+        mode,
+      }
     } else {
       pendingStreamRef.current = {
         ...pendingStream,
@@ -343,6 +364,7 @@ export function useQwenPawConversation({
     let idleTimeout: ReturnType<typeof globalThis.setTimeout> | null = null
     let terminalStatus: 'completed' | 'failed' | null = null
     let reconciliationDone = false
+    const streamPartTypes = new Map<string, 'text' | 'reasoning'>()
     const clearIdleTimeout = () => {
       if (idleTimeout !== null) {
         globalThis.clearTimeout(idleTimeout)
@@ -489,12 +511,27 @@ export function useQwenPawConversation({
         }
 
         if (
+          event.object === 'message'
+          && typeof event.id === 'string'
+          && (event.type === 'message' || event.type === 'reasoning')
+        ) {
+          streamPartTypes.set(
+            event.id,
+            event.type === 'reasoning' ? 'reasoning' : 'text',
+          )
+        } else if (
           event.object === 'content'
           && event.type === 'text'
           && typeof event.text === 'string'
         ) {
+          const partType =
+            typeof event.msg_id === 'string'
+              ? streamPartTypes.get(event.msg_id) ?? 'text'
+              : 'text'
           queueStreamText(
             assistantMessageId,
+            partType,
+            `${event.msg_id ?? 'unknown'}:${event.index ?? 0}`,
             event.text,
             event.status === 'completed' || event.delta !== true
               ? 'replace'

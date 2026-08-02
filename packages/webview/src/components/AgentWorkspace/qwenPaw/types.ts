@@ -80,6 +80,7 @@ export interface QwenPawSseEvent {
   object?: string
   status?: string | null
   error?: unknown
+  id?: string | null
   type?: string
   index?: number | null
   delta?: boolean | null

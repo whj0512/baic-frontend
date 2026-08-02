@@ -1,32 +1,31 @@
-import type { ConversationMessageView } from '../../qwenPaw/types'
-import { extractFencedMessage } from '../fencedMessage/extractFencedMessage'
-import type { ChunksEnvelope } from '../fencedMessage/chunks/types'
-import { extractToolPanels } from '../toolMessage/extractToolPanels'
-import type { RequirementDslArtifactsPanelPayload } from '../toolMessage/requirementDslArtifacts/types'
+import type { ConversationMessageView } from '../../../qwenPaw/types'
+import { extractFencedMessage } from '../../fencedMessage/extractFencedMessage'
+import type { ChunksEnvelope } from '../../fencedMessage/chunks/types'
+import { extractToolPanels } from '../../toolMessage/extractToolPanels'
+import type { OntologyInstancesPanelPayload } from '../../toolMessage/ontologyInstances/types'
+import type { RequirementDslArtifactsPanelPayload } from '../../toolMessage/requirementDslArtifacts/types'
 import type {
-  OntologyWorkflowStageView,
+  SceneEightFormValues,
+  SceneNineFormValues,
   SceneOneFormValues,
-  SceneThreeFormValues,
+  SceneSevenFormValues,
   WorkflowFunctionProgress,
   WorkflowFunctionSelection,
-} from './types'
-import { ONTOLOGY_WORKFLOW_STAGES } from './workflowDefinition'
-
-export const SCENE_ONE_OPENING =
-  '请使用 requirement_itemizer 对系统需求文档进行条目化。'
-export const CHUNKS_QUERY_OPENING =
-  '请使用 $query-project-chunks 查询以下项目根目录的 chunks.json。'
-export const SCENE_THREE_OPENING =
-  '请使用 requirement_analysis_pipeline 对一个功能进行完整建模。'
-export const DSL_QUERY_OPENING =
-  '请使用 $query-requirement-dsl-artifacts 查询以下项目根目录中已生成的需求 DSL 产物。'
-export const CHUNKS_RECOVERY_REASON =
-  '恢复原因：上下文压缩后的工作流检查点重建。'
-
-interface SceneThreeEvidence extends SceneThreeFormValues {
-  chunkId: string
-  functionName: string
-}
+} from '../core/types'
+import { resolveWorkflowMarkdownPath } from '../core/workflowPath'
+import {
+  CHUNKS_QUERY_OPENING,
+  CHUNKS_RECOVERY_REASON,
+  DSL_QUERY_OPENING,
+  getWorkflowMessageText,
+  ONTOLOGY_QUERY_OPENING,
+  parseSceneEightMessage,
+  parseSceneNineMessage,
+  parseSceneOneMessage,
+  parseSceneSevenMessage,
+  parseSceneThreeMessage,
+} from '../core/workflowProtocol'
+import type { SceneThreeEvidence } from '../core/workflowProtocol'
 
 export interface OntologyWorkflowEvidence {
   sceneOne: (SceneOneFormValues & { messageIndex: number }) | null
@@ -47,104 +46,42 @@ export interface OntologyWorkflowEvidence {
   dslQueryIndex: number | null
   dslPayload: RequirementDslArtifactsPanelPayload | null
   dslEvidenceKey: string | null
+  projectName: string | null
+  sceneSeven: (SceneSevenFormValues & { messageIndex: number }) | null
+  sceneSevenResponseIndex: number | null
+  sceneEight: (SceneEightFormValues & { messageIndex: number }) | null
+  sceneEightResponseIndex: number | null
+  sceneNine: (SceneNineFormValues & { messageIndex: number }) | null
+  sceneNineResponseIndex: number | null
+  ontologyQueryIndex: number | null
+  ontologyPayload: OntologyInstancesPanelPayload | null
+  ontologyMessageIndex: number | null
+  ontologyEvidenceKey: string | null
   compressedChunksArchiveDetected: boolean
   recoveryProjectRoot: string | null
   recoverableSceneThreeCount: number
   chunksRecoveredFromCompression: boolean
 }
 
-function getMessageText(message: ConversationMessageView): string {
-  return message.parts
-    .filter((part) => part.type === 'text')
-    .map((part) => part.text)
-    .join('\n')
-    .trim()
-}
-
-function readLabeledLine(text: string, label: string): string {
-  const line = text.split(/\r?\n/).find((item) => item.startsWith(label))
-  return line?.slice(label.length).trim() ?? ''
-}
-
-function parseSceneOneMessage(text: string): SceneOneFormValues | null {
-  if (!text.startsWith(SCENE_ONE_OPENING)) {
+function findAssistantResponseIndex(
+  messages: ConversationMessageView[],
+  afterIndex: number | null,
+  beforeIndex: number | null = null,
+): number | null {
+  if (afterIndex === null) {
     return null
   }
-
-  const sourceDocument = readLabeledLine(text, '原始文档：')
-  const mineruMarkdown = readLabeledLine(text, 'MinerU Markdown：')
-  const projectRoot = readLabeledLine(text, '项目根目录：')
-  if (!sourceDocument || !mineruMarkdown || !projectRoot) {
-    return null
+  const endIndex = beforeIndex ?? messages.length
+  for (let index = afterIndex + 1; index < endIndex; index += 1) {
+    if (messages[index].role === 'assistant') {
+      return index
+    }
   }
-
-  return {
-    sourceDocument,
-    mineruMarkdown,
-    projectRoot,
-    additionalConstraints: readLabeledLine(text, '补充限制：'),
-  }
-}
-
-function parseSceneThreeMessage(text: string): SceneThreeEvidence | null {
-  if (!text.startsWith(SCENE_THREE_OPENING)) {
-    return null
-  }
-
-  const chunkId = readLabeledLine(text, '功能分块 ID：')
-  const functionMarkdown = readLabeledLine(text, '功能 Markdown：')
-  if (!chunkId || !functionMarkdown) {
-    return null
-  }
-
-  return {
-    chunkId,
-    functionName: readLabeledLine(text, '功能名称：'),
-    functionMarkdown,
-    projectRoot: readLabeledLine(text, '项目根目录：'),
-    additionalRequirements: readLabeledLine(text, '补充要求：'),
-  }
+  return null
 }
 
 function toTrimmedString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
-}
-
-function countCharacter(value: string, character: string): number {
-  return [...value].filter((item) => item === character).length
-}
-
-export function resolveWorkflowMarkdownPath(
-  projectRootValue: string,
-  sourceRelativePathValue: string | null | undefined,
-): string | null {
-  const projectRoot = projectRootValue.trim()
-  const sourceRelativePath = sourceRelativePathValue?.trim() ?? ''
-  if (!projectRoot || !sourceRelativePath) {
-    return null
-  }
-  if (
-    /^[a-z][a-z0-9+.-]*:/i.test(sourceRelativePath)
-    || sourceRelativePath.startsWith('/')
-    || sourceRelativePath.startsWith('\\')
-  ) {
-    return null
-  }
-
-  const segments = sourceRelativePath
-    .split(/[\\/]+/)
-    .filter((segment) => segment.length > 0 && segment !== '.')
-  if (segments.length === 0 || segments.some((segment) => segment === '..')) {
-    return null
-  }
-
-  const separator =
-    countCharacter(projectRoot, '\\') >= countCharacter(projectRoot, '/')
-      && projectRoot.includes('\\')
-      ? '\\'
-      : '/'
-  const root = projectRoot.replace(/[\\/]+$/, '')
-  return `${root}${separator}${segments.join(separator)}`
 }
 
 function getFunctions(payload: ChunksEnvelope): WorkflowFunctionSelection[] {
@@ -186,7 +123,7 @@ export function deriveOntologyWorkflowEvidence(
     if (message.role !== 'user') {
       continue
     }
-    const text = getMessageText(message)
+    const text = getWorkflowMessageText(message)
     const parsed = parseSceneOneMessage(text)
     if (parsed) {
       sceneOne = { ...parsed, messageIndex }
@@ -220,7 +157,7 @@ export function deriveOntologyWorkflowEvidence(
       // the recovery anchor for the review checkpoint.
       messageIndex > (sceneOne?.messageIndex ?? -1)
       && message.role === 'user'
-      && getMessageText(message).startsWith(CHUNKS_QUERY_OPENING)
+      && getWorkflowMessageText(message).startsWith(CHUNKS_QUERY_OPENING)
     ) {
       chunksQueryIndex = messageIndex
     }
@@ -231,7 +168,7 @@ export function deriveOntologyWorkflowEvidence(
   let chunksMessageIndex: number | null = null
   let chunksEvidenceKey: string | null = null
   const chunksRecoveredFromCompression = chunksQueryIndex !== null
-    && getMessageText(messages[chunksQueryIndex]).includes(CHUNKS_RECOVERY_REASON)
+    && getWorkflowMessageText(messages[chunksQueryIndex]).includes(CHUNKS_RECOVERY_REASON)
   if (chunksQueryIndex !== null) {
     for (let messageIndex = chunksQueryIndex + 1; messageIndex < messages.length; messageIndex += 1) {
       const message = messages[messageIndex]
@@ -260,7 +197,7 @@ export function deriveOntologyWorkflowEvidence(
       if (message.role !== 'user') {
         continue
       }
-      const sceneThree = parseSceneThreeMessage(getMessageText(message))
+      const sceneThree = parseSceneThreeMessage(getWorkflowMessageText(message))
       if (!sceneThree) {
         continue
       }
@@ -309,7 +246,7 @@ export function deriveOntologyWorkflowEvidence(
       const message = messages[messageIndex]
       if (
         message.role === 'user'
-        && getMessageText(message).startsWith(DSL_QUERY_OPENING)
+        && getWorkflowMessageText(message).startsWith(DSL_QUERY_OPENING)
       ) {
         dslQueryIndex = messageIndex
       }
@@ -334,6 +271,98 @@ export function deriveOntologyWorkflowEvidence(
     }
   }
 
+  const projectName = toTrimmedString(
+    chunksEnvelope?.data?.project_relation_seed?.project_name,
+  ) || null
+
+  let sceneSeven: OntologyWorkflowEvidence['sceneSeven'] = null
+  if (dslQueryIndex !== null) {
+    for (let messageIndex = dslQueryIndex + 1; messageIndex < messages.length; messageIndex += 1) {
+      const message = messages[messageIndex]
+      if (message.role !== 'user') {
+        continue
+      }
+      const parsed = parseSceneSevenMessage(getWorkflowMessageText(message))
+      if (parsed) {
+        sceneSeven = { ...parsed, messageIndex }
+      }
+    }
+  }
+
+  let sceneEight: OntologyWorkflowEvidence['sceneEight'] = null
+  if (sceneSeven) {
+    for (let messageIndex = sceneSeven.messageIndex + 1; messageIndex < messages.length; messageIndex += 1) {
+      const message = messages[messageIndex]
+      if (message.role !== 'user') {
+        continue
+      }
+      const parsed = parseSceneEightMessage(getWorkflowMessageText(message))
+      if (parsed) {
+        sceneEight = { ...parsed, messageIndex }
+      }
+    }
+  }
+
+  let sceneNine: OntologyWorkflowEvidence['sceneNine'] = null
+  if (sceneEight) {
+    for (let messageIndex = sceneEight.messageIndex + 1; messageIndex < messages.length; messageIndex += 1) {
+      const message = messages[messageIndex]
+      if (message.role !== 'user') {
+        continue
+      }
+      const parsed = parseSceneNineMessage(getWorkflowMessageText(message))
+      if (parsed) {
+        sceneNine = { ...parsed, messageIndex }
+      }
+    }
+  }
+
+  let ontologyQueryIndex: number | null = null
+  if (sceneNine) {
+    for (let messageIndex = sceneNine.messageIndex + 1; messageIndex < messages.length; messageIndex += 1) {
+      const message = messages[messageIndex]
+      if (
+        message.role === 'user'
+        && getWorkflowMessageText(message).startsWith(ONTOLOGY_QUERY_OPENING)
+      ) {
+        ontologyQueryIndex = messageIndex
+      }
+    }
+  }
+
+  let ontologyPayload: OntologyInstancesPanelPayload | null = null
+  let ontologyMessageIndex: number | null = null
+  let ontologyEvidenceKey: string | null = null
+  if (ontologyQueryIndex !== null) {
+    for (let messageIndex = ontologyQueryIndex + 1; messageIndex < messages.length; messageIndex += 1) {
+      const message = messages[messageIndex]
+      for (const panel of extractToolPanels(message)) {
+        if (panel.handler.id === 'query-project-ontology-instances') {
+          const payload = panel.payload as OntologyInstancesPanelPayload
+          ontologyPayload = payload
+          ontologyMessageIndex = messageIndex
+          ontologyEvidenceKey = `${message.id}:${panel.callId}:${panel.partIndex}:${payload.state}`
+        }
+      }
+    }
+  }
+
+  const sceneSevenResponseIndex = sceneSeven
+    ? findAssistantResponseIndex(messages, sceneSeven.messageIndex, sceneEight?.messageIndex)
+      ?? sceneEight?.messageIndex
+      ?? null
+    : null
+  const sceneEightResponseIndex = sceneEight
+    ? findAssistantResponseIndex(messages, sceneEight.messageIndex, sceneNine?.messageIndex)
+      ?? sceneNine?.messageIndex
+      ?? null
+    : null
+  const sceneNineResponseIndex = sceneNine
+    ? findAssistantResponseIndex(messages, sceneNine.messageIndex, ontologyQueryIndex)
+      ?? ontologyQueryIndex
+      ?? null
+    : null
+
   return {
     sceneOne,
     chunksQueryIndex,
@@ -353,96 +382,20 @@ export function deriveOntologyWorkflowEvidence(
     dslQueryIndex,
     dslPayload,
     dslEvidenceKey,
+    projectName,
+    sceneSeven,
+    sceneSevenResponseIndex,
+    sceneEight,
+    sceneEightResponseIndex,
+    sceneNine,
+    sceneNineResponseIndex,
+    ontologyQueryIndex,
+    ontologyPayload,
+    ontologyMessageIndex,
+    ontologyEvidenceKey,
     compressedChunksArchiveDetected,
     recoveryProjectRoot,
     recoverableSceneThreeCount: recoverableSceneThreeMessages.length,
     chunksRecoveredFromCompression,
   }
-}
-
-export function deriveOntologyWorkflowStages(
-  itemizationConfirmed: boolean,
-  functionModelingConfirmed = false,
-): OntologyWorkflowStageView[] {
-  return ONTOLOGY_WORKFLOW_STAGES.map((stage, index) => ({
-    ...stage,
-    status:
-      functionModelingConfirmed && index < 2
-        ? 'completed'
-        : functionModelingConfirmed && index === 2
-          ? 'active'
-          : itemizationConfirmed && index === 0
-            ? 'completed'
-            : itemizationConfirmed && index === 1
-              ? 'active'
-              : !itemizationConfirmed && index === 0
-                ? 'active'
-                : 'pending',
-  }))
-}
-
-export function buildSceneThreePrompt(
-  selection: WorkflowFunctionSelection,
-  values: SceneThreeFormValues,
-): string {
-  const lines = [
-    SCENE_THREE_OPENING,
-    `功能分块 ID：${selection.chunkId}`,
-    `功能名称：${selection.name}`,
-    `功能 Markdown：${values.functionMarkdown.trim()}`,
-    `项目根目录：${values.projectRoot.trim()}`,
-    '目标：生成实体、条件逻辑、四类 DSL、DSL 对齐结果和测试用例。',
-    '要求：从本功能原文中增量维护项目关系；只有原文唯一确定的内容才可写回 DSL；',
-    '不得修改原始需求 Markdown；DSL 语法或对齐失败时停止测试用例生成并报告原因。',
-  ]
-  const additionalRequirements = values.additionalRequirements.trim()
-  if (additionalRequirements) {
-    lines.push(`补充要求：${additionalRequirements}`)
-  }
-  return lines.join('\n')
-}
-
-export function buildDslQueryPrompt(projectRoot: string): string {
-  return [
-    DSL_QUERY_OPENING,
-    `项目根目录：${projectRoot.trim()}`,
-    '请将完整结构化结果保留在工具结果中，最终回答只显示 Skill 规定的统计信息。',
-  ].join('\n')
-}
-
-export function buildSceneOnePrompt(values: SceneOneFormValues): string {
-  const lines = [
-    SCENE_ONE_OPENING,
-    `原始文档：${values.sourceDocument.trim()}`,
-    `MinerU Markdown：${values.mineruMarkdown.trim()}`,
-    `项目根目录：${values.projectRoot.trim()}`,
-    '要求：按系统功能拆分为独立 Markdown，保留功能概述和系统概述；',
-    '从功能概述、功能列表或正文的明确描述中提取项目级 includes 关系；',
-    '不要根据目录层级推断包含关系。',
-    '请输出 chunks.json、每个功能条目、关系种子和校验结果。',
-  ]
-  const additionalConstraints = values.additionalConstraints.trim()
-  if (additionalConstraints) {
-    lines.push(`补充限制：${additionalConstraints}`)
-  }
-  return lines.join('\n')
-}
-
-export function buildChunksQueryPrompt(projectRoot: string): string {
-  return [
-    CHUNKS_QUERY_OPENING,
-    `项目根目录：${projectRoot.trim()}`,
-    '详细度：detail=summary',
-    '请严格按 Skill 契约在最终 assistant text 中只返回 chunks 围栏。',
-  ].join('\n')
-}
-
-export function buildChunksRecoveryPrompt(projectRoot: string): string {
-  return [
-    CHUNKS_QUERY_OPENING,
-    `项目根目录：${projectRoot.trim()}`,
-    '详细度：detail=summary',
-    CHUNKS_RECOVERY_REASON,
-    '请严格按 Skill 契约在最终 assistant text 中只返回 chunks 围栏。',
-  ].join('\n')
 }
