@@ -26,6 +26,10 @@ import {
   parseSceneThreeMessage,
 } from '../core/workflowProtocol'
 import type { SceneThreeEvidence } from '../core/workflowProtocol'
+import {
+  getChunksEvidenceRevision,
+  getDslEvidenceRevision,
+} from './artifactEvidenceRevision'
 
 export interface OntologyWorkflowEvidence {
   sceneOne: (SceneOneFormValues & { messageIndex: number }) | null
@@ -34,6 +38,7 @@ export interface OntologyWorkflowEvidence {
   chunksMessageId: string | null
   chunksMessageIndex: number | null
   chunksEvidenceKey: string | null
+  modelingEvidenceStartIndex: number
   functions: WorkflowFunctionSelection[]
   functionProgress: Map<string, WorkflowFunctionProgress>
   modeledChunkIds: ReadonlySet<string>
@@ -175,11 +180,54 @@ export function deriveOntologyWorkflowEvidence(
       const blocks = extractFencedMessage(message).blocks
       for (const block of blocks) {
         if (block.keyword === 'chunks') {
-          chunksEnvelope = block.payload as ChunksEnvelope
+          const envelope = block.payload as ChunksEnvelope
+          const evidenceRevision = getChunksEvidenceRevision(envelope)
+          if (evidenceRevision) {
+            chunksEnvelope = envelope
+            chunksMessageId = message.id
+            chunksMessageIndex = messageIndex
+            chunksEvidenceKey = evidenceRevision
+          } else if (!chunksEnvelope) {
+            chunksEnvelope = envelope
+          }
+        }
+      }
+    }
+  }
+
+  if (!chunksEvidenceKey) {
+    for (let messageIndex = 0; messageIndex < messages.length; messageIndex += 1) {
+      const message = messages[messageIndex]
+      for (const block of extractFencedMessage(message).blocks) {
+        if (block.keyword !== 'chunks') {
+          continue
+        }
+        const envelope = block.payload as ChunksEnvelope
+        const evidenceRevision = getChunksEvidenceRevision(envelope)
+        if (evidenceRevision) {
+          chunksEnvelope = envelope
           chunksMessageId = message.id
           chunksMessageIndex = messageIndex
-          chunksEvidenceKey = `${message.id}:${block.blockIndex}`
+          chunksEvidenceKey = evidenceRevision
         }
+      }
+    }
+  }
+
+  let modelingEvidenceStartIndex = chunksMessageIndex === null
+    ? 0
+    : chunksMessageIndex + 1
+  if (chunksEvidenceKey && chunksMessageIndex !== null) {
+    for (let messageIndex = 0; messageIndex <= chunksMessageIndex; messageIndex += 1) {
+      const matchingBlock = extractFencedMessage(messages[messageIndex]).blocks
+        .find((block) => (
+          block.keyword === 'chunks'
+          && getChunksEvidenceRevision(block.payload as ChunksEnvelope)
+            === chunksEvidenceKey
+        ))
+      if (matchingBlock) {
+        modelingEvidenceStartIndex = messageIndex + 1
+        break
       }
     }
   }
@@ -191,7 +239,7 @@ export function deriveOntologyWorkflowEvidence(
   if (chunksMessageIndex !== null) {
     const progressStartIndex = chunksRecoveredFromCompression
       ? 0
-      : chunksMessageIndex + 1
+      : modelingEvidenceStartIndex
     for (let messageIndex = progressStartIndex; messageIndex < messages.length; messageIndex += 1) {
       const message = messages[messageIndex]
       if (message.role !== 'user') {
@@ -261,11 +309,8 @@ export function deriveOntologyWorkflowEvidence(
       for (const panel of extractToolPanels(message)) {
         if (panel.handler.id === 'query-requirement-dsl-artifacts') {
           const payload = panel.payload as RequirementDslArtifactsPanelPayload
-          const payloadRevision = payload.state === 'success'
-            ? `${payload.state}:${payload.envelope.summary.feature_count}:${payload.envelope.summary.artifact_count}`
-            : payload.state
           dslPayload = payload
-          dslEvidenceKey = `${message.id}:${panel.callId}:${panel.partIndex}:${payloadRevision}`
+          dslEvidenceKey = getDslEvidenceRevision(payload)
         }
       }
     }
@@ -370,6 +415,7 @@ export function deriveOntologyWorkflowEvidence(
     chunksMessageId,
     chunksMessageIndex,
     chunksEvidenceKey,
+    modelingEvidenceStartIndex,
     functions,
     functionProgress,
     modeledChunkIds,

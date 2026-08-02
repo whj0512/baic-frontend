@@ -203,6 +203,11 @@ function ConversationWorkspace({
         === checkpoint?.latestModelingEvidenceKey
     const dslEvidenceUnchanged =
       workflowEvidence.dslEvidenceKey === checkpoint?.dslEvidenceKey
+      || Boolean(
+        checkpoint?.dslEvidenceKey
+        && !checkpoint.dslEvidenceKey.startsWith('dsl:v2:')
+        && workflowEvidence.dslEvidenceKey?.startsWith('dsl:v2:'),
+      )
     const confirmedDslWasCompacted = Boolean(
       checkpoint?.functionModelingConfirmed
       && modelingEvidenceUnchanged

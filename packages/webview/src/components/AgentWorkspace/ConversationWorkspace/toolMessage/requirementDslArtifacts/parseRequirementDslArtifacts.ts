@@ -10,8 +10,12 @@ import type {
 
 type ToolPart = Extract<ConversationPart, { type: 'tool' }>
 
+// Local workspace paths can be redacted before the tool part reaches this
+// matcher. Match the Skill's unique script basename so both the original
+// command and its redacted form remain recognizable; the payload parser below
+// still performs the strict protocol and summary validation.
 const SKILL_SCRIPT_PATTERN =
-  /(?:^|[\/\s"'])(?:query-requirement-dsl-artifacts\/)?scripts\/query_requirement_dsl_artifacts\.py(?:["'\s]|$)/iu
+  /(?:^|[\/\s"'])query_requirement_dsl_artifacts\.py\b/iu
 
 const SUMMARY_FIELDS = [
   'feature_count',

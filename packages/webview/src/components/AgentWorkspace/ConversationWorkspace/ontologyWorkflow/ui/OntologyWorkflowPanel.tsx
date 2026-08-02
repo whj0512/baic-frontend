@@ -2,6 +2,7 @@ import { LeftOutlined, RightOutlined } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
 import { useOntologyWorkflowInteraction } from '../context/interactionContext'
 import { deriveOntologyWorkflowStages } from '../core/workflowDefinition'
+import type { OntologyWorkflowStageId } from '../core/types'
 import type { OntologyWorkflowEvidence } from '../state/deriveWorkflowState'
 import FunctionModelingStagePanel from './stages/FunctionModelingStagePanel'
 import ItemizationStagePanel from './stages/ItemizationStagePanel'
@@ -34,6 +35,8 @@ function OntologyWorkflowPanel({
   onConfirmFunctionModeling,
 }: OntologyWorkflowPanelProps) {
   const [expanded, setExpanded] = useState(false)
+  const [selectedStageId, setSelectedStageId] =
+    useState<OntologyWorkflowStageId | null>(null)
   const [sendError, setSendError] = useState<string | null>(null)
   const interaction = useOntologyWorkflowInteraction()
   const ontologyCompleted = evidence.ontologyPayload?.state === 'ready'
@@ -42,17 +45,22 @@ function OntologyWorkflowPanel({
     functionModelingConfirmed,
     ontologyCompleted,
   )
-  const activeStage = stages.find((stage) => stage.status === 'active')
+  const progressStage = stages.find((stage) => stage.status === 'active')
     ?? stages[stages.length - 1]
+  const selectedStage = stages.find((stage) => (
+    stage.id === selectedStageId && stage.status !== 'pending'
+  )) ?? progressStage
 
   useEffect(() => {
     if (interaction?.selectedChunkId) {
+      setSelectedStageId('function-modeling')
       setExpanded(true)
     }
   }, [interaction?.selectedChunkId])
 
   useEffect(() => {
     setExpanded(false)
+    setSelectedStageId(null)
     setSendError(null)
   }, [conversationKey])
 
@@ -84,22 +92,36 @@ function OntologyWorkflowPanel({
       <div className="ontology-workflow__summary">
         <div className="ontology-workflow__heading">
           <span>本体建模工作流</span>
-          <strong id="ontology-workflow-title">{activeStage.title}</strong>
-          <small>{activeStage.description}</small>
+          <strong id="ontology-workflow-title">{selectedStage.title}</strong>
+          <small>{selectedStage.description}</small>
         </div>
 
         <ol className="ontology-workflow__stages" aria-label="本体建模阶段">
           {stages.map((stage, index) => (
             <li
               key={stage.id}
-              className={`ontology-workflow__stage ontology-workflow__stage--${stage.status}`}
+              className={`ontology-workflow__stage ontology-workflow__stage--${stage.status}${
+                stage.id === selectedStage.id
+                  ? ' ontology-workflow__stage--selected'
+                  : ''
+              }`}
               aria-current={stage.status === 'active' ? 'step' : undefined}
             >
-              <span>{index + 1}</span>
-              <div>
-                <strong>{stage.title}</strong>
-                <small>场景 {stage.scenes.join('、')}</small>
-              </div>
+              <button
+                type="button"
+                disabled={stage.status === 'pending'}
+                aria-pressed={stage.id === selectedStage.id}
+                onClick={() => {
+                  setSelectedStageId(stage.id)
+                  setExpanded(true)
+                }}
+              >
+                <span>{index + 1}</span>
+                <div>
+                  <strong>{stage.title}</strong>
+                  <small>场景 {stage.scenes.join('、')}</small>
+                </div>
+              </button>
             </li>
           ))}
         </ol>
@@ -133,13 +155,16 @@ function OntologyWorkflowPanel({
           </div>
         ) : null}
 
-        {!itemizationConfirmed ? (
+        {selectedStage.id === 'itemization' ? (
           <ItemizationStagePanel
             key={`${conversationKey ?? 'draft'}:itemization`}
             {...commonStageProps}
-            onConfirm={onConfirmItemization}
+            onConfirm={() => {
+              onConfirmItemization()
+              setSelectedStageId('function-modeling')
+            }}
           />
-        ) : functionModelingConfirmed ? (
+        ) : selectedStage.id === 'ontology-management' ? (
           <OntologyManagementStagePanel
             key={`${conversationKey ?? 'draft'}:ontology-management`}
             {...commonStageProps}
@@ -148,7 +173,10 @@ function OntologyWorkflowPanel({
           <FunctionModelingStagePanel
             key={`${conversationKey ?? 'draft'}:function-modeling`}
             {...commonStageProps}
-            onConfirm={onConfirmFunctionModeling}
+            onConfirm={() => {
+              onConfirmFunctionModeling()
+              setSelectedStageId('ontology-management')
+            }}
           />
         )}
 

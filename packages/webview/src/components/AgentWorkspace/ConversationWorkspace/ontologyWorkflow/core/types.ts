@@ -1,7 +1,12 @@
 export type OntologyWorkflowStageStatus = 'pending' | 'active' | 'completed'
 
+export type OntologyWorkflowStageId =
+  | 'itemization'
+  | 'function-modeling'
+  | 'ontology-management'
+
 export interface OntologyWorkflowStageDefinition {
-  id: 'itemization' | 'function-modeling' | 'ontology-management'
+  id: OntologyWorkflowStageId
   title: string
   description: string
   scenes: readonly number[]

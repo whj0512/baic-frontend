@@ -33,6 +33,10 @@ function ItemizationStagePanel({
 }: ItemizationStagePanelProps) {
   const [form, setForm] = useState(EMPTY_FORM)
   const chunksSucceeded = evidence.chunksEnvelope?.status === 'success'
+  const chunksProjectRoot = evidence.sceneOne?.projectRoot
+    || evidence.recoveryProjectRoot
+    || evidence.functions.find((item) => item.projectRoot)?.projectRoot
+    || ''
   const unsafePathCount = evidence.functions.filter(
     (item) => !item.resolvedMarkdownPath,
   ).length
@@ -172,13 +176,23 @@ function ItemizationStagePanel({
               {unsafePathCount} 项需要手工填写 Markdown 路径。
             </span>
           </div>
-          <button
-            type="button"
-            disabled={evidence.functions.length === 0 || !canSend || streaming}
-            onClick={onConfirm}
-          >
-            确定条目化结果，进入功能建模
-          </button>
+          <div className="ontology-workflow__checkpoint-actions">
+            <button
+              type="button"
+              className="ontology-workflow__button--secondary"
+              disabled={!chunksProjectRoot || !canSend || streaming}
+              onClick={() => void sendText(buildChunksQueryPrompt(chunksProjectRoot))}
+            >
+              重新查询功能清单
+            </button>
+            <button
+              type="button"
+              disabled={evidence.functions.length === 0 || !canSend || streaming}
+              onClick={onConfirm}
+            >
+              确定条目化结果，进入功能建模
+            </button>
+          </div>
         </div>
       ) : null}
     </>

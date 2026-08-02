@@ -1,6 +1,9 @@
 import type { ConversationMessageView } from '../../../qwenPaw/types'
 import { isOntologyInstancesToolPart } from '../../toolMessage/ontologyInstances/parseOntologyInstances'
-import type { OntologyWorkflowEvidence } from './deriveWorkflowState'
+import {
+  deriveOntologyWorkflowEvidence,
+  type OntologyWorkflowEvidence,
+} from './deriveWorkflowState'
 import {
   DSL_QUERY_OPENING,
   ONTOLOGY_QUERY_OPENING,
@@ -113,17 +116,24 @@ export function readOntologyWorkflowCheckpoint(
     if (!raw) {
       return null
     }
-    const checkpoint: unknown = JSON.parse(raw)
-    if (!isCheckpoint(checkpoint) || checkpoint.conversationKey !== conversationKey) {
+    const parsedCheckpoint: unknown = JSON.parse(raw)
+    if (
+      !isCheckpoint(parsedCheckpoint)
+      || parsedCheckpoint.conversationKey !== conversationKey
+    ) {
       removeCheckpoint(conversationKey)
       return null
     }
+    const checkpoint = parsedCheckpoint
     const updatedAt = Date.parse(checkpoint.updatedAt)
     if (!Number.isFinite(updatedAt) || Date.now() - updatedAt > CHECKPOINT_MAX_AGE_MS) {
       removeCheckpoint(conversationKey)
       return null
     }
-    return checkpoint
+    const restoredEvidence = deriveOntologyWorkflowEvidence(checkpoint.messages)
+    return restoredEvidence.chunksEvidenceKey
+      ? { ...checkpoint, chunksEvidenceKey: restoredEvidence.chunksEvidenceKey }
+      : checkpoint
   } catch {
     removeCheckpoint(conversationKey)
     return null
@@ -204,9 +214,9 @@ function collectCheckpointMessages(
     const keepSceneThree =
       text.startsWith(SCENE_THREE_OPENING)
       && (evidence.chunksRecoveredFromCompression
-        || index > chunksMessageIndex)
+        || index >= evidence.modelingEvidenceStartIndex)
     const keepDslQuery =
-      index > chunksMessageIndex
+      index >= evidence.modelingEvidenceStartIndex
       && text.startsWith(DSL_QUERY_OPENING)
     const keepOntologyWorkflowMessage =
       text.startsWith(SCENE_SEVEN_OPENING)
