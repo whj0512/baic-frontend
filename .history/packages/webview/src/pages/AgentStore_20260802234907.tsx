@@ -23,7 +23,7 @@ const EMPTY_PROJECT_FORM: NewProjectForm = {
   description: '',
 }
 
-const EXPOSED_AGENT_IDS = ['tqqRiu', 'ontology_qa'] as const
+const EXPOSED_AGENT_IDS = ['tqqRiu', ontology_qa] as const
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -62,10 +62,6 @@ function parseProjects(value: unknown): AgentProject[] {
 
 function getProjectDisplayName(project: AgentProject): string {
   return project.name?.trim() || project.key?.trim() || '未命名项目'
-}
-
-function getProjectPromptDisplayName(project: AgentProject): string {
-  return project.name?.trim() || project.key?.trim() || project.id
 }
 
 function getErrorMessage(error: unknown, fallback: string): string {
@@ -420,8 +416,6 @@ function AgentStore() {
       {selectedProject ? (
         <ConversationWorkspace
           key={`${selectedProject.id}:${
-            qwenPawWorkspace.activeAgentId ?? 'loading'
-          }:${
             qwenPawWorkspace.activeConversation?.sessionId ?? 'loading'
           }`}
           activeAgent={qwenPawWorkspace.activeAgent}
@@ -436,13 +430,10 @@ function AgentStore() {
           streamError={qwenPawWorkspace.error?.message ?? null}
           conversationStatus={qwenPawWorkspace.status}
           registrationState={qwenPawWorkspace.registrationState}
-          projectDisplayName={getProjectPromptDisplayName(selectedProject)}
           workflowMode={
-            qwenPawWorkspace.activeAgentId === 'tqqRiu'
+            qwenPawWorkspace.activeAgentId === EXPOSED_AGENT_IDS[0]
               ? 'ontology-ingestion'
-              : qwenPawWorkspace.activeAgentId === 'ontology_qa'
-                ? 'ontology-qa'
-                : undefined
+              : undefined
           }
           onSend={handleConversationSend}
           onRetry={qwenPawWorkspace.retry}

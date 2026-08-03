@@ -2094,6 +2094,7 @@
 }
 
 .conversation-composer__shell {
+  position: relative;
   width: min(100%, 1280px);
   margin: -6px auto 0;
   background: #ffffff;

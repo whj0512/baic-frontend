@@ -5,6 +5,7 @@ import {
 import type {
   FormEvent,
   KeyboardEvent,
+  ReactNode,
 } from 'react'
 import {
   CloseOutlined,
@@ -29,6 +30,7 @@ interface ConversationComposerProps {
   streaming: boolean
   attachments: QwenPawAttachment[]
   attachmentError: string | null
+  quickPrompts?: ReactNode
   onDraftChange: (value: string) => void
   onFilesSelected: (files: File[]) => void
   onAttachmentRemove: (attachmentId: string) => void
@@ -45,6 +47,7 @@ function ConversationComposer({
   streaming,
   attachments,
   attachmentError,
+  quickPrompts,
   onDraftChange,
   onFilesSelected,
   onAttachmentRemove,
@@ -95,6 +98,7 @@ function ConversationComposer({
       onSubmit={handleSubmit}
     >
       <div className="conversation-composer__shell">
+        {quickPrompts}
         <div
           className="conversation-composer__upload-hint"
           onDragOver={(event) => {

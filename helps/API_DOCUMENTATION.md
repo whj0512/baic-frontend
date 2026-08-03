@@ -1,5 +1,18 @@
 # API 文档（接口说明）
 
+## 方案 B：Agent Gateway
+
+BAIC 后端现提供 `/api/agent/*` 适配层，用于隐藏运行本机
+CoPaw/QwenPaw Agent。首个接入的是：
+
+```text
+F:\CoPaw\Agent\requirement_document_extractor
+```
+
+接口包含工作流查询、附件上传、会话创建与历史、SSE 流式聊天、运行状态及
+任务停止。完整请求、响应、环境变量和 SSE 事件说明请参阅
+[AGENT_GATEWAY_API.md](AGENT_GATEWAY_API.md)。
+
 本文件列出了当前项目中所有可用的 HTTP 接口（中文），包含用途、URL、HTTP 方法、请求头、请求体字段/类型、示例请求、示例响应和可能的错误码说明。
 
 基本说明
@@ -55,6 +68,10 @@
   - POST /requirements (创建需求)
   - PUT /requirements/{requirement_id} (更新需求)
   - DELETE /requirements/{requirement_id} (删除需求)
+  - POST /requirements/{requirement_id}/models (新增维度模型)
+  - PUT /requirements/{requirement_id}/models/{model_group_id} (更新维度模型)
+  - PUT /requirements/{requirement_id}/models/{model_group_id}/primary (设置主模型)
+  - DELETE /requirements/{requirement_id}/models/{model_group_id} (删除维度模型)
   - POST /projects (创建项目)
   - WebSocket /ws/projects/{project_id} （如果使用 token 查询参数，则会验证）
 
@@ -382,6 +399,17 @@ curl -X POST http://127.0.0.1:8000/dsl-to-rbg/ESD -H "Content-Type: text/plain; 
 
 ---
 
+## GraphDB 图数据接口
+
+`POST /graphdb/graph` 将 GraphDB RDF 查询结果转换成 AntV G6 可直接渲染的
+`nodes`、`edges` JSON。接口支持根节点、1～3 跳展开、本体类型、对象属性、
+显式/推理来源以及节点和关系数量限制。
+
+完整的请求体字段、请求示例、响应示例、前端调用方法和错误码请参阅：
+[`GRAPHDB_G6_API.md`](GRAPHDB_G6_API.md)。
+
+---
+
 ### 3.f POST /rbg-to-dsl/ESD、POST /rbg-to-dsl/ISD
 - 用途：将 ESD/ISD rbg JSON 转回 Scenario DSL 文本（使用 `scenario.json_to_dsl`）。接口层同时兼容新的 `children` 格式和现有前端的 `interactions`/`interactionRelations` 格式。
 - URL：
@@ -531,12 +559,16 @@ curl -X POST http://127.0.0.1:8000/login -H "Content-Type: application/json" -d 
 - 请求体（JSON）模式（RequirementSaveRequest）：
   - `project_key` (string | null) — 可选；若为空使用 `'default'` 项目（会自动创建 project）
   - `nl_text` (string | null) — 自然语言文本
-  - `dsl_SC` (string | null) — DSL 文本（写入到字段 `dsl_SC`）
+  - `dsl_IBD` / `dsl_ESD` / `dsl_SC` / `dsl_BDD` / `dsl_ISD`
+    (string | null) — 各维度主模型的 DSL 文本
   - `graph_IBD` (object | null) — 内部块图 (IBD) 的 JSON 表示
   - `graph_ESD` (object | null) — 外部顺序图 (ESD) 的 JSON 表示
   - `graph_SC` (object | null) — 状态图 (SC) 的 JSON 表示
   - `graph_BDD` (object | null) — 块定义图 (BDD) 的 JSON 表示
   - `graph_ISD` (object | null) — 内部顺序图 (ISD) 的 JSON 表示
+  - `dimension_models` (array | null) — 可选；同一需求下的多模型列表。每个元素使用
+    `RequirementModelInput`，详见“12.a 需求维度多模型接口”。只传 DSL 或只传图均可，
+    服务端会自动转换并保存两种表示。
 
 - 请求示例（curl）：
 
@@ -574,11 +606,25 @@ curl -X POST http://127.0.0.1:8000/requirements \
 ```json
 {
   "requirement_id": "uuid-...",
-  "version_id": "uuid-..."
+  "version_id": "uuid-...",
+  "version_code": 1,
+  "models": [
+    {
+      "id": "model-version-uuid",
+      "model_group_id": "model-logical-uuid",
+      "dimension_code": "SC",
+      "model_key": "statechart-main"
+    }
+  ]
 }
 ```
 
-- 说明：返回新创建的 requirement id 与初始 version id。传入的 5 个图字段将分别序列化并保存在对应的 `requirement` 与 `requirement_version` 表字段中（`graph_IBD`、`graph_ESD`、`graph_SC`、`graph_BDD`、`graph_ISD`）。创建操作后，后端会向订阅该项目的 WebSocket 客户端广播一条 `requirement_created` 事件（包含完整快照），以便客户端立即插入新条目。
+- 说明：
+  - 返回新创建的 requirement id、初始 version id、版本号以及本次保存的模型摘要。
+  - `dimension_models` 中的模型保存在一对多模型表中。每个维度的主模型会同步到原有
+    `dsl_IBD`、`graph_IBD` 等固定字段，因此未适配多模型的旧前端仍可读取一张主图。
+  - 创建操作后，后端会向订阅该项目的 WebSocket 客户端广播
+    `requirement_created` 事件（包含完整快照）。
 - 常见错误：
   - 400：请求体格式错误或必需字段缺失（FastAPI 可能返回 422）
   - 500：数据库错误等
@@ -781,6 +827,9 @@ curl http://127.0.0.1:8000/projects/3fa85f64-5717-4562-b3fc-2c963f66afa6/require
 
 - 行为说明：
   - 服务端会把传入字段与当前数据库中对应字段合并（传 None/未传的字段将保留原值），并在 `requirement_version` 表中插入新版本记录（version_number = max+1）。
+  - 可以通过 `dimension_models` 在一次更新中新增或更新多张维度模型；未出现在请求中的
+    已有模型会复制到新需求版本，不会丢失。
+  - 继续传入旧的 `dsl_SC`、`graph_SC` 等字段时，它们会作为对应维度的主模型处理。
   - 返回值中包含 `diff` 字段：只有发生变化的字段会出现在 `diff` 对象中，格式为 `field: {"before": <old>, "after": <new>}`。
   - 更新成功后，后端会向订阅该项目的 WebSocket 客户端广播 `requirement_updated` 事件，但广播中只包含差异（diff），以减少带宽与前端合并负担。
 
@@ -799,7 +848,9 @@ curl -X PUT http://127.0.0.1:8000/requirements/3fa85f64-... \
 {
   "requirement_id": "3fa85f64-...",
   "version_id": "version-uuid-...",
+  "version_code": 2,
   "project_id": "proj-uuid-...",
+  "models": [],
   "diff": {
     "nl_text": { "before": "旧的 NL 文本", "after": "更新后的自然语言描述" },
     "graph_IBD": { "before": null, "after": {"nodes":[{"id":"n1"}],"edges":[]} }
@@ -819,8 +870,123 @@ curl -X PUT http://127.0.0.1:8000/requirements/3fa85f64-... \
 ```
 
 - 常见错误：
+  - 400：DSL/图转换失败、维度不支持或模型上下文无效
   - 404：若 requirement_id 不存在（HTTP 404，`{"detail":"Requirement not found"}`）
   - 500：数据库错误等
+
+---
+
+## 12.a 需求维度多模型接口
+
+一条需求的 IBD、ESD、SC、BDD、ISD 每个维度均可保存多张图。每张图对应唯一的一份
+DSL，使用稳定的 `model_group_id` 标识；修改模型会创建新的需求版本。
+
+### 模型请求字段 `RequirementModelInput`
+
+| 字段 | 类型 | 必需 | 说明 |
+|---|---|---|---|
+| `dimension_code` | string | 是 | `IBD`、`ESD`、`SC`、`BDD` 或 `ISD` |
+| `model_group_id` | string | 否 | 模型逻辑 ID；新增时省略则自动生成 |
+| `model_type` | string/null | 否 | 业务模型类型，当前不额外规范取值 |
+| `name` | string/null | 否 | 模型显示名称 |
+| `model_key` | string/null | 否 | 同一需求版本、同一维度内的唯一业务键 |
+| `dsl_text` | string/null | 条件必需 | 与 `graph_json` 至少提供一个 |
+| `graph_json` | object/null | 条件必需 | 与 `dsl_text` 至少提供一个 |
+| `source_representation` | string/null | 否 | 原始提交来源：`dsl`、`graph` 或 `both`；通常由服务端判定 |
+| `context_model_group_id` | string/null | 否 | ESD/ISD 所依赖的同需求 IBD 模型 ID |
+| `converter_version` | string/null | 否 | 转换器版本；通常由服务端填写 |
+| `is_primary` | boolean | 否 | 是否为该维度主模型，默认 `false` |
+| `sort_order` | integer | 否 | 展示顺序，默认 `0` |
+| `source_path` | string/null | 否 | 原始 DSL/图文件路径 |
+| `metadata` | object/null | 否 | 扩展元数据 |
+
+只提交 `dsl_text` 时，后端自动生成 `graph_json`；只提交 `graph_json` 时自动生成
+`dsl_text`。ESD/ISD 仅提交 DSL 时，需要通过 `context_model_group_id` 指定 IBD，或保证
+该需求只有明确的主 IBD。数据库最终始终同时保存 DSL 和图。
+
+### GET /requirements/{requirement_id}/models
+
+- 用途：读取需求最新版本下的全部模型。
+- 可选查询参数：`dimension=SC`，按维度过滤。
+- 鉴权：当前为只读公开接口，与 `GET /requirements/{requirement_id}` 一致。
+
+```json
+{
+  "requirement_id": "requirement-uuid",
+  "models": [
+    {
+      "id": "model-version-uuid",
+      "model_group_id": "model-logical-uuid",
+      "requirement_version_id": "requirement-version-uuid",
+      "requirement_group_id": "requirement-uuid",
+      "dimension_code": "SC",
+      "name": "PowerOn",
+      "model_key": "power-on",
+      "dsl_text": "Statechart PowerOn {}",
+      "graph_json": {"graph_type": "request", "nodes": [], "transitions": []},
+      "source_representation": "dsl",
+      "context_model_group_id": null,
+      "is_primary": true,
+      "sort_order": 0,
+      "metadata": null
+    }
+  ]
+}
+```
+
+尚未迁移的旧需求也会返回由旧固定字段生成的兼容模型；首次通过新写接口操作时会透明
+写入新模型表。
+
+### POST /requirements/{requirement_id}/models
+
+- 用途：新增一张维度模型并创建新的需求版本。
+- 鉴权：需要 Bearer token（启用鉴权时）。
+- 请求体：单个 `RequirementModelInput`。
+- 成功状态：`201`。
+
+```json
+{
+  "dimension_code": "SC",
+  "name": "PowerOn",
+  "dsl_text": "Statechart PowerOn {}",
+  "is_primary": false,
+  "sort_order": 1,
+  "source_path": "Statecharts/PowerOn.dsl"
+}
+```
+
+响应包含 `requirement_id`、`version_id`、`version_code`、`project_id`、`diff` 和最新的
+完整 `models` 列表。
+
+### PUT /requirements/{requirement_id}/models/{model_group_id}
+
+- 用途：更新指定模型并创建新的需求版本。
+- 请求体：`RequirementModelInput`；`dimension_code` 必须与原模型一致，不能修改模型
+  所属维度。
+- 只更新 DSL 时以 DSL 重新生成图；只更新图时以图重新生成 DSL。
+- 响应中的 `model` 为更新后的模型。
+
+### PUT /requirements/{requirement_id}/models/{model_group_id}/primary
+
+- 用途：将模型设置为所属维度的主模型并创建新的需求版本。
+- 请求体：无。
+- 同一需求版本、同一维度始终只有一个主模型。
+- 设置成功后，旧接口的对应 `dsl_SC`/`graph_SC` 等字段会同步为该模型。
+
+### DELETE /requirements/{requirement_id}/models/{model_group_id}
+
+- 用途：从新需求版本中删除指定模型，不会改写历史版本。
+- 删除主模型后，如果同维度还有其他模型，按 `sort_order` 自动选择新的主模型；
+  如果没有剩余模型，则清空该维度旧兼容字段。
+- 成功响应包含 `deleted_model_group_id` 和最新的完整 `models` 列表。
+- 未迁移的旧兼容模型直接删除时返回 `409`；先通过新增或更新模型接口触发透明迁移。
+
+通用错误：
+
+- `400`：模型参数、DSL/图转换、IBD 上下文或维度不合法。
+- `404`：需求或模型不存在。
+- `409`：尝试直接删除尚未迁移的旧兼容模型。
+- `422`：请求体未满足 Pydantic 字段类型要求。
 
 ---
 
@@ -934,16 +1100,17 @@ curl -X DELETE http://127.0.0.1:8000/requirements/3fa85f64-5717-4562-b3fc-2c963f
 ---
 
 ## 15. POST /dependency
-- 用途：识别一个项目（project）内需求（requirements）之间的数据依赖关系。
+- 用途：识别一个项目内所有 SC 模型之间的数据依赖关系。
 - URL：`POST /dependency`
 - 请求头：
   - `Content-Type: application/json`
 - 请求体（JSON）：
-  - `project_id` (string) — 必需；项目的 UUID，用于查找该项目下的所有需求（使用当前版本快照）。
+  - `project_id` (string) — 必需；项目 UUID，用于查找各需求最新版本下的全部 SC 模型。
 
 - 行为说明：
-  - 服务端会读取该项目下的所有需求（使用 `GET latest-version per requirement`），提取每条需求的 `graph_SC`（状态机图）作为输入，调用 `dependency_manager.CoarseDependencyManager` 来计算图级别的依赖关系（数据依赖）。
-  - 如果某条需求没有 `graph_SC` 字段则会被跳过。
+  - 服务端会读取项目下每条需求的最新版本，提取模型表中的全部 SC 图作为输入；
+    尚未迁移的需求继续使用旧 `graph_SC` 主图。
+  - 依赖图 ID 使用 `model_group_id`，因此同一需求下的多张 SC 图可分别参与分析。
 
 - 请求示例（curl）：
 
@@ -1014,3 +1181,8 @@ curl -X POST http://127.0.0.1:8000/dependency -H "Content-Type: application/json
   - 400：请求体无效或 `test_content` 缺失。
   - 401：鉴权失败（若启用授权）。
   - 500：数据库错误等。
+
+# 新版依赖与三级关联
+
+新版依赖接口及“需求—场景—测试用例”三级关联接口的完整说明、请求体和响应示例，
+请参阅 [TRACEABILITY_API.md](TRACEABILITY_API.md)。

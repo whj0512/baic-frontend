@@ -6,6 +6,7 @@
 以下表为当前 schema 的核心表：
 - `req_project`
 - `req_requirement`
+- `req_requirement_model`
 - `req_relationship`
 - `req_device`
 - `req_controller`
@@ -33,7 +34,7 @@
 
 ### req_requirement
 
-作用：需求主表，每次修改插入一条新行作为新版本，使用 `requirement_group_id` 将同一逻辑需求的不同版本归并。
+作用：需求主表，每次修改插入一条新行作为新版本，使用 `requirement_group_id` 将同一逻辑需求的不同版本归并。该表中的各维度 DSL/图字段同时作为旧接口的兼容字段，保存对应维度的主模型；同一维度的全部模型存储在 `req_requirement_model`。
 关键字段：
 - `id` (CHAR(36)) — 必需：主键，表示某一版本行的唯一标识（也可视为 version_id）。
 - `name` (VARCHAR(200)) — 必需：需求名称。
@@ -42,21 +43,100 @@
 - `version_code` (INT) — 必需：版本号（按每次更新递增）。
 - `project_id` (CHAR(36)) — 必需：所属项目外键，引用 `project.id`。
 - `nl_text` (TEXT) — 可选：该版本的自然语言描述。
-- `dsl_IBD` (TEXT) — 可选：DSL 表示的 IBD 维度文本/序列化内容。
-- `dsl_ESD` (TEXT) — 可选：DSL 表示的 ESD 维度文本/序列化内容。
-- `dsl_SC` (TEXT) — 必需/推荐：DSL 表示的 SC 维度文本/序列化内容；当前系统将 DSL 字符串存储在此字段。
-- `dsl_BDD` (TEXT) — 可选：DSL 表示的 BDD 维度文本/序列化内容。
-- `dsl_ISD` (TEXT) — 可选：DSL 表示的 ISD 维度文本/序列化内容。
-- `graph_IBD` (JSON) — 可选：内部块图 (IBD) 的结构化表示，需求与外部环境实体的关系蕴含在该字段中。
-- `graph_ESD` (JSON) — 可选：外部顺序图 (ESD) 的结构化表示。
-- `graph_SC` (JSON) — 可选：状态图 (SC) 的结构化表示。
-- `graph_BDD` (JSON) — 可选：块定义图 (BDD) 的结构化表示。
-- `graph_ISD` (JSON) — 可选：内部顺序图 (ISD) 的结构化表示。
+- `dsl_IBD` (TEXT) — 可选：当前版本 IBD 主模型的 DSL 兼容副本。
+- `dsl_ESD` (TEXT) — 可选：当前版本 ESD 主模型的 DSL 兼容副本。
+- `dsl_SC` (TEXT) — 可选：当前版本 SC 主模型的 DSL 兼容副本。
+- `dsl_BDD` (TEXT) — 可选：当前版本 BDD 主模型的 DSL 兼容副本。
+- `dsl_ISD` (TEXT) — 可选：当前版本 ISD 主模型的 DSL 兼容副本。
+- `graph_IBD` (JSON) — 可选：当前版本 IBD 主模型的图 JSON 兼容副本。
+- `graph_ESD` (JSON) — 可选：当前版本 ESD 主模型的图 JSON 兼容副本。
+- `graph_SC` (JSON) — 可选：当前版本 SC 主模型的图 JSON 兼容副本。
+- `graph_BDD` (JSON) — 可选：当前版本 BDD 主模型的图 JSON 兼容副本。
+- `graph_ISD` (JSON) — 可选：当前版本 ISD 主模型的图 JSON 兼容副本。
 - `type` (VARCHAR(50)) — 可选：需求级别/类型，可取值 'component'（部件级）或 'system'（系统级）；用于在依赖/匹配算法中区分不同粒度的需求。
 - `subtype` (VARCHAR(100)) — 可选：需求子类型字符串，便于对需求进行更细粒度的分类。
 - `created_by` (CHAR(36)) — 可选：创建该版本的用户标识。
 - `created_at` (TIMESTAMP) — 必需：版本创建时间。
 - `updated_at` (TIMESTAMP) — 必需：最后更新时间。
+
+兼容规则：
+
+- 新代码以 `req_requirement_model` 为多模型数据源，并将每个维度
+  `is_primary = true` 的模型同步到本表对应的 `dsl_*` 和 `graph_*` 字段。
+- 尚未写入模型表的历史需求仍可从本表固定字段读取。首次通过多模型写接口修改时，
+  服务端会将这些固定字段透明迁移为模型记录。
+- 旧前端继续读取本表时，每个维度仍只看到一张主图；新前端通过模型接口读取全部图。
+
+
+### req_requirement_model
+
+作用：存储需求各维度的一对多模型。一个需求版本的 IBD、ESD、SC、BDD、ISD
+维度都可以包含多条模型记录；每条记录严格对应一份 DSL 和一份图 JSON。
+
+模型身份分为两层：
+
+- `id` 标识某个需求版本中的模型行。需求生成新版本时会创建新的模型行和新的 `id`。
+- `model_group_id` 标识跨需求版本的同一个逻辑模型。模型被复制到新需求版本时该值保持
+  不变。
+
+关键字段：
+
+- `id` (CHAR(36)) — 必需：模型版本行主键。
+- `model_group_id` (CHAR(36)) — 必需：逻辑模型 ID，用于跨需求版本跟踪同一张图。
+- `requirement_version_id` (CHAR(36)) — 必需：所属需求版本，外键引用
+  `req_requirement.id`；删除需求版本时级联删除其模型行。
+- `requirement_group_id` (CHAR(36)) — 必需：所属逻辑需求 ID，与
+  `req_requirement.requirement_group_id` 对应，便于直接按需求查询模型。
+- `dimension_code` (VARCHAR(16)) — 必需：模型维度。当前转换和接口支持
+  `IBD`、`ESD`、`SC`、`BDD`、`ISD`。
+- `model_type` (VARCHAR(100)) — 可选：业务模型类型；当前不额外限定取值。
+- `name` (VARCHAR(200)) — 必需：模型显示名称。
+- `model_key` (VARCHAR(200)) — 必需：模型业务键；在同一需求版本、同一维度内唯一。
+- `dsl_text` (LONGTEXT) — 必需：模型 DSL。即使客户端只提交图，服务端也会先自动
+  转换出 DSL 后再写入。
+- `graph_json` (JSON) — 必需：模型图结构。即使客户端只提交 DSL，服务端也会先自动
+  转换出图后再写入。因此 DSL 与图在模型行内严格一对一。
+- `source_representation` (VARCHAR(16)) — 必需：本次模型最初由 `dsl`、`graph` 或
+  `both` 提供；默认值为 `both`。
+- `context_model_group_id` (CHAR(36)) — 可选：ESD/ISD 所依赖的 IBD
+  `model_group_id`。该字段用于在同一需求存在多个环境模型时确定转换上下文。
+- `converter_version` (VARCHAR(100)) — 可选：生成缺失表示时所用转换器版本。
+- `is_primary` (BOOLEAN/TINYINT) — 必需：是否为所属需求版本、所属维度的主模型。
+  每个存在模型的维度必须且只能有一个主模型。
+- `sort_order` (INT) — 必需：同维度内的展示顺序，默认 `0`。
+- `source_path` (TEXT) — 可选：原始 DSL/图文件的相对路径或来源路径。
+- `metadata` (JSON) — 可选：扩展元数据，例如导入信息和旧数据迁移标记。
+- `created_by` (CHAR(36)) — 可选：创建或更新该模型版本的用户标识。
+- `created_at` (TIMESTAMP) — 必需：模型版本创建时间。
+- `updated_at` (TIMESTAMP) — 必需：最后更新时间。
+
+约束与索引：
+
+- 主键：`id`。
+- 唯一约束：`(requirement_version_id, dimension_code, model_key)`。
+- 外键：`requirement_version_id -> req_requirement.id ON DELETE CASCADE`。
+- `model_group_id` 建有索引，用于跨版本查找逻辑模型。
+- `(requirement_group_id, dimension_code)` 建有联合索引，用于按需求和维度查询。
+- SQLite 使用部分唯一索引保证
+  `(requirement_version_id, dimension_code)` 最多只有一条 `is_primary = 1` 记录。
+- MySQL 初始化结构未使用部分唯一索引，主模型唯一性由后端事务逻辑保证。
+
+版本与删除规则：
+
+- 更新需求时，上一版本的全部模型复制到新需求版本，再应用本次新增、修改或删除。
+- 新版本中的模型行使用新 `id`，但逻辑模型继续使用原 `model_group_id`。
+- 删除模型只影响新生成的需求版本，不修改历史版本。
+- 删除某维度主模型后，如果仍有其他模型，按 `sort_order`、创建时间和 `id`
+  自动选择新的主模型；如果没有剩余模型，则清空 `req_requirement` 中该维度的兼容字段。
+
+数据库差异：
+
+- MySQL 使用 `JSON`、`LONGTEXT`、`CHAR(36)` 和 `TIMESTAMP` 类型。
+- SQLite 将 UUID、DSL、JSON 和时间字段存为 `TEXT`，并通过 `json_valid` 检查
+  `graph_json` 和 `metadata` 的 JSON 合法性。
+- SQLite 后端会在运行时以幂等方式创建缺失的 `req_requirement_model` 表和索引。
+  已部署的 MySQL 数据库应单独执行 `mysql_init.sql` 中新增表的 `CREATE TABLE` 片段，
+  不应为迁移而重新执行包含 `DROP TABLE` 的完整初始化脚本。
 
 
 ### req_relationship

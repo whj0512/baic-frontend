@@ -64,10 +64,6 @@ function getProjectDisplayName(project: AgentProject): string {
   return project.name?.trim() || project.key?.trim() || '未命名项目'
 }
 
-function getProjectPromptDisplayName(project: AgentProject): string {
-  return project.name?.trim() || project.key?.trim() || project.id
-}
-
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback
 }
@@ -420,8 +416,6 @@ function AgentStore() {
       {selectedProject ? (
         <ConversationWorkspace
           key={`${selectedProject.id}:${
-            qwenPawWorkspace.activeAgentId ?? 'loading'
-          }:${
             qwenPawWorkspace.activeConversation?.sessionId ?? 'loading'
           }`}
           activeAgent={qwenPawWorkspace.activeAgent}
@@ -436,13 +430,10 @@ function AgentStore() {
           streamError={qwenPawWorkspace.error?.message ?? null}
           conversationStatus={qwenPawWorkspace.status}
           registrationState={qwenPawWorkspace.registrationState}
-          projectDisplayName={getProjectPromptDisplayName(selectedProject)}
           workflowMode={
-            qwenPawWorkspace.activeAgentId === 'tqqRiu'
+            qwenPawWorkspace.activeAgentId === EXPOSED_AGENT_IDS[0]
               ? 'ontology-ingestion'
-              : qwenPawWorkspace.activeAgentId === 'ontology_qa'
-                ? 'ontology-qa'
-                : undefined
+              : undefined
           }
           onSend={handleConversationSend}
           onRetry={qwenPawWorkspace.retry}

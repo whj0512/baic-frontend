@@ -4,9 +4,11 @@ import {
   useRef,
   useState,
 } from 'react'
+import { Modal } from 'antd'
 import ConversationComposer from './ConversationComposer'
 import ConversationHeader from './ConversationHeader'
 import ConversationTimeline from './ConversationTimeline'
+import { OntologyQaQuickPrompts } from './ontologyQa'
 import OntologyWorkflowPanel, {
   checkpointsEqual,
   clearOntologyWorkflowCheckpoint,
@@ -40,6 +42,7 @@ function ConversationWorkspace({
   conversationStatus,
   registrationState,
   workflowMode,
+  projectDisplayName,
   onSend,
   onRetry,
   onStop,
@@ -363,6 +366,26 @@ function ConversationWorkspace({
     }
   }
 
+  const applyQuickPrompt = (prompt: string, onApplied?: () => void) => {
+    const replaceDraft = () => {
+      setDraftText(prompt)
+      onApplied?.()
+    }
+
+    if (draftText.trim().length === 0) {
+      replaceDraft()
+      return
+    }
+
+    Modal.confirm({
+      title: '替换当前草稿？',
+      content: '替换后，当前尚未发送的文本将丢失。',
+      okText: '确认替换',
+      cancelText: '保留草稿',
+      onOk: replaceDraft,
+    })
+  }
+
   const workflowPanel = workflowMode === 'ontology-ingestion' ? (
     <OntologyWorkflowPanel
       conversationKey={conversationKey}
@@ -449,6 +472,22 @@ function ConversationWorkspace({
         streaming={streaming}
         attachments={attachmentState.attachments}
         attachmentError={attachmentState.validationError}
+        quickPrompts={workflowMode === 'ontology-qa' ? (
+          <OntologyQaQuickPrompts
+            projectDisplayName={projectDisplayName}
+            disabled={!canCompose || streaming || attachmentsUploading}
+            disabledReason={
+              streaming
+                ? 'Assistant 正在生成，请停止或等待生成完成后再使用模板'
+                : attachmentsUploading
+                  ? '附件正在上传，请等待上传完成后再使用模板'
+                  : !canCompose
+                    ? '当前会话不可写，无法使用快捷模板'
+                    : undefined
+            }
+            onApplyPrompt={applyQuickPrompt}
+          />
+        ) : undefined}
         onDraftChange={setDraftText}
         onFilesSelected={attachmentState.addFiles}
         onAttachmentRemove={attachmentState.removeAttachment}

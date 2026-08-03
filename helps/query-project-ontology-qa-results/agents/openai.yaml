@@ -1,0 +1,4 @@
+interface:
+  display_name: "场景 9 本体推理结果"
+  short_description: "只读查询场景 9 JSON，并在 Agent 客户端显示结构化结果面板"
+  default_prompt: "Use $query-project-ontology-qa-results to load the current project Scenario 9 ontology inference result."

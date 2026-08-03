@@ -28,8 +28,10 @@
 }
 ```
 
-- `project_id`：从 SQLite 读取项目最新版本的 `graph_SC`。
-- `graphs`：直接提供 `graph_SC` 数组；与 `project_id` 二选一。
+- `project_id`：从 SQLite 读取项目内各需求最新版本下的全部 SC 模型；旧数据回退到
+  `graph_SC` 主图。
+- `graphs`：直接提供 SC 图数组；与 `project_id` 二选一。既可以直接传图对象，也可以
+  传入包含 `graph_SC`、`graph_json` 或 `graph` 的包装对象。
 - `granularity`：`fine`（默认）或 `coarse`。
 - `include_paths`：是否返回路径，只支持 `fine`。
 
@@ -51,7 +53,9 @@
 }
 ```
 
-其中 `depended_path_id` 是数据生产方，`dependent_path_id` 是消费方。
+其中 `depended_path_id` 是数据生产方，`dependent_path_id` 是消费方。按项目读取时，
+图和路径 ID 对应 `model_group_id`，而不是需求 ID，因此同一需求下的多张 SC 图会分别
+参与计算。
 
 ## 2. 按方案二保存测试用例
 
@@ -142,7 +146,8 @@ python import_test_case_pairs.py `
 }
 ```
 
-服务会从 SQLite 读取该项目的最新需求版本和测试用例。
+服务会从 SQLite 读取该项目各需求的最新版本、这些版本下的全部 SC 模型以及测试用例。
+分析过程中以 `model_group_id` 区分图，同时保留 `requirement_group_id` 作为需求归属。
 
 ### 调试用法：直接传入图和测试用例
 
@@ -191,7 +196,7 @@ python import_test_case_pairs.py `
 | 参数 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
 | `project_id` | string | 无 | 从 SQLite 读取项目需求和用例 |
-| `graphs` | array | 无 | 直接传入需求图，存在时优先于 `project_id` |
+| `graphs` | array | 无 | 直接传入 SC 图或模型包装对象，存在时优先于 `project_id` |
 | `test_cases` | array | 无 | 直接传入用例，省略时按 `project_id` 读取 |
 | `response_mode` | string | `graph` | 响应模式：`graph`、`relations` 或 `debug` |
 | `minimum_path_score` | number | `0.35` | 路径匹配最低分，范围 0～1 |
@@ -217,6 +222,8 @@ python import_test_case_pairs.py `
 节点 ID；零命中的路径不会被选择。每个 `graph_id` 选择得分最高且超过阈值的路径。
 
 场景是路径依赖图的连通分量。场景 ID 根据路径和依赖边稳定计算，相同输入会得到相同 ID。
+每个场景的 `model_ids` 表示参与场景的 SC 模型，`requirement_ids` 表示这些模型所属的
+需求；一条需求可以对应多个 `model_ids`。
 
 ### 默认 `graph` 响应
 

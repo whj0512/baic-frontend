@@ -1,0 +1,4 @@
+interface:
+  display_name: "场景 10 功能关系结果"
+  short_description: "只读查询场景 10 功能关系 JSON，并显示结构化关系面板"
+  default_prompt: "Use $query-project-function-relations to load one function relation result from the current project."

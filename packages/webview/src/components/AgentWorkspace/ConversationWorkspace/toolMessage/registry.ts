@@ -1,10 +1,14 @@
 import type { ConversationPart } from '../../qwenPaw/types'
+import { functionRelationsToolPanelHandler } from './functionRelations/handler'
 import { ontologyInstancesToolPanelHandler } from './ontologyInstances/handler'
+import { ontologyQaResultsToolPanelHandler } from './ontologyQaResults/handler'
 import { requirementDslArtifactsToolPanelHandler } from './requirementDslArtifacts/handler'
 import type { RegisteredToolPanelHandler } from './types'
 
 const TOOL_PANEL_HANDLERS = [
+  functionRelationsToolPanelHandler,
   ontologyInstancesToolPanelHandler,
+  ontologyQaResultsToolPanelHandler,
   requirementDslArtifactsToolPanelHandler,
 ] satisfies RegisteredToolPanelHandler[]
 

@@ -6,6 +6,10 @@ import type {
 
 const MAX_UNKNOWN_SUMMARY_LENGTH = 1000
 const LOCAL_WINDOWS_PATH_PATTERN = /\/?[A-Za-z]:\\[^\r\n"]+/g
+const TOOL_PANEL_SCRIPT_BASENAMES = [
+  'query_function_relations.py',
+  'query_ontology_qa_results.py',
+] as const
 const UPLOADED_FILE_PATH_MESSAGE_PATTERN =
   /^用户上传文件，已经下载到\s+\/?[A-Za-z]:\\/u
 const ONTOLOGY_WORKFLOW_USER_PREFIXES = [
@@ -33,7 +37,17 @@ interface MutableAssistantTurn {
 function redactLocalPaths(value: string): string {
   return value.replace(
     LOCAL_WINDOWS_PATH_PATTERN,
-    '[本地路径已隐藏]',
+    (localPath) => {
+      const normalizedPath = localPath
+        .replaceAll('\\', '/')
+        .replace(/\/+$/u, '')
+        .toLowerCase()
+      const scriptBasename = TOOL_PANEL_SCRIPT_BASENAMES.find((basename) =>
+        normalizedPath.endsWith(basename))
+      return scriptBasename
+        ? `[本地路径已隐藏]/${scriptBasename}`
+        : '[本地路径已隐藏]'
+    },
   )
 }
 
