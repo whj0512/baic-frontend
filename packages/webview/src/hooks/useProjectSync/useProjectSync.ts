@@ -8,6 +8,13 @@ interface WebSocketMessage {
   requirement?: Requirement
   requirement_id?: string
   diff?: Record<string, { before: unknown; after: unknown }>
+  version_id?: string
+}
+
+export interface RequirementChangeSignal {
+  requirementId: string
+  versionId?: string
+  sequence: number
 }
 
 const MAX_RETRIES = 5
@@ -16,6 +23,7 @@ const HEARTBEAT_INTERVAL = 15000
 export function useProjectSync(projectId: string | undefined) {
   const [requirements, setRequirements] = useState<Requirement[]>([])
   const [isConnected, setIsConnected] = useState(false)
+  const [lastRequirementChange, setLastRequirementChange] = useState<RequirementChangeSignal | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const retryCountRef = useRef(0)
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -41,6 +49,7 @@ export function useProjectSync(projectId: string | undefined) {
     if (!projectId) {
       cleanup()
       setRequirements([])
+      setLastRequirementChange(null)
       return
     }
 
@@ -80,6 +89,11 @@ export function useProjectSync(projectId: string | undefined) {
                   })
                   return updated
                 }))
+                setLastRequirementChange(previous => ({
+                  requirementId: message.requirement_id!,
+                  versionId: message.version_id,
+                  sequence: (previous?.sequence ?? 0) + 1,
+                }))
               }
               break
           }
@@ -109,6 +123,7 @@ export function useProjectSync(projectId: string | undefined) {
   return {
     requirements,
     isConnected,
+    lastRequirementChange,
     removeRequirement: (id: string) => setRequirements(previous => previous.filter(requirement => requirement.id !== id)),
   }
 }

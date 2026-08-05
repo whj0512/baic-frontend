@@ -82,6 +82,10 @@
   margin-bottom: 0;
 }
 
+.requirement-model-modal-error {
+  margin-bottom: 1rem;
+}
+
 .section-header {
   display: flex;
   align-items: center;
@@ -156,108 +160,6 @@
 .text-placeholder {
   color: #9ca3af;
   font-style: italic;
-}
-
-/* Dimension List */
-.dimension-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.dimension-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 1rem;
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.dimension-item:hover {
-  border-color: #3b82f6;
-  background-color: #f0f9ff;
-}
-
-.dimension-item-left {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.dimension-tag {
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  min-width: 2.5rem;
-  text-align: center;
-}
-
-.dimension-tag.tag-IBD {
-  background-color: #dbeafe;
-  color: #1d4ed8;
-}
-
-.dimension-tag.tag-ESD {
-  background-color: #dcfce7;
-  color: #15803d;
-}
-
-.dimension-tag.tag-SC {
-  background-color: #fef3c7;
-  color: #b45309;
-}
-
-.dimension-tag.tag-BDD {
-  background-color: #f3e8ff;
-  color: #7c3aed;
-}
-
-.dimension-tag.tag-ISD {
-  background-color: #fce7f3;
-  color: #be185d;
-}
-
-.dimension-tag.tag-DialogMap {
-  background-color: #e0f2fe;
-  color: #0369a1;
-}
-
-.dimension-label {
-  font-size: 0.85rem;
-  color: #374151;
-  font-weight: 500;
-}
-
-.dimension-item-right {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.dimension-status {
-  font-size: 0.75rem;
-  padding: 0.125rem 0.5rem;
-  border-radius: 4px;
-}
-
-.dimension-status.has-data {
-  background-color: #dcfce7;
-  color: #15803d;
-}
-
-.dimension-status.no-data {
-  background-color: #f3f4f6;
-  color: #9ca3af;
-}
-
-.dimension-arrow {
-  font-size: 1.2rem;
-  color: #9ca3af;
 }
 
 /* Version Timeline */

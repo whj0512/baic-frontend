@@ -1,195 +1,186 @@
 .dimension-list {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 0.5rem;
 }
 
+.dimension-group {
+  min-width: 0;
+}
+
 .dimension-item {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
   background-color: #f9fafb;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s;
+  transition: border-color 0.15s, background-color 0.15s;
 }
 
 .dimension-item:hover {
-  border-color: #3b82f6;
   background-color: #f0f9ff;
+  border-color: #93c5fd;
 }
 
-.dimension-item:focus-visible {
-  border-color: #3b82f6;
-  outline: 2px solid rgb(59 130 246 / 20%);
-  outline-offset: 1px;
+.dimension-item--disabled {
+  opacity: 0.58;
 }
 
-.dimension-item--disabled,
-.dimension-item--disabled:hover {
-  background-color: #f9fafb;
-  border-color: #e5e7eb;
-  cursor: not-allowed;
-  opacity: 0.72;
-}
-
-.dimension-item--disabled .dimension-arrow {
-  visibility: hidden;
-}
-
-.dimension-item-left,
-.dimension-item-right {
+.dimension-item-main {
   display: flex;
-  align-items: center;
-}
-
-.dimension-item-left {
   min-width: 0;
-  gap: 0.75rem;
-}
-
-.dimension-item-right {
-  flex-shrink: 0;
-  gap: 0.5rem;
-  margin-left: 0.75rem;
-}
-
-.dimension-tag {
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  min-width: 2.5rem;
-  text-align: center;
-}
-
-.dimension-tag.tag-IBD {
-  background-color: #dbeafe;
-  color: #1d4ed8;
-}
-
-.dimension-tag.tag-ESD {
-  background-color: #dcfce7;
-  color: #15803d;
-}
-
-.dimension-tag.tag-SC {
-  background-color: #fef3c7;
-  color: #b45309;
-}
-
-.dimension-tag.tag-BDD {
-  background-color: #f3e8ff;
-  color: #7c3aed;
-}
-
-.dimension-tag.tag-ISD {
-  background-color: #fce7f3;
-  color: #be185d;
-}
-
-.dimension-tag.tag-DialogMap {
-  background-color: #e0f2fe;
-  color: #0369a1;
-}
-
-.dimension-label {
-  min-width: 0;
-  font-size: 0.85rem;
-  color: #374151;
-  font-weight: 500;
-}
-
-.dimension-help-button {
-  flex-shrink: 0;
-  width: 1.25rem;
-  height: 1.25rem;
-  display: inline-flex;
+  flex: 1;
   align-items: center;
-  justify-content: center;
+  gap: 0.65rem;
   padding: 0;
-  color: #9ca3af;
-  background: transparent;
+  color: inherit;
+  text-align: left;
+  background: none;
   border: 0;
-  border-radius: 50%;
-  cursor: help;
-  transition: color 0.15s, background-color 0.15s;
+  cursor: pointer;
 }
 
-.dimension-help-button:hover,
-.dimension-help-button:focus-visible {
-  color: #2563eb;
-  background-color: #dbeafe;
-  outline: none;
+.dimension-item-main:disabled {
+  cursor: not-allowed;
 }
 
-.dimension-status {
-  font-size: 0.75rem;
-  padding: 0.125rem 0.5rem;
-  border-radius: 4px;
-  white-space: nowrap;
-}
-
-.dimension-status.has-data {
-  background-color: #dcfce7;
-  color: #15803d;
-}
-
-.dimension-status.no-data {
-  background-color: #f3f4f6;
-  color: #9ca3af;
+.dimension-item-main:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 4px;
+  border-radius: 3px;
 }
 
 .dimension-arrow {
-  font-size: 1.2rem;
-  color: #9ca3af;
-  line-height: 1;
+  display: inline-flex;
+  color: #94a3b8;
+  font-size: 0.7rem;
+  transition: transform 0.15s;
 }
 
-@media (prefers-color-scheme: dark) {
-  .dimension-item {
-    background-color: #374151;
-    border-color: #4b5563;
-  }
+.dimension-arrow--expanded {
+  transform: rotate(90deg);
+}
 
-  .dimension-item:hover {
-    border-color: #60a5fa;
-    background-color: #1e3a5f;
-  }
+.dimension-tag {
+  min-width: 2.5rem;
+  flex: 0 0 auto;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-align: center;
+}
 
-  .dimension-item--disabled,
-  .dimension-item--disabled:hover {
-    background-color: #374151;
-    border-color: #4b5563;
-  }
+.dimension-tag.tag-IBD { color: #1d4ed8; background-color: #dbeafe; }
+.dimension-tag.tag-ESD { color: #15803d; background-color: #dcfce7; }
+.dimension-tag.tag-SC { color: #b45309; background-color: #fef3c7; }
+.dimension-tag.tag-BDD { color: #7c3aed; background-color: #f3e8ff; }
+.dimension-tag.tag-ISD { color: #be185d; background-color: #fce7f3; }
+.dimension-tag.tag-DialogMap { color: #0369a1; background-color: #e0f2fe; }
 
-  .dimension-label {
-    color: #e5e7eb;
-  }
+.dimension-label {
+  overflow: hidden;
+  min-width: 0;
+  color: #374151;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-  .dimension-help-button {
-    color: #6b7280;
-  }
+.dimension-help-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 2px;
+  color: #94a3b8;
+  cursor: help;
+}
 
-  .dimension-help-button:hover,
-  .dimension-help-button:focus-visible {
-    color: #93c5fd;
-    background-color: #1e3a8a;
-  }
+.dimension-item-right {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.45rem;
+}
 
-  .dimension-status.has-data {
-    background-color: #14532d;
-    color: #86efac;
-  }
+.dimension-model-count,
+.dimension-status {
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
 
-  .dimension-status.no-data {
-    background-color: #374151;
-    color: #6b7280;
-  }
+.dimension-model-count { color: #64748b; }
 
-  .dimension-arrow {
-    color: #6b7280;
-  }
+.dimension-status {
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+}
+
+.dimension-status.has-data { color: #15803d; background-color: #dcfce7; }
+.dimension-status.no-data { color: #6b7280; background-color: #f3f4f6; }
+
+.dimension-model-list {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.4rem 0 0 1.25rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid #dbeafe;
+}
+
+.dimension-model-row {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.dimension-model-row--disabled { opacity: 0.6; }
+.dimension-model-primary-control { display: inline-flex; align-items: center; }
+.dimension-model-primary-control input { width: 15px; height: 15px; }
+
+.dimension-model-summary { overflow: hidden; min-width: 0; }
+.dimension-model-name { display: block; overflow: hidden; color: #1f2937; font-size: 0.85rem; text-overflow: ellipsis; white-space: nowrap; }
+.dimension-model-meta { display: flex; min-width: 0; align-items: center; gap: 0.5rem; margin-top: 0.2rem; color: #64748b; font-size: 0.72rem; }
+.dimension-model-meta code { display: inline-block; overflow: hidden; max-width: 180px; padding: 0.08rem 0.3rem; color: #334155; background: #f1f5f9; border-radius: 3px; font-family: Consolas, Monaco, monospace; text-overflow: ellipsis; white-space: nowrap; }
+.dimension-primary-badge, .dimension-draft-badge { flex: 0 0 auto; padding: 0.08rem 0.35rem; border-radius: 999px; }
+.dimension-primary-badge { color: #1d4ed8; background: #dbeafe; }
+.dimension-draft-badge { color: #b45309; background: #fef3c7; }
+.dimension-model-actions { display: flex; align-items: center; gap: 0.25rem; }
+.dimension-model-empty { padding: 0.65rem; color: #94a3b8; font-size: 0.8rem; text-align: center; }
+
+.dimension-list-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.dimension-list-feedback--error { color: #b91c1c; background: #fef2f2; border-color: #fecaca; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+@media (max-width: 900px) {
+  .dimension-item { align-items: flex-start; flex-direction: column; }
+  .dimension-item-right { width: 100%; flex-wrap: wrap; padding-left: 1.35rem; }
+  .dimension-model-row { grid-template-columns: auto minmax(0, 1fr); }
+  .dimension-model-actions { grid-column: 2; flex-wrap: wrap; }
+  .dimension-model-meta { flex-wrap: wrap; }
 }

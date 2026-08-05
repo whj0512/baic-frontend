@@ -2,11 +2,10 @@ import { useCallback } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { Button, message, Modal } from 'antd'
 import type { FlowGraphRef } from '../graph'
-import { API_ENDPOINTS, authFetch } from '../../config/api'
 import { cloneSerializableData, createEditorSnapshot } from './snapshot'
 import type {
   ConvertedVisualData,
-  DimensionEditorProps,
+  RequirementDimensionEditorProps,
   DimensionSectionConfig,
   EditorSnapshot,
   ViewMode,
@@ -17,11 +16,12 @@ type MutableRef<T> = {
 }
 
 interface UseUnsavedChangesGuardOptions {
-  requirement: DimensionEditorProps['requirement']
-  sectionKey: DimensionEditorProps['sectionKey']
+  requirement: RequirementDimensionEditorProps['requirement']
+  sectionKey: RequirementDimensionEditorProps['sectionKey']
   config: DimensionSectionConfig
   onBack: () => void
-  onSave?: DimensionEditorProps['onSave']
+  onSave?: RequirementDimensionEditorProps['onSave']
+  onPersist?: RequirementDimensionEditorProps['onPersist']
   hasUnsavedChanges: boolean
   savedSnapshotRef: MutableRef<EditorSnapshot>
   contentRef: MutableRef<string>
@@ -44,6 +44,7 @@ interface UseUnsavedChangesGuardOptions {
   viewMode: ViewMode
   onSnapshotSaved?: () => void
   onDiscardUnsavedChanges?: () => void
+  persistDisabledReason?: string
 }
 
 export function useUnsavedChangesGuard({
@@ -52,6 +53,7 @@ export function useUnsavedChangesGuard({
   config,
   onBack,
   onSave,
+  onPersist,
   hasUnsavedChanges,
   savedSnapshotRef,
   contentRef,
@@ -71,8 +73,13 @@ export function useUnsavedChangesGuard({
   viewMode,
   onSnapshotSaved,
   onDiscardUnsavedChanges,
+  persistDisabledReason,
 }: UseUnsavedChangesGuardOptions) {
   const prepareSnapshotForSave = useCallback(async (): Promise<EditorSnapshot | null> => {
+    if (persistDisabledReason) {
+      message.error(persistDisabledReason)
+      return null
+    }
     const currentContent = contentRef.current
 
     if (!config.graphField || !config.dslField) {
@@ -120,6 +127,7 @@ export function useUnsavedChangesGuard({
     convertGraphToDsl,
     dslContentRef,
     graphDataRef,
+    persistDisabledReason,
     viewMode,
   ])
 
@@ -130,47 +138,21 @@ export function useUnsavedChangesGuard({
       graphDataRef.current,
     ),
   ): Promise<boolean> => {
-    if (requirement.id === 'NEW') {
+    if (!onPersist) {
       onSave?.(sectionKey, snapshot.graphData, snapshot.dslContent, snapshot)
       markSnapshotSaved(snapshot)
       onSnapshotSaved?.()
-      message.success('暂存成功')
-      return true
-    }
-
-    if (!config.graphField || !config.dslField) {
-      onSave?.(sectionKey, snapshot.graphData, snapshot.dslContent, snapshot)
-      markSnapshotSaved(snapshot)
-      onSnapshotSaved?.()
-      message.success('保存成功')
+      message.success(requirement.id === 'NEW' ? '暂存成功' : '保存成功')
       return true
     }
 
     setSaving(true)
     try {
-      const payload = {
-        [config.graphField]: snapshot.graphData,
-        [config.dslField]: snapshot.dslContent,
-        nl_text: snapshot.content,
-      }
-
-      const response = await authFetch(`${API_ENDPOINTS.requirements}/${requirement.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || '保存失败')
-      }
-
+      await onPersist(snapshot)
       onSave?.(sectionKey, snapshot.graphData, snapshot.dslContent, snapshot)
       markSnapshotSaved(snapshot)
       onSnapshotSaved?.()
-      message.success('保存成功')
+      message.success(requirement.id === 'NEW' ? '暂存成功' : '保存成功')
       return true
     } catch (error: any) {
       console.error('Save error:', error)
@@ -180,14 +162,13 @@ export function useUnsavedChangesGuard({
       setSaving(false)
     }
   }, [
-    config.dslField,
-    config.graphField,
     contentRef,
     dslContentRef,
     graphDataRef,
     markSnapshotSaved,
     onSnapshotSaved,
     onSave,
+    onPersist,
     requirement.id,
     sectionKey,
     setSaving,

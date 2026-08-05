@@ -30,19 +30,26 @@ function RequirementDimensionEditor({
   draftProjectScope,
   requirement,
   sectionKey,
+  model,
+  modelIdentity,
+  ibdDsl,
+  visualDisabledReason,
   onBack,
   onSave,
+  onPersist,
 }: RequirementDimensionEditorProps) {
   const config = SECTION_CONFIG[sectionKey]
   const modelStrategy = getModelStrategy(sectionKey)
   const draftUserId = getDraftUserId()
   const isDialogMap = sectionKey === 'dialogMap'
 
-  const initialGraphData = (config.graphField ? (requirement[config.graphField] as object) : (requirement as any).graph_DialogMap)
-    || {}
-  const initialDslContent = (config.dslField ? (requirement[config.dslField] as string) : (requirement as any).dsl_DialogMap)
-    || ''
-  const initialContent = requirement.nl_text || ''
+  const initialGraphData = model
+    ? (model.graph_json ?? {})
+    : (config.graphField ? (requirement[config.graphField] as object) : (requirement as any).graph_DialogMap) || {}
+  const initialDslContent = model
+    ? (model.dsl_text ?? '')
+    : (config.dslField ? (requirement[config.dslField] as string) : (requirement as any).dsl_DialogMap) || ''
+  const initialContent = model ? '' : (requirement.nl_text || '')
 
   const [content, setContent] = useState(initialContent)
   const [graphData, setGraphData] = useState(initialGraphData)
@@ -91,7 +98,7 @@ function RequirementDimensionEditor({
     config,
     modelStrategy,
     viewMode,
-    ibdDsl: requirement.dsl_IBD || '',
+    ibdDsl: ibdDsl ?? (model ? '' : requirement.dsl_IBD || ''),
     flowGraphRef,
     dslContentRef,
     graphDataRef,
@@ -108,9 +115,9 @@ function RequirementDimensionEditor({
     if (isDialogMap) return
     if (!draftProjectScope) return
 
-    clearDimensionEditorDraft(draftProjectScope, draftUserId, requirement.id, sectionKey)
+    clearDimensionEditorDraft(draftProjectScope, draftUserId, requirement.id, sectionKey, modelIdentity)
     restoredDraftRef.current = false
-  }, [draftProjectScope, draftUserId, isDialogMap, requirement.id, sectionKey])
+  }, [draftProjectScope, draftUserId, isDialogMap, modelIdentity, requirement.id, sectionKey])
 
   const {
     handleSave,
@@ -123,6 +130,7 @@ function RequirementDimensionEditor({
     config,
     onBack,
     onSave,
+    onPersist,
     hasUnsavedChanges,
     savedSnapshotRef,
     contentRef,
@@ -142,6 +150,7 @@ function RequirementDimensionEditor({
     viewMode,
     onSnapshotSaved: clearCurrentDraft,
     onDiscardUnsavedChanges: clearCurrentDraft,
+    persistDisabledReason: visualDisabledReason,
   })
 
   const handleGraphChange = useCallback((data: object) => {
@@ -157,11 +166,12 @@ function RequirementDimensionEditor({
   }, [applyDslView, convertGraphToDsl])
 
   const handleSwitchToVisual = useCallback(async () => {
+    if (visualDisabledReason) return
     const convertedVisualData = await convertDslToVisual()
     if (convertedVisualData !== null) {
       applyVisualView(convertedVisualData)
     }
-  }, [applyVisualView, convertDslToVisual])
+  }, [applyVisualView, convertDslToVisual, visualDisabledReason])
 
   const restoreDraftSnapshot = useCallback((snapshot: EditorSnapshot, restoredViewMode: ViewMode) => {
     const nextGraphData = cloneSerializableData(snapshot.graphData)
@@ -192,8 +202,17 @@ function RequirementDimensionEditor({
     if (isDialogMap) return
     if (!draftProjectScope) return
 
-    saveDimensionEditorDraft(draftProjectScope, draftUserId, requirement.id, sectionKey, {
+    saveDimensionEditorDraft(draftProjectScope, draftUserId, requirement.id, sectionKey, modelIdentity, {
+      modelIdentityKind: model ? ('clientId' in model ? 'draft' : 'persisted') : undefined,
+      dimensionCode: model?.dimension_code,
       baseRequirementUpdatedAt: requirement.updated_at,
+      baseModelUpdatedAt: model && 'updated_at' in model ? model.updated_at : undefined,
+      modelName: model?.name,
+      modelType: model?.model_type ?? null,
+      modelKey: model?.model_key,
+      contextModelGroupId: model?.context_model_group_id ?? null,
+      modelIsPrimary: model?.is_primary,
+      modelSortOrder: model?.sort_order,
       viewMode,
       snapshot: createEditorSnapshot(
         contentRef.current,
@@ -201,23 +220,25 @@ function RequirementDimensionEditor({
         graphDataRef.current,
       ),
     })
-  }, [draftProjectScope, draftUserId, isDialogMap, requirement.id, requirement.updated_at, sectionKey, viewMode])
+  }, [draftProjectScope, draftUserId, isDialogMap, model, modelIdentity, requirement.id, requirement.updated_at, sectionKey, viewMode])
 
   useEffect(() => {
     if (isDialogMap) return
     if (!draftProjectScope) return
+    if (model && 'clientId' in model) return
 
-    const promptKey = `${draftUserId}:${draftProjectScope}:${requirement.id}:${sectionKey}`
+    const promptKey = `${draftUserId}:${draftProjectScope}:${requirement.id}:${sectionKey}:${modelIdentity ?? ''}`
     if (draftPromptKeyRef.current === promptKey) return
     draftPromptKeyRef.current = promptKey
 
-    const draft = readDimensionEditorDraft(draftProjectScope, draftUserId, requirement.id, sectionKey)
+    const draft = readDimensionEditorDraft(draftProjectScope, draftUserId, requirement.id, sectionKey, modelIdentity)
     if (!draft) return
 
     const hasRemoteChanged = Boolean(
-      draft.baseRequirementUpdatedAt
-      && requirement.updated_at
-      && draft.baseRequirementUpdatedAt !== requirement.updated_at,
+      (draft.baseModelUpdatedAt && model && 'updated_at' in model && draft.baseModelUpdatedAt !== model.updated_at)
+      || (draft.baseRequirementUpdatedAt
+        && requirement.updated_at
+        && draft.baseRequirementUpdatedAt !== requirement.updated_at),
     )
 
     Modal.confirm({
@@ -241,6 +262,8 @@ function RequirementDimensionEditor({
     draftUserId,
     requirement.id,
     requirement.updated_at,
+    model,
+    modelIdentity,
     restoreDraftSnapshot,
     sectionKey,
     isDialogMap,
@@ -279,34 +302,38 @@ function RequirementDimensionEditor({
   }, [viewMode])
 
   useEffect(() => {
-    if (!config.graphField) return
+    if (!config.graphField && !model) return
     if (hasUnsavedChanges || restoredDraftRef.current) return
 
-    const remoteGraph = (requirement[config.graphField] as object) || {}
+    const remoteGraph = model
+      ? (model.graph_json ?? {})
+      : (config.graphField ? (requirement[config.graphField] as object) : {}) || {}
     const remoteStr = JSON.stringify(remoteGraph)
     const localStr = JSON.stringify(graphDataRef.current)
 
-    if (remoteStr !== localStr && remoteStr !== '{}') {
+    if (remoteStr !== localStr) {
       message.info('其他用户更新了图数据，已自动同步')
       graphDataRef.current = remoteGraph
       setGraphData(remoteGraph)
       updateSavedSnapshot({ graphData: remoteGraph })
       flowGraphRef.current?.loadData(remoteGraph)
     }
-  }, [hasUnsavedChanges, requirement, config.graphField, updateSavedSnapshot])
+  }, [hasUnsavedChanges, requirement, model, config.graphField, updateSavedSnapshot])
 
   useEffect(() => {
-    if (!config.dslField) return
+    if (!config.dslField && !model) return
     if (hasUnsavedChanges || restoredDraftRef.current) return
 
-    const remoteDsl = (requirement[config.dslField] as string) || ''
-    if (remoteDsl && remoteDsl !== dslContentRef.current) {
+    const remoteDsl = model
+      ? (model.dsl_text ?? '')
+      : (config.dslField ? (requirement[config.dslField] as string) : '') || ''
+    if (remoteDsl !== dslContentRef.current) {
       message.info('其他用户更新了 DSL 数据，已自动同步')
       dslContentRef.current = remoteDsl
       setDslContent(remoteDsl)
       updateSavedSnapshot({ dslContent: remoteDsl })
     }
-  }, [hasUnsavedChanges, requirement, config.dslField, updateSavedSnapshot])
+  }, [hasUnsavedChanges, requirement, model, config.dslField, updateSavedSnapshot])
 
   const handleDownloadJSON = useCallback(() => {
     const graph = flowGraphRef.current?.getGraph()
@@ -384,10 +411,19 @@ function RequirementDimensionEditor({
         <Button icon={<ArrowLeftOutlined />} onClick={handleGuardedBack} type="text">
           返回概览
         </Button>
-        <h2>
-          <span className={`dimension-code tag-${config.dimensionCode}`}>{config.dimensionCode}</span>
-          {config.label}
-        </h2>
+        <div className="dimension-editor-heading">
+          <h2>
+            <span className={`dimension-code tag-${config.dimensionCode}`}>{config.dimensionCode}</span>
+            {config.label}{model ? ` / ${model.name}` : ''}
+          </h2>
+          {model && (
+            <div className="dimension-editor-model-meta">
+              <span>{model.model_type || '未设置类型'}</span>
+              <code>{model.model_key}</code>
+              {model.is_primary && <span className="dimension-editor-primary-badge">主模型</span>}
+            </div>
+          )}
+        </div>
         <Button
           type="primary"
           icon={<SaveOutlined />}
@@ -400,7 +436,7 @@ function RequirementDimensionEditor({
       </div>
 
       <div className="dimension-editor-content">
-        <div className="editor-group">
+        {!model && <div className="editor-group">
           <label>内容描述</label>
           <textarea
             className="editor-textarea"
@@ -408,7 +444,7 @@ function RequirementDimensionEditor({
             onChange={(e) => handleContentChange(e.target.value)}
             placeholder={`请输入${config.label}详细内容...`}
           />
-        </div>
+        </div>}
 
         <DimensionModelingSurface
           sectionKey={sectionKey}
@@ -421,6 +457,7 @@ function RequirementDimensionEditor({
           flowGraphRef={flowGraphRef}
           editorGroupRef={editorGroupRef}
           isFullscreen={isFullscreen}
+          visualDisabledReason={visualDisabledReason}
           toolbarContent={toolbarContent}
           getPopupContainer={getEditorPopupContainer}
           onSwitchToDsl={handleSwitchToDsl}

@@ -1,4 +1,5 @@
 import { getRuntimeConfig } from './runtime'
+import type { RequirementDimensionCode } from '../models/RequirementModel'
 
 const runtimeConfig = getRuntimeConfig()
 
@@ -31,7 +32,20 @@ export const API_ENDPOINTS = {
   projectRequirements: (projectId: string) =>
     `${SERVICE_BASE_URL}/projects/${encodeURIComponent(projectId)}/requirements`,
   requirements: `${SERVICE_BASE_URL}/requirements`,
-  requirementById: (id: string) => `${SERVICE_BASE_URL}/requirements/${id}`,
+  requirementById: (id: string) => `${SERVICE_BASE_URL}/requirements/${encodeURIComponent(id)}`,
+  requirementModels: (requirementId: string, dimension?: RequirementDimensionCode) => {
+    const endpoint = `${SERVICE_BASE_URL}/requirements/${encodeURIComponent(requirementId)}/models`
+    if (!dimension) return endpoint
+
+    const searchParams = new URLSearchParams({ dimension })
+    return `${endpoint}?${searchParams.toString()}`
+  },
+  requirementModel: (requirementId: string, modelGroupId: string) => (
+    `${SERVICE_BASE_URL}/requirements/${encodeURIComponent(requirementId)}/models/${encodeURIComponent(modelGroupId)}`
+  ),
+  requirementModelPrimary: (requirementId: string, modelGroupId: string) => (
+    `${SERVICE_BASE_URL}/requirements/${encodeURIComponent(requirementId)}/models/${encodeURIComponent(modelGroupId)}/primary`
+  ),
   graphdbGraph: `${SERVICE_BASE_URL}/graphdb/graph`,
   traceabilityExtract: `${SERVICE_BASE_URL}/traceability/extract`,
 }

@@ -1,4 +1,5 @@
 import type { Requirement } from '../../models/Requirement'
+import type { RequirementModel, RequirementModelDraft } from '../../models/RequirementModel'
 
 export type ViewMode = 'visual' | 'dsl'
 
@@ -34,8 +35,13 @@ export interface RequirementDimensionEditorProps {
   draftProjectScope: string
   requirement: Requirement
   sectionKey: SectionKey
+  model?: RequirementModel | RequirementModelDraft
+  modelIdentity?: string
+  ibdDsl?: string
+  visualDisabledReason?: string
   onBack: () => void
   onSave?: (sectionKey: SectionKey, graphData: object, dslText: string, snapshot?: EditorSnapshot) => void
+  onPersist?: (snapshot: EditorSnapshot) => Promise<void>
 }
 
 export interface DimensionArtifactDraft {
