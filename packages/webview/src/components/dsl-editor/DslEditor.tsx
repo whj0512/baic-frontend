@@ -8,6 +8,28 @@ import { getStrategy } from './strategies'
 import { connectLsp } from './lspClient'
 import { isExtensionAuthMode, readExtensionClipboardText } from '../../config/authClient'
 
+type DslStrategy = ReturnType<typeof getStrategy>
+
+interface DslLanguageRegistration {
+  strategy: DslStrategy
+  disposables: monacoNs.IDisposable[]
+}
+
+type DslLanguageRegistry = WeakMap<object, Map<string, DslLanguageRegistration>>
+
+const dslLanguageRegistryKey = '__baicDslEditorLanguageRegistry__'
+type DslEditorGlobal = typeof globalThis & {
+  [dslLanguageRegistryKey]?: DslLanguageRegistry
+}
+
+// Monaco language services are global to the Monaco instance. Persist the
+// registry across React mounts and Vite hot updates so each language has
+// exactly one active tokenizer/completion registration at a time.
+const dslEditorGlobal = globalThis as DslEditorGlobal
+const configuredLanguages = dslEditorGlobal[dslLanguageRegistryKey]
+  ?? new WeakMap<object, Map<string, DslLanguageRegistration>>()
+dslEditorGlobal[dslLanguageRegistryKey] = configuredLanguages
+
 interface DslEditorProps {
   sectionKey: string
   value: string
@@ -32,7 +54,7 @@ const DslEditor: React.FC<DslEditorProps> = ({
   }
 
   const strategy = useMemo(() => getStrategy(sectionKey), [sectionKey])
-  const { languageId, monarchTokensProviders, themeId, theme, completionItemProviders, lsp } = strategy
+  const { languageId, themeId, lsp } = strategy
 
   // Refs to hold editor & monaco instances for LSP lifecycle
   const editorRef = useRef<monacoNs.editor.IStandaloneCodeEditor | null>(null)
@@ -46,19 +68,8 @@ const DslEditor: React.FC<DslEditorProps> = ({
   }, [readOnly])
 
   const handleBeforeMount = useCallback((monaco: Monaco) => {
-    monaco.languages.register({ id: languageId });
-    if (monarchTokensProviders) {
-      monaco.languages.setMonarchTokensProvider(languageId, monarchTokensProviders);
-    }
-    if (themeId && theme) {
-      monaco.editor.defineTheme(themeId, theme);
-    }
-    if (completionItemProviders) {
-      completionItemProviders.forEach(provider => {
-        monaco.languages.registerCompletionItemProvider(languageId, provider);
-      });
-    }
-  }, [languageId, monarchTokensProviders, themeId, theme, completionItemProviders])
+    ensureDslLanguageConfigured(monaco, strategy)
+  }, [strategy])
 
   const handleMount = useCallback((
     editor: monacoNs.editor.IStandaloneCodeEditor,
@@ -69,6 +80,14 @@ const DslEditor: React.FC<DslEditorProps> = ({
     registerExtensionPasteHandler(editor, monaco, readOnlyRef)
     setIsEditorMounted(true)
   }, [])
+
+  // beforeMount only runs for a newly created editor. Configure a newly
+  // selected strategy too when the existing editor instance is reused.
+  useEffect(() => {
+    if (monacoRef.current) {
+      ensureDslLanguageConfigured(monacoRef.current, strategy)
+    }
+  }, [strategy])
 
   // LSP connection lifecycle — connect when editor is mounted and lsp config exists
   useEffect(() => {
@@ -139,6 +158,56 @@ const DslEditor: React.FC<DslEditorProps> = ({
 }
 
 export default DslEditor
+
+function ensureDslLanguageConfigured(
+  monaco: typeof monacoNs,
+  strategy: DslStrategy,
+): void {
+  let registrations = configuredLanguages.get(monaco)
+  if (!registrations) {
+    registrations = new Map<string, DslLanguageRegistration>()
+    configuredLanguages.set(monaco, registrations)
+  }
+
+  const currentRegistration = registrations.get(strategy.languageId)
+  if (currentRegistration?.strategy === strategy) return
+
+  currentRegistration?.disposables.forEach(disposable => disposable.dispose())
+  registrations.delete(strategy.languageId)
+
+  const {
+    languageId,
+    monarchTokensProviders,
+    themeId,
+    theme,
+    completionItemProviders,
+  } = strategy
+  const disposables: monacoNs.IDisposable[] = []
+
+  try {
+    if (!monaco.languages.getLanguages().some(language => language.id === languageId)) {
+      monaco.languages.register({ id: languageId })
+    }
+    if (monarchTokensProviders) {
+      disposables.push(
+        monaco.languages.setMonarchTokensProvider(languageId, monarchTokensProviders),
+      )
+    }
+    if (themeId && theme) {
+      monaco.editor.defineTheme(themeId, theme)
+    }
+    completionItemProviders?.forEach(provider => {
+      disposables.push(
+        monaco.languages.registerCompletionItemProvider(languageId, provider),
+      )
+    })
+
+    registrations.set(languageId, { strategy, disposables })
+  } catch (error) {
+    disposables.forEach(disposable => disposable.dispose())
+    throw error
+  }
+}
 
 function registerExtensionPasteHandler(
   editor: monacoNs.editor.IStandaloneCodeEditor,
