@@ -1,6 +1,13 @@
 import { languages, editor } from 'monaco-editor';
 import type { DslEditorStrategy } from "./type";
 import { getRuntimeConfig } from '../../../config/runtime';
+import {
+    extractNamedDeclarations,
+    getInnermostNamedBlock,
+    isCompletingPropertyReference,
+    makeReference,
+    makeSnippet,
+} from './completion';
 
 // ─── Monarch Tokenizer ────────────────────────────────────────────────────────
 const monarchTokensProviders: languages.IMonarchLanguage = {
@@ -79,94 +86,45 @@ const theme: editor.IStandaloneThemeData = {
     },
 };
 
-// ─── Completion Item Providers ────────────────────────────────────────────────
+// ─── Context-aware local completion ──────────────────────────────────────────
+const environmentBlocks = ['Environment', 'Connect', 'Interaction'] as const;
+const componentTypes = ['Machine', 'Human', 'Device', 'Controller', 'ControlUnit', 'FunctionalModule'] as const;
 
-function makeSnippet(
-    label: string,
-    insertText: string,
-    detail: string,
-    range: any,
-): languages.CompletionItem {
-    return {
-        label,
-        kind: languages.CompletionItemKind.Snippet,
-        insertText,
-        insertTextRules: languages.CompletionItemInsertTextRule.InsertAsSnippet,
-        detail,
-        range,
-    };
-}
+const completion: DslEditorStrategy['completion'] = {
+    triggerCharacters: [' ', ':'],
+    provideItems(context) {
+        if (isCompletingPropertyReference(context.lineBeforeCursor, ['from', 'to'], ' ')) {
+            return extractNamedDeclarations(context.sanitizedSource, componentTypes)
+                .map(name => makeReference(context, name, 'Environment 组件引用'));
+        }
 
-function makeKeyword(
-    label: string,
-    detail: string,
-    range: any,
-): languages.CompletionItem {
-    return {
-        label,
-        kind: languages.CompletionItemKind.Keyword,
-        insertText: label,
-        detail,
-        range,
-    };
-}
-
-const nodeCompletionProvider: languages.CompletionItemProvider = {
-    provideCompletionItems(model, position) {
-        const word = model.getWordUntilPosition(position);
-        const range = {
-            startLineNumber: position.lineNumber,
-            endLineNumber: position.lineNumber,
-            startColumn: word.startColumn,
-            endColumn: word.endColumn,
-        };
-
-        const suggestions: languages.CompletionItem[] = [
-            makeSnippet('Environment', 'Environment {\n  $0\n}', '创建 Environment 视图', range),
-            makeSnippet('Machine', 'Machine ${1:name};', '创建 Machine 组件', range),
-            makeSnippet('Human', 'Human ${1:name};', '创建 Human 组件', range),
-            makeSnippet('Device', 'Device ${1:name};', '创建 Device 组件', range),
-            makeSnippet('Controller', 'Controller ${1:name};', '创建 Controller 组件', range),
-            makeSnippet('ControlUnit', 'ControlUnit ${1:name};', '创建 ControlUnit 组件', range),
-            makeSnippet('FunctionalModule', 'FunctionalModule ${1:name};', '创建 FunctionalModule 组件', range),
-            makeSnippet(
-                'Connect',
-                'Connect from ${1:source} to ${2:target} {\n  Interaction ${3:name} { ${4|Signal,Event|} ${5:data} };\n};',
-                '创建 Connector 连接',
-                range,
-            ),
-            makeSnippet(
+        const block = getInnermostNamedBlock(context.sanitizedBeforeCursor, environmentBlocks);
+        if (!block) {
+            return [makeSnippet(context, 'Environment', 'Environment {\n  $0\n}', '创建 Environment 视图')];
+        }
+        if (block === 'Environment') {
+            return [
+                ...componentTypes.map(type => makeSnippet(context, type, `${type} \${1:name};`, `创建 ${type} 组件`)),
+                makeSnippet(
+                    context,
+                    'Connect',
+                    'Connect from ${1:source} to ${2:target} {\n  Interaction ${3:name} { ${4|Signal,Event|} ${5:data} };\n};',
+                    '创建 Connector 连接',
+                ),
+            ];
+        }
+        if (block === 'Connect') {
+            return [makeSnippet(
+                context,
                 'Interaction',
                 'Interaction ${1:name} { ${2|Signal,Event|} ${3:data} };',
                 '创建 Interaction 交互',
-                range,
-            ),
-            makeSnippet('Signal', 'Signal ${1:data}', '创建 Signal 交互项', range),
-            makeSnippet('Event', 'Event ${1:data}', '创建 Event 交互项', range),
+            )];
+        }
+        return [
+            makeSnippet(context, 'Signal', 'Signal ${1:data}', '创建 Signal 交互项'),
+            makeSnippet(context, 'Event', 'Event ${1:data}', '创建 Event 交互项'),
         ];
-
-        return { suggestions };
-    },
-};
-
-const propertyCompletionProvider: languages.CompletionItemProvider = {
-    triggerCharacters: [' ', '\n'],
-
-    provideCompletionItems(model, position) {
-        const word = model.getWordUntilPosition(position);
-        const range = {
-            startLineNumber: position.lineNumber,
-            endLineNumber: position.lineNumber,
-            startColumn: word.startColumn,
-            endColumn: word.endColumn,
-        };
-
-        const suggestions: languages.CompletionItem[] = [
-            makeKeyword('from', 'Connector: 源节点', range),
-            makeKeyword('to', 'Connector: 目标节点', range),
-        ];
-
-        return { suggestions };
     },
 };
 
@@ -176,7 +134,7 @@ const environmentStrategy: DslEditorStrategy = {
     monarchTokensProviders,
     themeId,
     theme,
-    completionItemProviders: [nodeCompletionProvider, propertyCompletionProvider],
+    completion,
     lsp: {
         wsUrl: getRuntimeConfig().lspWs.environment,
     },

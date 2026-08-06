@@ -1,6 +1,7 @@
 import { languages, editor } from 'monaco-editor';
 import type { DslEditorStrategy } from "./type";
 import { getRuntimeConfig } from '../../../config/runtime';
+import { getInnermostNamedBlock, makeKeyword, makeSnippet } from './completion';
 
 // ─── Monarch Tokenizer ────────────────────────────────────────────────────────
 const monarchTokensProviders: languages.IMonarchLanguage = {
@@ -102,97 +103,54 @@ const theme: editor.IStandaloneThemeData = {
     },
 };
 
-// ─── Completion Item Providers ────────────────────────────────────────────────
+// ─── Context-aware local completion ──────────────────────────────────────────
+const interactionBlocks = ['Scenario', 'if', 'elif', 'else', 'while'] as const;
 
-function makeSnippet(
-    label: string,
-    insertText: string,
-    detail: string,
-    range: any,
-): languages.CompletionItem {
-    return {
-        label,
-        kind: languages.CompletionItemKind.Snippet,
-        insertText,
-        insertTextRules: languages.CompletionItemInsertTextRule.InsertAsSnippet,
-        detail,
-        range,
-    };
-}
+const completion: DslEditorStrategy['completion'] = {
+    triggerCharacters: [' ', '('],
+    provideItems(context) {
+        const expressionTail = context.sanitizedBeforeCursor.slice(-500);
+        if (/\b(?:if|elif|while)\s*\([^)]*$/.test(expressionTail)) {
+            return [
+                makeKeyword(context, 'and', '逻辑操作符: 与'),
+                makeKeyword(context, 'or', '逻辑操作符: 或'),
+                makeKeyword(context, 'not', '逻辑操作符: 非'),
+                makeKeyword(context, 'in', '比较操作符: 包含'),
+                makeKeyword(context, 'true', '布尔值: 真'),
+                makeKeyword(context, 'false', '布尔值: 假'),
+            ];
+        }
 
-function makeKeyword(
-    label: string,
-    detail: string,
-    range: any,
-): languages.CompletionItem {
-    return {
-        label,
-        kind: languages.CompletionItemKind.Keyword,
-        insertText: label,
-        detail,
-        range,
-    };
-}
+        const block = getInnermostNamedBlock(context.sanitizedBeforeCursor, interactionBlocks);
+        if (!block) {
+            return [makeSnippet(context, 'Scenario', 'Scenario ${1:name} {\n  $0\n}', '创建 Scenario 视图')];
+        }
 
-const nodeCompletionProvider: languages.CompletionItemProvider = {
-    provideCompletionItems(model, position) {
-        const word = model.getWordUntilPosition(position);
-        const range = {
-            startLineNumber: position.lineNumber,
-            endLineNumber: position.lineNumber,
-            startColumn: word.startColumn,
-            endColumn: word.endColumn,
-        };
-
-        const suggestions: languages.CompletionItem[] = [
-            makeSnippet('Scenario', 'Scenario ${1:name} {\n  $0\n}', '创建 Scenario 视图', range),
-            makeSnippet('Interaction', 'Interaction ${1:content};', '创建原子 Interaction', range),
-            makeSnippet('if', 'if (${1:condition}) {\n  $0\n}', '创建 if 选择分支', range),
-            makeSnippet('elif', 'elif (${1:condition}) {\n  $0\n}', '创建 elif 选择分支', range),
-            makeSnippet('else', 'else {\n  $0\n}', '创建 else 默认分支', range),
-            makeSnippet('while', 'while (${1:condition}) {\n  $0\n}', '创建 while 循环', range),
-            makeSnippet('parallel', '{\n  $1\n} || {\n  $2\n}', '创建并行分支 (Parallel Interaction)', range),
+        return [
+            makeSnippet(context, 'Interaction', 'Interaction ${1:content};', '创建原子 Interaction'),
+            makeSnippet(context, 'if', 'if (${1:condition}) {\n  $0\n}', '创建 if 选择分支'),
+            makeSnippet(context, 'elif', 'elif (${1:condition}) {\n  $0\n}', '创建 elif 选择分支'),
+            makeSnippet(context, 'else', 'else {\n  $0\n}', '创建 else 默认分支'),
+            makeSnippet(context, 'while', 'while (${1:condition}) {\n  $0\n}', '创建 while 循环'),
+            makeSnippet(context, 'parallel', '{\n  $1\n} || {\n  $2\n}', '创建并行分支 (Parallel Interaction)'),
         ];
-
-        return { suggestions };
-    },
-};
-
-const propertyCompletionProvider: languages.CompletionItemProvider = {
-    triggerCharacters: [' ', '\n'],
-
-    provideCompletionItems(model, position) {
-        const word = model.getWordUntilPosition(position);
-        const range = {
-            startLineNumber: position.lineNumber,
-            endLineNumber: position.lineNumber,
-            startColumn: word.startColumn,
-            endColumn: word.endColumn,
-        };
-
-        const suggestions: languages.CompletionItem[] = [
-            makeKeyword('and', '逻辑操作符: 与', range),
-            makeKeyword('or', '逻辑操作符: 或', range),
-            makeKeyword('not', '逻辑操作符: 非', range),
-            makeKeyword('in', '比较操作符: 包含', range),
-            makeKeyword('true', '布尔值: 真', range),
-            makeKeyword('false', '布尔值: 假', range),
-        ];
-
-        return { suggestions };
     },
 };
 
 // ─── Strategy Export ───────────────────────────────────────────────────────────
-const interactionStrategy: DslEditorStrategy = {
-    languageId: 'interaction',
-    monarchTokensProviders,
-    themeId,
-    theme,
-    completionItemProviders: [nodeCompletionProvider, propertyCompletionProvider],
-    lsp: {
-        wsUrl: getRuntimeConfig().lspWs.interaction,
-    },
-};
+export function createInteractionStrategy(languageId: 'interaction' | 'moduleResponses'): DslEditorStrategy {
+    return {
+        languageId,
+        monarchTokensProviders,
+        themeId,
+        theme,
+        completion,
+        lsp: {
+            wsUrl: getRuntimeConfig().lspWs.interaction,
+        },
+    };
+}
+
+const interactionStrategy = createInteractionStrategy('interaction');
 
 export default interactionStrategy;

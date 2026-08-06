@@ -1,6 +1,7 @@
 import { languages, editor } from 'monaco-editor';
 import type { DslEditorStrategy } from "./type";
 import { getRuntimeConfig } from '../../../config/runtime';
+import { getBraceDepth, makeSnippet } from './completion';
 
 // ─── Monarch Tokenizer ────────────────────────────────────────────────────────
 const monarchTokensProviders: languages.IMonarchLanguage = {
@@ -65,39 +66,24 @@ const theme: editor.IStandaloneThemeData = {
     },
 };
 
-// ─── Completion Item Providers ────────────────────────────────────────────────
-
-function makeSnippet(
-    label: string,
-    insertText: string,
-    detail: string,
-    range: any,
-): languages.CompletionItem {
-    return {
-        label,
-        kind: languages.CompletionItemKind.Snippet,
-        insertText,
-        insertTextRules: languages.CompletionItemInsertTextRule.InsertAsSnippet,
-        detail,
-        range,
-    };
-}
-
-const nodeCompletionProvider: languages.CompletionItemProvider = {
-    provideCompletionItems(model, position) {
-        const word = model.getWordUntilPosition(position);
-        const range = {
-            startLineNumber: position.lineNumber,
-            endLineNumber: position.lineNumber,
-            startColumn: word.startColumn,
-            endColumn: word.endColumn,
-        };
-
-        const suggestions: languages.CompletionItem[] = [
-            makeSnippet('FunctionalModule', 'FunctionalModule ${1:name};', '创建 FunctionalModule 组件', range),
-        ];
-
-        return { suggestions };
+// ─── Context-aware local completion ──────────────────────────────────────────
+const completion: DslEditorStrategy['completion'] = {
+    triggerCharacters: [' '],
+    provideItems(context) {
+        if (getBraceDepth(context.sanitizedBeforeCursor) > 0) {
+            return [makeSnippet(
+                context,
+                'FunctionalModule',
+                'FunctionalModule ${1:name};',
+                '创建 FunctionalModule 组件',
+            )];
+        }
+        return [makeSnippet(
+            context,
+            'Composition',
+            '${1:name} {\n  $0\n}',
+            '创建内部组成模型',
+        )];
     },
 };
 
@@ -107,7 +93,7 @@ const internalCompositionStrategy: DslEditorStrategy = {
     monarchTokensProviders,
     themeId,
     theme,
-    completionItemProviders: [nodeCompletionProvider],
+    completion,
     lsp: {
         wsUrl: getRuntimeConfig().lspWs.internalComposition,
     },

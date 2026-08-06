@@ -1,7 +1,5 @@
-import type { DslEditorStrategy } from "./type";
+import { createInteractionStrategy } from './interaction';
 
-const moduleResponsesStrategy: DslEditorStrategy = {
-    languageId: 'moduleResponses',
-}
+const moduleResponsesStrategy = createInteractionStrategy('moduleResponses');
 
 export default moduleResponsesStrategy

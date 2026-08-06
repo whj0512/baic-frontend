@@ -129,6 +129,7 @@ function PlatformHome() {
                   <td>{project.versions.length}</td>
                   <td>{formatPlatformDate(project.updatedAt)}</td>
                   <td className="actions-cell">
+                    <div className="actions-cell-content">
                     <button className="action-btn view-btn" onClick={() => navigate(`/projects/${project.id}`)}>
                       查看
                     </button>
@@ -155,6 +156,7 @@ function PlatformHome() {
                         </button>
                       </>
                     )}
+                    </div>
                   </td>
                 </tr>
               )) : (

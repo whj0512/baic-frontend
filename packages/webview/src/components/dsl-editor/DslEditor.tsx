@@ -5,7 +5,13 @@ import './DslEditor.css'
 import { Editor, type Monaco } from '@monaco-editor/react'
 import type * as monacoNs from 'monaco-editor'
 import { getStrategy } from './strategies'
-import { connectLsp } from './lspClient'
+import { connectLsp, type LspConnection } from './lspClient'
+import {
+  bindLspSession,
+  createCompositeCompletionProvider,
+  createLspHoverProvider,
+  unbindLspSession,
+} from './languageFeatures'
 import { isExtensionAuthMode, readExtensionClipboardText } from '../../config/authClient'
 
 type DslStrategy = ReturnType<typeof getStrategy>
@@ -29,6 +35,8 @@ const dslEditorGlobal = globalThis as DslEditorGlobal
 const configuredLanguages = dslEditorGlobal[dslLanguageRegistryKey]
   ?? new WeakMap<object, Map<string, DslLanguageRegistration>>()
 dslEditorGlobal[dslLanguageRegistryKey] = configuredLanguages
+
+let nextDslDocumentId = 1
 
 interface DslEditorProps {
   sectionKey: string
@@ -55,11 +63,17 @@ const DslEditor: React.FC<DslEditorProps> = ({
 
   const strategy = useMemo(() => getStrategy(sectionKey), [sectionKey])
   const { languageId, themeId, lsp } = strategy
+  const [documentId] = React.useState(() => nextDslDocumentId++)
+  const documentUri = useMemo(
+    () => lsp?.documentUri
+      ?? `file:///workspace/${encodeURIComponent(languageId)}/${documentId}.dsl`,
+    [documentId, languageId, lsp?.documentUri],
+  )
 
   // Refs to hold editor & monaco instances for LSP lifecycle
   const editorRef = useRef<monacoNs.editor.IStandaloneCodeEditor | null>(null)
   const monacoRef = useRef<typeof monacoNs | null>(null)
-  const lspRef = useRef<{ dispose: () => void } | null>(null)
+  const lspRef = useRef<LspConnection | null>(null)
   const readOnlyRef = useRef(readOnly)
   const [isEditorMounted, setIsEditorMounted] = React.useState(false)
 
@@ -93,20 +107,25 @@ const DslEditor: React.FC<DslEditorProps> = ({
   useEffect(() => {
     if (readOnly || !lsp || !isEditorMounted || !editorRef.current || !monacoRef.current) return
 
+    const model = editorRef.current.getModel()
+    if (!model) return
+
     const conn = connectLsp(
       lsp.wsUrl,
       editorRef.current,
       monacoRef.current,
       languageId,
-      lsp.documentUri,
+      documentUri,
     )
     lspRef.current = conn
+    bindLspSession(model, conn)
 
     return () => {
+      unbindLspSession(model, conn)
       conn.dispose()
       lspRef.current = null
     }
-  }, [lsp, languageId, isEditorMounted, readOnly])
+  }, [documentUri, isEditorMounted, languageId, lsp, readOnly])
 
   if (loading) {
     return (
@@ -180,7 +199,7 @@ function ensureDslLanguageConfigured(
     monarchTokensProviders,
     themeId,
     theme,
-    completionItemProviders,
+    completion,
   } = strategy
   const disposables: monacoNs.IDisposable[] = []
 
@@ -196,11 +215,17 @@ function ensureDslLanguageConfigured(
     if (themeId && theme) {
       monaco.editor.defineTheme(themeId, theme)
     }
-    completionItemProviders?.forEach(provider => {
+    if (completion) {
       disposables.push(
-        monaco.languages.registerCompletionItemProvider(languageId, provider),
+        monaco.languages.registerCompletionItemProvider(
+          languageId,
+          createCompositeCompletionProvider(strategy),
+        ),
       )
-    })
+    }
+    disposables.push(
+      monaco.languages.registerHoverProvider(languageId, createLspHoverProvider()),
+    )
 
     registrations.set(languageId, { strategy, disposables })
   } catch (error) {

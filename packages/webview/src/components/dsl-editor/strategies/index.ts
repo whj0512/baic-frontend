@@ -2,13 +2,14 @@ import environmentStrategy from "./environment";
 import interactionStrategy from "./interaction";
 import internalCompositionStrategy from "./internalComposition";
 import internalConstraintsStrategy from "./internalConstraints";
+import moduleResponsesStrategy from './moduleResponses';
 import type { DslEditorStrategy } from "./type";
 
 const strategies: Record<string, DslEditorStrategy> = {
     environment: environmentStrategy,
     interaction: interactionStrategy,
     internalComposition: internalCompositionStrategy,
-    moduleResponses: interactionStrategy,
+    moduleResponses: moduleResponsesStrategy,
     internalConstraints: internalConstraintsStrategy,
 }
 

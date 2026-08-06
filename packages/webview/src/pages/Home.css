@@ -154,6 +154,10 @@
 
 /* Actions Cell */
 .actions-cell {
+  vertical-align: middle;
+}
+
+.actions-cell-content {
   display: flex;
   gap: 1rem;
   align-items: center;

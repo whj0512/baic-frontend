@@ -144,6 +144,7 @@ function Home() {
                     <td>{formatDate(project.created_at)}</td>
                     <td>{formatDate(project.updated_at)}</td>
                     <td className="actions-cell">
+                      <div className="actions-cell-content">
                       <button
                         className="action-btn view-btn"
                         onClick={() => handleProjectClick(project)}
@@ -162,6 +163,7 @@ function Home() {
                       >
                         删除
                       </button>
+                      </div>
                     </td>
                   </tr>
                 ))
