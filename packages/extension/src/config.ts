@@ -1,12 +1,29 @@
 import * as vscode from 'vscode'
 
-import type { RuntimeConfig } from './types'
+import type { LspWsConfig, RuntimeConfig } from './types'
 
 export type BackendMode = 'bundled' | 'external'
+export type LspMode = 'bundled' | 'external'
 
 interface RuntimeConfigOverride {
-  apiBaseUrl: string
-  projectWsBaseUrl: string
+  apiBaseUrl?: string
+  projectWsBaseUrl?: string
+  lspWs?: Partial<LspWsConfig>
+}
+
+export function getLspMode(): LspMode {
+  const mode = vscode.workspace
+    .getConfiguration('baic')
+    .get<string>('lsp.mode', 'bundled')
+
+  return mode === 'external' ? 'external' : 'bundled'
+}
+
+export function getGraphdbConfigPath(): string {
+  return vscode.workspace
+    .getConfiguration('baic')
+    .get<string>('graphdbConfigPath', '')
+    .trim()
 }
 
 export function getBackendMode(): BackendMode {
@@ -44,23 +61,23 @@ export function getRuntimeConfig(
     platformApiBaseUrl: config.get<string>('platformApiBaseUrl', ''),
     platformWebBaseUrl: config.get<string>('platformWebBaseUrl', ''),
     lspWs: {
-      internalConstraints: config.get<string>(
+      internalConstraints: override?.lspWs?.internalConstraints ?? config.get<string>(
         'lspWs.internalConstraints',
         'ws://127.0.0.1:3000',
       ),
-      environment: config.get<string>(
+      environment: override?.lspWs?.environment ?? config.get<string>(
         'lspWs.environment',
         'ws://127.0.0.1:3001',
       ),
-      interaction: config.get<string>(
+      interaction: override?.lspWs?.interaction ?? config.get<string>(
         'lspWs.interaction',
         'ws://127.0.0.1:3002',
       ),
-      internalComposition: config.get<string>(
+      internalComposition: override?.lspWs?.internalComposition ?? config.get<string>(
         'lspWs.internalComposition',
         'ws://127.0.0.1:3003',
       ),
-      dialogMap: config.get<string>(
+      dialogMap: override?.lspWs?.dialogMap ?? config.get<string>(
         'lspWs.dialogMap',
         'ws://127.0.0.1:3004',
       ),

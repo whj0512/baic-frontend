@@ -1,0 +1,24 @@
+﻿{
+    "target":  "win32-x64",
+    "generated_at_utc":  "2026-08-07T07:55:07.1203533Z",
+    "components":  {
+                       "baic_local":  {
+                                          "commit":  "09d119a9e8e59f6a9ed17519c424fcc651d53c16",
+                                          "executable":  "baic-local/baic-local.exe",
+                                          "sha256":  "A3D7D82B9F20503A467017AA2222F5DB68826BE90FA45B86174CDA190A662435"
+                                      },
+                       "language_server":  {
+                                               "commit":  "a2e76119aaff51944cdfef286bc6ba69b889b944",
+                                               "executable":  "textx-dsl-server/textx-dsl-server.exe",
+                                               "sha256":  "8474ED5FC6961B98F0BEADF4972497098725EEC78D2695F87D5F5F9C8C642583"
+                                           }
+                   },
+    "ports":  {
+                  "baic_local":  8000,
+                  "internal_constraints":  3000,
+                  "environment":  3001,
+                  "interaction":  3002,
+                  "internal_composition":  3003,
+                  "dialog_map":  3004
+              }
+}

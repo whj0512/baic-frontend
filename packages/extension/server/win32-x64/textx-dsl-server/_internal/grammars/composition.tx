@@ -1,0 +1,14 @@
+CompositionView:
+    name=ID '{' components+=Component* '}'
+;
+
+Component:
+    'FunctionalModule' name=ID ';'
+;
+
+ID: /[\u4e00-\u9fa5a-zA-Z_\/][\u4e00-\u9fa5a-zA-Z0-9_\-\/]*/;
+
+Comment:
+    /\/\/.*$/
+    | /\/\*[\s\S]*?\*\//
+;

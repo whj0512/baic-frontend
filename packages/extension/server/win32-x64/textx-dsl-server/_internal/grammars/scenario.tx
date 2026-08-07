@@ -1,0 +1,115 @@
+Scenario:
+    'Scenario' name=ID '{'
+        interactions+=Interaction*
+    '}'
+;
+
+Interaction:
+      AtomicInteraction
+    | SelectionInteraction
+    | LoopInteraction
+    | ParallelInteraction
+;
+
+AtomicInteraction: message=Message ';' ;
+
+Message: 'Interaction' content=ID ;
+
+SelectionInteraction:
+    ifBranch=IfBranch
+    (elifBranches+=ElifBranch)*
+    elseBranch=ElseBranch?
+;
+
+IfBranch:
+    'if' '(' condition=Expression ')' '{'
+        body+=Interaction*
+    '}'
+;
+
+ElifBranch:
+    'elif' '(' condition=Expression ')' '{'
+        body+=Interaction*
+    '}'
+;
+
+ElseBranch:
+    'else' '{'
+        body+=Interaction*
+    '}'
+;
+
+LoopInteraction:
+    'while' '(' condition=Expression ')' '{'
+        body+=Interaction*
+    '}'
+;
+
+ParallelInteraction:
+    parallelBlocks+=ParallelBlock ('||' parallelBlocks+=ParallelBlock)*
+;
+
+ParallelBlock:
+    '{'
+        body+=Interaction*
+    '}'
+;
+
+Expression:
+    assignmentExpression=AssignmentExpression;
+
+AssignmentExpression:
+    left=LogicalExpression ('=' right=AssignmentExpression)?;
+
+LogicalExpression:
+    left=ComparisonExpression (ops+=LogicalOp right+=ComparisonExpression)*;
+
+LogicalOp: 'and' | 'or';
+
+ComparisonExpression:
+    (has_not?='not')? left=AdditiveExpression
+    (ops+=CompOp right+=AdditiveExpression)*;
+
+CompOp: '>=' | '<=' | '==' | '!=' | '>' | '<' | 'in';
+
+AdditiveExpression:
+    left=MultiplicativeExpression (ops+=AddOp right+=MultiplicativeExpression)*;
+
+AddOp: '+' | '-';
+
+MultiplicativeExpression:
+    left=UnaryExpression (ops+=MulOp right+=UnaryExpression)*;
+
+MulOp: '*' | '/';
+
+UnaryExpression:
+    (op=UnaryOp)? primary=Primary;
+
+UnaryOp: '-';
+
+Primary:
+    func=FunctionCall
+  | list=ListLiteral
+  | num=Number
+  | bool=BOOLEAN
+  | str=STRING
+  | id=ID
+  | '(' inner=Expression ')';
+
+FunctionCall:
+    name=ID '(' (args+=Expression (',' args+=Expression)*)? ')';
+
+ListLiteral:
+    '[' (elements+=Expression (',' elements+=Expression)*)? ']';
+
+// lexer
+Number: /[0-9]+(\.[0-9]+)?/;
+BOOLEAN: /true|false/;
+
+
+ID: !('and'|'or'|'not') /[\u4e00-\u9fa5a-zA-Z0-9_][\u4e00-\u9fa5a-zA-Z0-9_\-()\/%]*/;
+
+Comment:
+    /\/\/.*$/
+    | /\/\*[\s\S]*?\*\//
+;

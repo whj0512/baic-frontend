@@ -1,0 +1,16 @@
+{
+  "base_url": "http://127.0.0.1:7200",
+  "repository": "baic",
+  "timeout_seconds": 30,
+  "verify_ssl": true,
+  "retry": {
+    "total": 3,
+    "backoff_seconds": 0.4
+  },
+  "application": {
+    "connect_on_startup": true,
+    "fail_startup": false,
+    "startup_timeout_seconds": 5,
+    "max_insert_triples": 1000
+  }
+}

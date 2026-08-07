@@ -2,7 +2,7 @@
   "name": "requirements-management-extension",
   "displayName": "BAIC Requirements Management",
   "description": "BAIC requirements management inside VS Code.",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "publisher": "baic",
   "engines": {
     "vscode": "^1.90.0"
@@ -21,16 +21,24 @@
         "title": "BAIC: Open Requirements Manager"
       },
       {
-        "command": "baic.login",
-        "title": "BAIC: Login"
+        "command": "baic.startServices",
+        "title": "BAIC: Start Local Services"
       },
       {
-        "command": "baic.logout",
-        "title": "BAIC: Logout"
+        "command": "baic.stopServices",
+        "title": "BAIC: Stop Local Services"
+      },
+      {
+        "command": "baic.restartServices",
+        "title": "BAIC: Restart Local Services"
+      },
+      {
+        "command": "baic.showServiceLogs",
+        "title": "BAIC: Show Local Service Logs"
       },
       {
         "command": "baic.startBackend",
-        "title": "BAIC: Start Backend"
+        "title": "BAIC: Start Local Services (Compatibility)"
       },
       {
         "command": "baic.stopBackend",
@@ -74,6 +82,20 @@
           ],
           "default": "bundled",
           "description": "Controls whether the extension starts the bundled backend or connects to an external backend."
+        },
+        "baic.lsp.mode": {
+          "type": "string",
+          "enum": [
+            "bundled",
+            "external"
+          ],
+          "default": "bundled",
+          "description": "Controls whether the extension starts bundled language-server processes or connects to external LSP endpoints."
+        },
+        "baic.graphdbConfigPath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional absolute path to an external GraphDB JSON configuration file for the bundled BAIC-local service."
         },
         "baic.apiBaseUrl": {
           "type": "string",

@@ -1,0 +1,73 @@
+DialogMap:
+    "DialogMap" name=ID '{'
+        entry=EntryNode
+        (elements+=DialogElement)*
+    '}'
+;
+
+DialogElement:
+    Page | DialogTransition
+;
+
+DialogNode:
+    Page | EntryNode
+;
+
+EntryNode:
+    'Entry' name=ID ';'
+;
+
+Page:
+    'Page' name=ID '{'
+        ("widgets" ":" widgets=WidgetList)?
+    '}' ';'
+;
+
+WidgetList:
+    "[" (widgets+=Widget ("," widgets+=Widget)*)* "]";
+
+Widget:
+    "{"
+        ("widget_id" ":" widgetId=STRING)
+        ("type" ":" type=STRING)
+        ("name" ":" cname=STRING)
+        ("action" ":" action=STRING)
+        ("action_type" ":" actionType=STRING)
+        ("target" ":" target=TargetValue)
+        ("condition" ":" condition=STRING)?
+        ("display_variants" ":" variants=DisplayVariantList)?
+    "}";
+
+TargetValue:
+    STRING | "null"
+;
+
+DisplayVariantList:
+    "[" (variants+=DisplayVariant ("," variants+=DisplayVariant)*)* "]";
+
+DisplayVariant:
+    "{"
+        ("variant_id" ":" variantId=STRING)
+        ("display_text" ":" displayText=STRING)
+        ("condition" ":" condition=STRING)
+    "}";
+
+DialogTransition:
+    "Transition" name=ID '{'
+        ("trigger" ":" trigger=STRING)
+        ("trigger_type" ":" triggerType=STRING)
+        ("from" ":" source=[DialogNode])
+        ("to" ":" target=[DialogNode])
+        ("condition" ":" condition=STRING)?
+        ("data_carried" ":" carried=StringList)?
+    '}' ';'
+;
+
+StringList:
+    "[" (strings+=STRING ("," strings+=STRING)*)* "]";
+
+ID: /[\u4e00-\u9fa5a-zA-Z0-9_][\u4e00-\u9fa5a-zA-Z0-9_\-()\/%]*/;
+Comment:
+    /\/\/.*$/
+    | /\/\*[\s\S]*?\*\//
+;

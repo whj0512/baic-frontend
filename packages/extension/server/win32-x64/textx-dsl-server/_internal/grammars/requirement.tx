@@ -1,0 +1,92 @@
+Statechart:
+    "Statechart" name=ID '{'
+        (nodes+=Node | transitions+=Transition)*
+    '}'
+;
+
+Node:
+    StateNode
+    | ConditionNode
+    | CallNode
+    | StartNode
+;
+
+
+ParamList:
+    "[" (params+=Param ("," params+=Param)*)* "]";
+
+Param:
+    "{" ("label" ":" label=STRING) ("value" ":" value=INT) "}";
+
+StringList:
+    "[" (strings+=STRING ("," strings+=STRING)*)* "]";
+
+BooleanList:
+    "[" (boolean+=BOOLEAN ("," boolean+=BOOLEAN)*)* "]";
+
+ActionItemList:
+    "[" (actions+=ActionItem ("," actions+=ActionItem)*)* "]";
+
+ActionItem:
+    "{"
+        ("pre_think" ":" preThink=INT)
+        ("post_think" ":" postThink=INT)
+        ("express" ":" express=STRING)
+        ("type" ":" type=STRING)
+    "}";
+
+
+
+Transition:
+    "Transition" name=ID '{'
+    ("loop" loopTimes=INT)?
+    ("condition" ":" condition=STRING)?
+    ("from" ":" source=[Node])
+    ("to" ":" target=[Node])
+    '}' ';'
+;
+
+BOOLEAN:
+    "true" | "false"
+;
+
+StateNode:
+    'State' name=ID '{'
+        ("during_actions" ":" duringActions=ActionItemList)?
+    '}' ';'
+;
+
+ConditionNode:
+    'Condition' name=ID '{'
+    ("condition" ":" condition=STRING)
+    ("yes" ":" branchYes=[Transition])?
+    ("no" ":" branchNo=[Transition])?
+    '}' ';'
+;
+
+CallNode:
+    'Call' name=ID '{'
+    ("params" ":" params=ParamList)?
+    ("in" ":" inList=StringList)?
+    ("out" ":" outList=StringList)?
+    ("script" ":" script=STRING)?
+    ("enable_inverse" ":" enableInverse=BOOLEAN)?
+    ("inverse_script" ":" inverseScript=STRING)?
+    '}' ';'
+;
+
+Number:
+    INT | FLOAT
+;
+
+
+StartNode:
+    'Start' name=ID ';'
+;
+
+
+ID: /[\u4e00-\u9fa5a-zA-Z0-9_][\u4e00-\u9fa5a-zA-Z0-9_\-()\/%]*/;
+Comment:
+    /\/\/.*$/
+    | /\/\*[\s\S]*?\*\//
+;
