@@ -10,6 +10,8 @@ import type {
   WorkspaceNavigationTarget,
 } from '../components/AgentWorkspace/ConversationWorkspace'
 import { useQwenPawWorkspace } from '../components/AgentWorkspace/qwenPaw/useQwenPawWorkspace'
+import { useAgentTaskWorkflow } from '../components/AgentWorkspace/workflowCore/useAgentTaskWorkflow'
+import { ontologyIngestionDefinition } from '../components/AgentWorkspace/workflows/ontologyIngestion/definition'
 import { API_ENDPOINTS, authFetch } from '../config/api'
 import './AgentStore.css'
 
@@ -120,6 +122,12 @@ function AgentStore() {
     selectedProject?.id ?? null,
     { allowedAgentIds: EXPOSED_AGENT_IDS },
   )
+  const agentTaskWorkflow = useAgentTaskWorkflow({
+    projectId: selectedProject?.id ?? null,
+    definition: ontologyIngestionDefinition,
+    agents: qwenPawWorkspace.agents,
+    connectionState: qwenPawWorkspace.connectionState,
+  })
 
   const fetchProjects = useCallback(async (signal?: AbortSignal) => {
     setProjectsLoading(true)
@@ -182,7 +190,19 @@ function AgentStore() {
       status: qwenPawWorkspace.status,
       registrationState: qwenPawWorkspace.registrationState,
     })
+    console.debug('[Business agent workflow state]', {
+      businessAgentId: agentTaskWorkflow.definition.id,
+      available: agentTaskWorkflow.health.available,
+      runCount: agentTaskWorkflow.runs.length,
+      historyIncomplete: agentTaskWorkflow.historyIncomplete,
+      loading: agentTaskWorkflow.loading,
+    })
   }, [
+    agentTaskWorkflow.definition.id,
+    agentTaskWorkflow.health.available,
+    agentTaskWorkflow.historyIncomplete,
+    agentTaskWorkflow.loading,
+    agentTaskWorkflow.runs.length,
     qwenPawWorkspace.activeAgentId,
     qwenPawWorkspace.activeConversation,
     qwenPawWorkspace.registrationState,
@@ -379,6 +399,21 @@ function AgentStore() {
       }
       data-qwenpaw-status={qwenPawWorkspace.status}
       data-qwenpaw-registration={qwenPawWorkspace.registrationState}
+      data-business-agent-id={agentTaskWorkflow.definition.id}
+      data-business-agent-health={
+        agentTaskWorkflow.health.available ? 'available' : 'blocked'
+      }
+      data-business-agent-runs-status={
+        agentTaskWorkflow.loading
+          ? 'loading'
+          : agentTaskWorkflow.error
+            ? 'error'
+            : 'ready'
+      }
+      data-business-agent-run-count={agentTaskWorkflow.runs.length}
+      data-business-agent-history-incomplete={
+        agentTaskWorkflow.historyIncomplete ? 'true' : 'false'
+      }
     >
       <AgentSidebar
         open={sidebarOpen}
