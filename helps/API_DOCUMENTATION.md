@@ -67,6 +67,7 @@ F:\CoPaw\Agent\requirement_document_extractor
 - 受保护的主要接口（需携带 Authorization: Bearer <token>）
   - POST /requirements (创建需求)
   - PUT /requirements/{requirement_id} (更新需求)
+  - POST /requirements/{requirement_id}/rollback (回退到上一版本内容)
   - DELETE /requirements/{requirement_id} (删除需求)
   - POST /requirements/{requirement_id}/models (新增维度模型)
   - PUT /requirements/{requirement_id}/models/{model_group_id} (更新维度模型)
@@ -1116,6 +1117,65 @@ DSL，使用稳定的 `model_group_id` 标识；修改模型会创建新的需�
 
 ---
 
+## 12.b POST /requirements/{requirement_id}/rollback
+
+- 用途：将需求恢复为当前版本号的上一版本内容，同时保留完整版本历史。
+- URL：`POST /requirements/{requirement_id}/rollback`
+- 请求头：
+  - 当服务启用鉴权时必须提供：`Authorization: Bearer <token>`；未启用鉴权时可省略。
+- 路径参数：
+  - `requirement_id` — 逻辑需求 ID（UUID）或需求名称。推荐使用逻辑需求 ID；按名称回退时应确保名称唯一。
+- 请求体：无。
+
+行为说明：
+
+- 假设当前最新版本为 `N`，接口读取版本 `N-1` 的全部需求字段及维度模型，并创建版本 `N+1` 作为新的当前版本。
+- 版本 `N` 和 `N-1` 均不会被删除或改写，因此版本历史保持不可变。
+- 名称、自然语言文本、DSL、图 JSON、类型、子类型、说明以及所有主模型和非主模型都会恢复到版本 `N-1` 的状态。
+- 成功后会向项目 WebSocket 频道广播 `requirement_updated` 事件；事件中的可选 `rollback` 字段说明回退来源和恢复来源版本号。
+- 客户端收到带 `rollback` 的事件后，应重新读取需求及其模型列表，以获得已恢复的全部非主模型内容。
+
+请求示例：
+
+```bash
+curl -X POST http://127.0.0.1:8000/requirements/3fa85f64-5717-4562-b3fc-2c963f66afa6/rollback \
+  -H "Authorization: Bearer <token>"
+```
+
+成功响应（200）示例：
+
+```json
+{
+  "requirement_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "version_id": "new-version-uuid",
+  "version_code": 3,
+  "project_id": "project-uuid",
+  "rolled_back_from_version_code": 2,
+  "restored_from_version_code": 1,
+  "requirement": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "version_id": "new-version-uuid",
+    "version_code": 3,
+    "nl_text": "第一版需求内容"
+  },
+  "models": [],
+  "diff": {
+    "nl_text": {
+      "before": "第二版需求内容",
+      "after": "第一版需求内容"
+    }
+  }
+}
+```
+
+常见错误：
+
+- `404`：逻辑需求不存在，响应为 `{"detail":"需求不存在"}`。
+- `409`：需求只有一个版本，或找不到当前版本号对应的上一版本，响应为
+  `{"detail":"需求没有可回退的上一版本"}`。
+
+---
+
 ## 13. WebSocket 实时同步 — /ws/projects/{project_id}
 - 用途：为项目提供实时事件推送（订阅项目内的需求创建/更新事件）。
 - URL（WebSocket）： `ws://<host>/ws/projects/{project_id}` 或生产环境使用 `wss://...`。
@@ -1140,6 +1200,21 @@ DSL，使用稳定的 `model_group_id` 标识；修改模型会创建新的需�
 
 ```json
 { "event": "requirement_updated", "version_id": "...", "requirement_id": "...", "diff": { "nl_text": {"before":...,"after":...}, "graph_IBD": {"before":...,"after":...} } }
+```
+
+  - 由回退接口触发时，`requirement_updated` 额外包含 `rollback`：
+
+```json
+{
+  "event": "requirement_updated",
+  "version_id": "...",
+  "requirement_id": "...",
+  "diff": {},
+  "rollback": {
+    "rolled_back_from_version_code": 2,
+    "restored_from_version_code": 1
+  }
+}
 ```
 
 
@@ -1195,12 +1270,12 @@ websocat "ws://127.0.0.1:8000/ws/projects/<projectId>?token=<token>"
 ---
 
 ## 14. DELETE /requirements/{requirement_id}
-- 用途：删除指定的 requirement（会同时删除其所有版本记录）。
+- 用途：删除指定的逻辑需求。删除操作会在同一事务中清理该需求的所有版本、维度模型、需求间关系和法规映射。
 - URL：`DELETE /requirements/{requirement_id}`
 - 请求头：
-  - 可选：`Authorization: Bearer <token>`（如果提供，服务器可记录执行删除的用户，但目前删除操作不依赖于身份验证）
+  - 当服务启用鉴权时必须提供：`Authorization: Bearer <token>`；未启用鉴权时可省略。
 - 路径参数：
-  - `requirement_id` — 字符串（UUID）
+  - `requirement_id` — 逻辑需求 ID（UUID）或需求名称。推荐使用逻辑需求 ID；按名称删除时应确保名称唯一。
 
 - 请求示例（curl）：
 
@@ -1221,7 +1296,9 @@ curl -X DELETE http://127.0.0.1:8000/requirements/3fa85f64-5717-4562-b3fc-2c963f
 ```
 
 - 说明：
-  - 删除操作会先删除 `requirement_version` 表中与该 requirement_id 相关的版本记录，然后删除 `requirement` 主表中的记录，以避免外键约束问题。
+  - 成功响应中的 `requirement_id` 始终是规范的逻辑需求 ID；即使路径参数使用需求名称，也不会返回名称。
+  - 删除操作不会删除法规或测试用例本身，只清理直接存储在需求关系表和法规映射表中的关联记录。
+  - WebSocket 项目频道会收到 `requirement_deleted` 事件，其中 `requirement_id` 同样为逻辑需求 ID。
 
 ---
 

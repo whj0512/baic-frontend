@@ -1,5 +1,6 @@
 import { getRuntimeConfig } from './runtime'
-import type { RequirementDimensionCode } from '../models/RequirementModel'
+import type { RequirementDimensionCode, RequirementModel } from '../models/RequirementModel'
+import type { Requirement } from '../models/Requirement'
 
 const runtimeConfig = getRuntimeConfig()
 
@@ -35,6 +36,9 @@ export const API_ENDPOINTS = {
     `${SERVICE_BASE_URL}/projects/${encodeURIComponent(projectId)}/requirements`,
   requirements: `${SERVICE_BASE_URL}/requirements`,
   requirementById: (id: string) => `${SERVICE_BASE_URL}/requirements/${encodeURIComponent(id)}`,
+  requirementRollback: (requirementId: string) => (
+    `${SERVICE_BASE_URL}/requirements/${encodeURIComponent(requirementId)}/rollback`
+  ),
   requirementModels: (requirementId: string, dimension?: RequirementDimensionCode) => {
     const endpoint = `${SERVICE_BASE_URL}/requirements/${encodeURIComponent(requirementId)}/models`
     if (!dimension) return endpoint
@@ -50,6 +54,18 @@ export const API_ENDPOINTS = {
   ),
   graphdbGraph: `${SERVICE_BASE_URL}/graphdb/graph`,
   traceabilityExtract: `${SERVICE_BASE_URL}/traceability/extract`,
+}
+
+export interface RequirementRollbackResponse {
+  requirement_id: string
+  version_id: string
+  version_code: number
+  project_id: string
+  rolled_back_from_version_code: number
+  restored_from_version_code: number
+  requirement: Requirement
+  models: RequirementModel[]
+  diff: Record<string, { before: unknown; after: unknown }>
 }
 
 export interface QwenPawChatFilters {

@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Button, message, Spin, Badge, Modal, Collapse, Segmented } from 'antd'
 import type { CollapseProps } from 'antd'
-import { ShareAltOutlined, ArrowLeftOutlined, CloudUploadOutlined } from '@ant-design/icons'
+import { ShareAltOutlined, ArrowLeftOutlined, CloudUploadOutlined, UndoOutlined } from '@ant-design/icons'
 import './ProjectWorkSpace.css'
 import type { Requirement } from '../models/Requirement'
 import type { RequirementVersion } from '../models/RequirementVersion'
@@ -12,7 +12,7 @@ import RequirementCreator from '../components/RequirementCreator/RequirementCrea
 import ReqRelationShip from '../components/ReqRelationShip'
 import ProjectTestCaseView from '../components/ProjectTestCaseView/ProjectTestCaseView'
 import PublishProjectDialog from '../components/PublishProjectDialog'
-import { API_ENDPOINTS, authFetch } from '../config/api'
+import { API_ENDPOINTS, authFetch, type RequirementRollbackResponse } from '../config/api'
 import {
   createRequirementModel,
   deleteRequirementModel,
@@ -49,6 +49,10 @@ import type { EditorSnapshot } from '../components/DimensionEditor/types'
 
 type WorkspaceView = 'requirements' | 'testCases'
 type WorkspaceRouteView = 'requirements' | 'test-cases' | 'knowledge-graph'
+type RequirementDetailsResponse = {
+  requirement?: Requirement
+  versions?: RequirementVersion[]
+}
 
 // 中间区域视图类型
 type CenterView = 'overview' | 'editor' | 'create' | 'create-editor' | 'relationship'
@@ -158,6 +162,7 @@ function ProjectWorkSpace() {
   // 状态
   const [project, setProject] = useState<Project | null>(null)
   const [requirementVersions, setRequirementVersions] = useState<RequirementVersion[]>([])
+  const [selectedRequirementDetail, setSelectedRequirementDetail] = useState<Requirement | null>(null)
   const [loading, setLoading] = useState(false)
   const [loadingVersions, setLoadingVersions] = useState(false)
 
@@ -228,6 +233,8 @@ function ProjectWorkSpace() {
 
   // 右侧面板折叠状态
   const [rightCollapsed, setRightCollapsed] = useState(false)
+  const [rollingBack, setRollingBack] = useState(false)
+  const [lastRollbackResult, setLastRollbackResult] = useState<RequirementRollbackResponse | null>(null)
 
   const [deleting, setDeleting] = useState(false)
   const [showPublishDialog, setShowPublishDialog] = useState(false)
@@ -258,6 +265,9 @@ function ProjectWorkSpace() {
     setHasOpenedTestCases(false)
     setProject(null)
     setSelectedRequirement(null)
+    setSelectedRequirementDetail(null)
+    setRequirementVersions([])
+    setLastRollbackResult(null)
     setRequirementModels([])
     setRequirementModelDrafts([])
     setEditingModelIdentity(null)
@@ -449,69 +459,81 @@ function ProjectWorkSpace() {
 
   useEffect(() => () => modelRequestRef.current.controller?.abort(), [])
 
+  const loadRequirementDetails = useCallback(async (
+    requirementId: string,
+    signal?: AbortSignal,
+  ) => {
+    const sequence = requirementDetailRequestRef.current + 1
+    requirementDetailRequestRef.current = sequence
+
+    setLoadingVersions(true)
+    try {
+      const res = await authFetch(API_ENDPOINTS.requirementById(requirementId), { signal })
+      if (!res.ok) throw new Error('获取需求详情失败')
+      const data = await res.json() as RequirementDetailsResponse
+      if (
+        signal?.aborted
+        || requirementDetailRequestRef.current !== sequence
+        || selectedRequirementRef.current !== requirementId
+      ) return null
+
+      setSelectedRequirementDetail(data.requirement ?? null)
+      setRequirementVersions(Array.isArray(data.versions) ? data.versions : [])
+      return data
+    } catch (error) {
+      if (signal?.aborted) return null
+      console.error('Fetch details error:', error)
+      return null
+    } finally {
+      if (requirementDetailRequestRef.current === sequence) setLoadingVersions(false)
+    }
+  }, [])
+
+  const refreshSelectedRequirement = useCallback(async (requirementId: string) => {
+    if (!requirementId || requirementId === 'NEW') return
+    await Promise.all([
+      loadRequirementDetails(requirementId),
+      loadRequirementModels(requirementId),
+    ])
+  }, [loadRequirementDetails, loadRequirementModels])
+
   useEffect(() => {
     if (!lastRequirementChange) return
     if (lastRequirementChange.requirementId !== selectedRequirementRef.current) return
-    void reloadRequirementModels()
-  }, [lastRequirementChange, reloadRequirementModels])
+    void refreshSelectedRequirement(lastRequirementChange.requirementId)
+  }, [lastRequirementChange, refreshSelectedRequirement])
 
   // 获取选中需求的详细信息（包括版本历史）
   useEffect(() => {
     const controller = new AbortController()
-    const sequence = requirementDetailRequestRef.current + 1
-    requirementDetailRequestRef.current = sequence
     setRequirementVersions([])
+    setSelectedRequirementDetail(null)
+    setLastRollbackResult(null)
 
-    const fetchRequirementDetails = async () => {
-      if (!selectedRequirement || selectedRequirement === 'NEW') {
-        setLoadingVersions(false)
-        return
-      }
-
-      setLoadingVersions(true)
-      try {
-        const url = API_ENDPOINTS.requirementById(selectedRequirement)
-        const res = await authFetch(url, { signal: controller.signal })
-        if (!res.ok) throw new Error('获取需求详情失败')
-        const data = await res.json()
-        if (controller.signal.aborted || requirementDetailRequestRef.current !== sequence) return
-
-        // 假设 API 返回包含 versions 字段，或者目前只返回主记录
-        // 根据 API 文档，GET /requirements/{id} 返回 { requirement: ... }
-        // 如果后端暂未返回版本列表，我们可能只能显示当前版本
-        // 暂时假设 response.requirement 包含 versions 数组或者我们需要另行获取
-        // 由于文档未明确 specify versions list endpoint, 且用途说 "读取...版本历史"
-        // 我们检查 data.versions 是否存在
-
-        if (data.versions) {
-          setRequirementVersions(data.versions)
-        } else if (data.requirement) {
-          // 如果只有 requirement，构造一个包含当前版本的伪列表，或者不做处理
-          // 这里为了演示，我们至少把 current version 放进去
-          // 但是 requirement 对象本身没有 version details 吗？
-          // 看 models: Requirement 有 current_version_id
-          // 我们暂且置空或模拟，等待后端完善
-          setRequirementVersions([])
-        }
-
-      } catch (error) {
-        if (controller.signal.aborted) return
-        console.error('Fetch details error:', error)
-        // message.error('获取需求详情失败') // 避免频繁报错干扰
-      } finally {
-        if (requirementDetailRequestRef.current === sequence) setLoadingVersions(false)
-      }
+    if (!selectedRequirement || selectedRequirement === 'NEW') {
+      setLoadingVersions(false)
+      return () => controller.abort()
     }
 
-    void fetchRequirementDetails()
+    void loadRequirementDetails(selectedRequirement, controller.signal)
     return () => controller.abort()
-  }, [selectedRequirement])
+  }, [loadRequirementDetails, selectedRequirement])
 
-  // 获取当前选中需求的版本记录
+  // 供需求概览显示的版本摘要
   const currentVersions = requirementVersions
 
   // 获取当前选中的需求对象
-  const currentRequirement = selectedRequirementSnapshot
+  const currentRequirement = selectedRequirementDetail ?? selectedRequirementSnapshot
+  const currentVersionCode = currentRequirement?.version_code
+  const rollbackDisabledReason = !selectedRequirement || selectedRequirement === 'NEW'
+    ? '请选择需要回退的需求'
+    : centerView === 'editor'
+      ? '请先返回需求概览，再执行版本回退'
+      : rollingBack
+        ? '正在回退版本，请稍候'
+        : currentVersionCode !== undefined && currentVersionCode <= 1
+          ? '当前需求没有可回退的上一版本'
+          : null
   const activeRequirementModel = editingModelIdentity?.kind === 'persisted'
     ? requirementModels.find(model => model.model_group_id === editingModelIdentity.modelGroupId)
     : editingModelIdentity?.kind === 'draft'
@@ -965,6 +987,60 @@ function ProjectWorkSpace() {
     setCenterView(draftView.view === 'create-editor' && draftView.section ? 'create-editor' : 'create')
   }
 
+  const handleRollbackRequirement = () => {
+    const requirementId = selectedRequirementRef.current
+    if (!requirementId || requirementId === 'NEW' || rollingBack || rollbackDisabledReason) return
+
+    Modal.confirm({
+      title: '确认回退上一版本',
+      content: '将使用上一版本内容创建一个新的当前版本。现有版本历史不会被删除或改写。',
+      okText: '确认回退',
+      okType: 'danger',
+      cancelText: '取消',
+      centered: true,
+      onOk: async () => {
+        setRollingBack(true)
+        try {
+          const response = await authFetch(API_ENDPOINTS.requirementRollback(requirementId), {
+            method: 'POST',
+          })
+          const data = await response.json().catch(() => null) as RequirementRollbackResponse | { detail?: unknown } | null
+
+          if (!response.ok) {
+            if (response.status === 409) throw new Error('需求没有可回退的上一版本')
+            if (response.status === 404) throw new Error('需求不存在')
+            const detail = data && typeof data.detail === 'string' ? data.detail : null
+            throw new Error(detail || '版本回退失败，请稍后重试')
+          }
+
+          const rollbackResult = data as RequirementRollbackResponse
+          if (selectedRequirementRef.current === requirementId) {
+            setLastRollbackResult(rollbackResult)
+            setSelectedRequirementDetail(previous => (
+              previous ? { ...previous, ...rollbackResult.requirement } : rollbackResult.requirement
+            ))
+            if (Array.isArray(rollbackResult.models)) {
+              setRequirementModels(rollbackResult.models)
+              setModelsLoadedRequirementId(requirementId)
+              setModelsError(null)
+            }
+            await refreshSelectedRequirement(requirementId)
+          }
+
+          message.success(
+            `已从 v${rollbackResult.rolled_back_from_version_code} 恢复 v${rollbackResult.restored_from_version_code}，并生成 v${rollbackResult.version_code}`,
+          )
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : '版本回退失败，请稍后重试'
+          console.error('Rollback requirement error:', error)
+          message.error(errorMessage)
+        } finally {
+          setRollingBack(false)
+        }
+      },
+    })
+  }
+
   // 处理新建完成或取消
   const handleCreateFinish = () => {
     clearCreateFlowDrafts(createFormData.dimensionModels)
@@ -1406,32 +1482,37 @@ function ProjectWorkSpace() {
           {/* 面板内容（折叠时隐藏）*/}
           {!rightCollapsed && (
             <div className="workspace-right-content">
-              {/* 版本记录 */}
-              <div className="version-panel">
+              <div className="rollback-panel">
                 <div className="panel-header">
-                  <h3>版本记录</h3>
+                  <h3>版本回退</h3>
                 </div>
-                <div className="version-list">
-                  {currentVersions.length > 0 ? (
-                    currentVersions.map((version) => (
-                      <div key={version.id} className="version-item">
-                        <div className="version-header">
-                          <span className="version-number">v{version.version_code}</span>
-                          <span className="version-date">{formatDate(version.created_at)}</span>
-                        </div>
-                        <div className="version-info">
-                          <span className="version-author">创建者: {version.created_by}</span>
-                          <span className="version-desc">{truncateText(version.nl_text, 40)}</span>
-                        </div>
-                        <div className="version-actions">
-                          <button className="btn-link">对比</button>
-                          <button className="btn-link">回滚</button>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="version-empty">
-                      {selectedRequirement ? '暂无版本记录' : '请选择一个需求'}
+                <div className="rollback-panel-content">
+                  <div className="rollback-target">
+                    <span>当前需求</span>
+                    <strong>{currentRequirement?.name || selectedRequirementSnapshot?.name || '未选择需求'}</strong>
+                  </div>
+                  <p className="rollback-description">
+                    {currentVersionCode !== undefined
+                      ? `当前为 v${currentVersionCode}，将恢复上一版本内容并创建新版本。`
+                      : '将恢复当前需求的上一版本内容，并创建新版本。'}
+                  </p>
+                  {rollbackDisabledReason && (
+                    <div className="rollback-disabled-reason">{rollbackDisabledReason}</div>
+                  )}
+                  <Button
+                    type="primary"
+                    danger
+                    block
+                    icon={<UndoOutlined />}
+                    loading={rollingBack}
+                    disabled={Boolean(rollbackDisabledReason)}
+                    onClick={handleRollbackRequirement}
+                  >
+                    回退上一版本
+                  </Button>
+                  {lastRollbackResult?.requirement_id === selectedRequirement && (
+                    <div className="rollback-result" aria-live="polite">
+                      已从 v{lastRollbackResult.rolled_back_from_version_code} 恢复 v{lastRollbackResult.restored_from_version_code}，并生成 v{lastRollbackResult.version_code}
                     </div>
                   )}
                 </div>
