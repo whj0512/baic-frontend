@@ -21,6 +21,7 @@ interface UseDimensionEditorConversionsOptions {
   flowGraphRef: MutableRef<FlowGraphRef | null>
   dslContentRef: MutableRef<string>
   graphDataRef: MutableRef<object>
+  serializedGraphDataRef: MutableRef<object | null>
   pendingCanvasDataRef: MutableRef<Record<string, any> | null>
   setViewMode: Dispatch<SetStateAction<ViewMode>>
   setGraphData: Dispatch<SetStateAction<object>>
@@ -38,6 +39,7 @@ export function useDimensionEditorConversions({
   flowGraphRef,
   dslContentRef,
   graphDataRef,
+  serializedGraphDataRef,
   pendingCanvasDataRef,
   setViewMode,
   setGraphData,
@@ -70,14 +72,16 @@ export function useDimensionEditorConversions({
         throw new Error(errBody?.error || `HTTP error! status: ${response.status}`)
       }
 
-      return await response.text()
+      const nextDsl = await response.text()
+      serializedGraphDataRef.current = jsonData
+      return nextDsl
     } catch (error) {
       setGraphError(error instanceof Error ? error.message : '转换失败，请稍后重试')
       return null
     } finally {
       setDslLoading(false)
     }
-  }, [config.dimensionCode, flowGraphRef, modelStrategy, setDslLoading, setGraphError, viewMode])
+  }, [config.dimensionCode, flowGraphRef, modelStrategy, serializedGraphDataRef, setDslLoading, setGraphError, viewMode])
 
   const convertDslToVisual = useCallback(async (
     sourceDsl = dslContentRef.current,
@@ -103,10 +107,15 @@ export function useDimensionEditorConversions({
       }
 
       const result = await response.text()
+      const serializedGraphData = JSON.parse(result) as object
       const x6Data = modelStrategy.importGraphFromJSON(result)
       const { canvasData, ...cellsData } = (x6Data as any)
 
-      return { cellsData, canvasData }
+      return {
+        cellsData: canvasData ? { ...cellsData, canvasData } : cellsData,
+        canvasData,
+        serializedGraphData,
+      }
     } catch (error) {
       setDslError(error instanceof Error ? error.message : '转换失败，请稍后重试')
       return null
@@ -126,18 +135,19 @@ export function useDimensionEditorConversions({
   }, [dslContentRef, setDslContent, setViewMode])
 
   const applyVisualView = useCallback((
-    { cellsData, canvasData }: ConvertedVisualData,
+    { cellsData, canvasData, serializedGraphData }: ConvertedVisualData,
     options: ApplyViewOptions = {},
   ) => {
     const { switchView = true } = options
 
     graphDataRef.current = cellsData
+    serializedGraphDataRef.current = serializedGraphData ?? null
     pendingCanvasDataRef.current = canvasData ?? null
     setGraphData(cellsData)
     if (switchView) {
       setViewMode('visual')
     }
-  }, [graphDataRef, pendingCanvasDataRef, setGraphData, setViewMode])
+  }, [graphDataRef, pendingCanvasDataRef, serializedGraphDataRef, setGraphData, setViewMode])
 
   const handleDismissError = useCallback(() => {
     setDslError(undefined)

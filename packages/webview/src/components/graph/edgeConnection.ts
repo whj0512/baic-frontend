@@ -335,9 +335,11 @@ export const ensureNodeConnectionPorts = (node: Node, strategy: GraphStrategy) =
 
 export const toSerializableGraphJSON = (graph: Graph) => {
   const json = graph.toJSON() as any
+  const canvasData = (graph as any).canvasData
 
   return {
     ...json,
+    ...(canvasData && typeof canvasData === 'object' ? { canvasData } : {}),
     cells: json.cells
       ?.filter((cell: any) => !isPreConnectionPreview(cell) && !isSequenceConnectionPreview(cell))
       .map((cell: any) => {
@@ -583,10 +585,13 @@ const finalizeRuleEdge = (graph: Graph, strategy: GraphStrategy, edge: Edge, sou
 
   edge.setSource({ cell: sourceNode.id, port: sourcePortId })
   edge.setTarget({ cell: targetNode.id, port: targetPortId })
-  edge.setData({
+  const nextEdgeData = {
     ...withDefaultEdgeData(strategy, edge.getData()),
     sourceOutput: sourcePortId,
-  })
+  }
+  edge.setData(strategy.finalizeEdgeData
+    ? strategy.finalizeEdgeData(nextEdgeData, sourceNode, targetNode, graph)
+    : nextEdgeData)
   applyConditionLabel(edge, sourcePortId)
 
   return true

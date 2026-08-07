@@ -35,23 +35,23 @@ const isNullableString = (value: unknown) => value === null || typeof value === 
 const requireString = (record: Record<string, unknown>, key: string) => {
   const value = record[key]
   if (typeof value !== 'string' || !value.trim()) {
-    throw new Error('模型接口返回了无效数据')
+    throw new Error(`模型接口返回了无效数据：${key} 必须是非空字符串`)
   }
   return value
 }
 
 export const parseRequirementModel = (value: unknown): RequirementModel => {
-  if (!isRecord(value)) throw new Error('模型接口返回了无效数据')
+  if (!isRecord(value)) throw new Error('模型接口返回了无效数据：模型必须是对象')
 
   const dimensionCode = value.dimension_code
   if (!isRequirementDimensionCode(dimensionCode)) {
-    throw new Error('模型接口返回了无效数据')
+    throw new Error('模型接口返回了无效数据：dimension_code 不受支持')
   }
-  if (!isRecord(value.graph_json)) throw new Error('模型接口返回了无效数据')
-  if (typeof value.dsl_text !== 'string') throw new Error('模型接口返回了无效数据')
-  if (typeof value.is_primary !== 'boolean') throw new Error('模型接口返回了无效数据')
+  if (!isRecord(value.graph_json)) throw new Error('模型接口返回了无效数据：graph_json 必须是对象')
+  if (typeof value.dsl_text !== 'string') throw new Error('模型接口返回了无效数据：dsl_text 必须是字符串')
+  if (typeof value.is_primary !== 'boolean') throw new Error('模型接口返回了无效数据：is_primary 必须是布尔值')
   if (typeof value.sort_order !== 'number' || !Number.isFinite(value.sort_order)) {
-    throw new Error('模型接口返回了无效数据')
+    throw new Error('模型接口返回了无效数据：sort_order 必须是有限数字')
   }
 
   const nullableStringKeys = [
@@ -62,16 +62,16 @@ export const parseRequirementModel = (value: unknown): RequirementModel => {
     'created_by',
   ]
   if (nullableStringKeys.some(key => value[key] !== undefined && !isNullableString(value[key]))) {
-    throw new Error('模型接口返回了无效数据')
+    throw new Error('模型接口返回了无效数据：可空字符串字段类型错误')
   }
   if (value.metadata !== undefined && value.metadata !== null && !isRecord(value.metadata)) {
-    throw new Error('模型接口返回了无效数据')
+    throw new Error('模型接口返回了无效数据：metadata 必须是对象或 null')
   }
   if (value.created_at !== undefined && typeof value.created_at !== 'string') {
-    throw new Error('模型接口返回了无效数据')
+    throw new Error('模型接口返回了无效数据：created_at 必须是字符串')
   }
   if (value.updated_at !== undefined && typeof value.updated_at !== 'string') {
-    throw new Error('模型接口返回了无效数据')
+    throw new Error('模型接口返回了无效数据：updated_at 必须是字符串')
   }
 
   return {
@@ -101,7 +101,7 @@ export const parseRequirementModel = (value: unknown): RequirementModel => {
 }
 
 const parseModels = (value: unknown): RequirementModel[] => {
-  if (!Array.isArray(value)) throw new Error('模型接口返回了无效数据')
+  if (!Array.isArray(value)) throw new Error('模型接口返回了无效数据：models 必须是数组')
   return value.map(parseRequirementModel)
 }
 
@@ -124,28 +124,69 @@ const readJsonResponse = async (response: Response, fallback: string) => {
     const detail = isRecord(body) ? body.detail : null
     throw new RequirementModelsApiError(formatErrorDetail(detail, fallback), response.status)
   }
-  if (!isRecord(body)) throw new Error('模型接口返回了无效数据')
+  if (!isRecord(body)) throw new Error('模型接口返回了无效数据：响应体必须是对象')
   return body
 }
 
-const parseMutationResult = (body: Record<string, unknown>): RequirementModelsMutationResult => {
-  const requirementId = requireString(body, 'requirement_id')
-  const result: RequirementModelsMutationResult = { requirement_id: requirementId }
+const warnAndIgnoreMutationField = (field: string, error: unknown) => {
+  console.warn(
+    `[RequirementModels] mutation 响应的 ${field} 不完整，将忽略该字段并在需要时通过 GET 重新加载模型`,
+    error,
+  )
+}
 
-  if (body.version_id !== undefined) result.version_id = requireString(body, 'version_id')
+const readOptionalMutationString = (
+  body: Record<string, unknown>,
+  key: string,
+) => {
+  const value = body[key]
+  if (value === undefined) return undefined
+  if (typeof value === 'string' && value.trim()) return value
+  warnAndIgnoreMutationField(key, new Error(`${key} 必须是非空字符串`))
+  return undefined
+}
+
+const parseMutationResult = (
+  body: Record<string, unknown>,
+  expectedRequirementId: string,
+): RequirementModelsMutationResult => {
+  const responseRequirementId = body.requirement_id
+  if (
+    typeof responseRequirementId === 'string'
+    && responseRequirementId.trim()
+    && responseRequirementId !== expectedRequirementId
+  ) {
+    console.warn('[RequirementModels] mutation 响应的 requirement_id 与请求不一致，将以请求 ID 为准')
+  }
+  const result: RequirementModelsMutationResult = { requirement_id: expectedRequirementId }
+
+  const versionId = readOptionalMutationString(body, 'version_id')
+  if (versionId) result.version_id = versionId
   if (body.version_code !== undefined) {
-    if (typeof body.version_code !== 'number') throw new Error('模型接口返回了无效数据')
-    result.version_code = body.version_code
+    if (typeof body.version_code === 'number') result.version_code = body.version_code
+    else warnAndIgnoreMutationField('version_code', new Error('version_code 必须是数字'))
   }
-  if (body.project_id !== undefined) result.project_id = requireString(body, 'project_id')
-  if (body.model !== undefined) result.model = parseRequirementModel(body.model)
-  if (body.models !== undefined) result.models = parseModels(body.models)
-  if (body.deleted_model_group_id !== undefined) {
-    result.deleted_model_group_id = requireString(body, 'deleted_model_group_id')
+  const projectId = readOptionalMutationString(body, 'project_id')
+  if (projectId) result.project_id = projectId
+  if (body.model !== undefined) {
+    try {
+      result.model = parseRequirementModel(body.model)
+    } catch (error) {
+      warnAndIgnoreMutationField('model', error)
+    }
   }
+  if (body.models !== undefined) {
+    try {
+      result.models = parseModels(body.models)
+    } catch (error) {
+      warnAndIgnoreMutationField('models', error)
+    }
+  }
+  const deletedModelGroupId = readOptionalMutationString(body, 'deleted_model_group_id')
+  if (deletedModelGroupId) result.deleted_model_group_id = deletedModelGroupId
   if (body.diff !== undefined) {
-    if (!isRecord(body.diff)) throw new Error('模型接口返回了无效数据')
-    result.diff = body.diff
+    if (isRecord(body.diff)) result.diff = body.diff
+    else warnAndIgnoreMutationField('diff', new Error('diff 必须是对象'))
   }
   return result
 }
@@ -156,11 +197,12 @@ export async function fetchRequirementModels(
 ): Promise<RequirementModel[]> {
   const response = await authFetch(API_ENDPOINTS.requirementModels(requirementId), { signal })
   const body = await readJsonResponse(response, '模型加载失败')
-  if (!Array.isArray(body.models)) throw new Error('模型接口返回了无效数据')
+  if (!Array.isArray(body.models)) throw new Error('模型接口返回了无效数据：models 必须是数组')
   return parseModels(body.models)
 }
 
 async function mutateRequirementModels(
+  requirementId: string,
   url: string,
   method: 'POST' | 'PUT' | 'DELETE',
   input?: RequirementModelInput,
@@ -171,27 +213,39 @@ async function mutateRequirementModels(
     body: input ? JSON.stringify(input) : undefined,
   })
   const body = await readJsonResponse(response, '模型操作失败')
-  return parseMutationResult(body)
+  return parseMutationResult(body, requirementId)
 }
 
 export const createRequirementModel = (
   requirementId: string,
   input: RequirementModelInput,
-) => mutateRequirementModels(API_ENDPOINTS.requirementModels(requirementId), 'POST', input)
+) => mutateRequirementModels(requirementId, API_ENDPOINTS.requirementModels(requirementId), 'POST', input)
 
 export const updateRequirementModel = (
   requirementId: string,
   modelGroupId: string,
   input: RequirementModelInput,
-) => mutateRequirementModels(API_ENDPOINTS.requirementModel(requirementId, modelGroupId), 'PUT', input)
+) => mutateRequirementModels(
+  requirementId,
+  API_ENDPOINTS.requirementModel(requirementId, modelGroupId),
+  'PUT',
+  input,
+)
 
 export const setPrimaryRequirementModel = (
   requirementId: string,
   modelGroupId: string,
-) => mutateRequirementModels(API_ENDPOINTS.requirementModelPrimary(requirementId, modelGroupId), 'PUT')
+) => mutateRequirementModels(
+  requirementId,
+  API_ENDPOINTS.requirementModelPrimary(requirementId, modelGroupId),
+  'PUT',
+)
 
 export const deleteRequirementModel = (
   requirementId: string,
   modelGroupId: string,
-) => mutateRequirementModels(API_ENDPOINTS.requirementModel(requirementId, modelGroupId), 'DELETE')
-
+) => mutateRequirementModels(
+  requirementId,
+  API_ENDPOINTS.requirementModel(requirementId, modelGroupId),
+  'DELETE',
+)

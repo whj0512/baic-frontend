@@ -1,4 +1,4 @@
-export const REQUIREMENT_DIMENSION_CODES = ['IBD', 'ESD', 'BDD', 'ISD', 'SC'] as const
+export const REQUIREMENT_DIMENSION_CODES = ['IBD', 'ESD', 'BDD', 'ISD', 'SC', 'UI'] as const
 
 export type RequirementDimensionCode = (typeof REQUIREMENT_DIMENSION_CODES)[number]
 
@@ -56,4 +56,3 @@ export const isRequirementDimensionCode = (
   typeof value === 'string'
   && (REQUIREMENT_DIMENSION_CODES as readonly string[]).includes(value)
 )
-

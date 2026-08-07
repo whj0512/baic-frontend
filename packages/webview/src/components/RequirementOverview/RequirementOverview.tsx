@@ -7,7 +7,7 @@ import { API_ENDPOINTS, authFetch } from '../../config/api'
 import DimensionList from '../DimensionList'
 import type { DimensionListModelItem } from '../DimensionList/DimensionList'
 import type { SectionKey } from '../DimensionEditor/types'
-import { getRequirementSections, isUiRequirementType } from '../DimensionList/requirementSections'
+import { getLegacySnapshotSections, getRequirementSections } from '../DimensionList/requirementSections'
 import { DIMENSION_CODE_TO_SECTION } from '../DimensionEditor/dimensionEditorConfig'
 import RequirementModelMetadataModal, {
   type RequirementModelMetadataValue,
@@ -123,12 +123,14 @@ function RequirementOverview({
   }, [requirement, isEditing])
 
   const displayRequirement = localRequirement || requirement
-  const sections = getRequirementSections(isEditing ? editForm.req_type : displayRequirement?.type)
+  const sections = readOnly
+    ? getLegacySnapshotSections(isEditing ? editForm.req_type : displayRequirement?.type)
+    : getRequirementSections()
   const allModels = useMemo(() => [...(models ?? []), ...modelDrafts], [modelDrafts, models])
-  const hasModelSource = models !== undefined && !isUiRequirementType(displayRequirement?.type)
-  const sectionTitle = sections.length === 1 && sections[0].key === 'dialogMap'
+  const hasModelSource = models !== undefined
+  const sectionTitle = readOnly && sections.length === 1 && sections[0].key === 'dialogMap'
     ? '会话图'
-    : '五维模型'
+    : readOnly ? '五维模型' : '六维模型'
   // 格式化日期
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -523,10 +525,7 @@ function RequirementOverview({
             loading={modelsLoading}
             error={modelsError}
             onRetry={onRetryModels}
-            isSectionDisabled={(section) => (
-              section.key !== 'dialogMap'
-              && busyDimensions.has(section.dimensionCode as RequirementDimensionCode)
-            )}
+            isSectionDisabled={(section) => busyDimensions.has(section.dimensionCode as RequirementDimensionCode)}
             onAddModel={(section) => handleAddModel(section.dimensionCode as RequirementDimensionCode)}
             onOpenModel={(item, section) => {
               const model = findModelByItem(item)

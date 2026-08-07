@@ -100,3 +100,32 @@
 .dialog-map-widgets__target-option {
   width: 100%;
 }
+
+.dialog-map-widgets__variants {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 4px;
+  border-top: 1px solid #e8e8e8;
+}
+
+.dialog-map-widgets__variants-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #595959;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dialog-map-widgets__variant {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 4px;
+  align-items: center;
+}
+
+.dialog-map-widgets__variants-empty {
+  color: #8c8c8c;
+  font-size: 12px;
+}

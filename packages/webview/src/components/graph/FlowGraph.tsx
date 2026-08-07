@@ -88,6 +88,10 @@ const FlowGraphContent = forwardRef<FlowGraphRef, FlowGraphProps>(
         if (!graph) return
 
         graph.fromJSON(nextData)
+        if (nextData?.canvasData && typeof nextData.canvasData === 'object') {
+          ;(graph as any).canvasData = nextData.canvasData
+          graph.trigger('canvas:change:data', { data: nextData.canvasData, initial: true })
+        }
         ensureGraphConnectionPorts(graph, strategy)
         syncInitialEdgeLabels(graph)
         scheduleGraphConnectionViewRefresh(graph, strategy)
@@ -101,10 +105,12 @@ const FlowGraphContent = forwardRef<FlowGraphRef, FlowGraphProps>(
 
     const handleDeleteCell = useCallback(() => {
       if (contextMenu.cell && graphRef.current) {
-        graphRef.current.removeCell(contextMenu.cell)
+        if (strategy.canRemoveCell?.(contextMenu.cell) !== false) {
+          graphRef.current.removeCell(contextMenu.cell)
+        }
       }
       closeContextMenu()
-    }, [contextMenu.cell, closeContextMenu])
+    }, [contextMenu.cell, closeContextMenu, strategy])
 
     const handleFormPanelResizeStart = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
       event.preventDefault()

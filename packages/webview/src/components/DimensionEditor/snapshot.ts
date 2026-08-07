@@ -29,12 +29,18 @@ export const createEditorSnapshot = (
   content: string,
   dslContent: string,
   graphData: object,
+  serializedGraphData?: object | null,
 ): EditorSnapshot => ({
   content,
   dslContent,
   graphData: cloneSerializableData(graphData),
+  ...(serializedGraphData ? { serializedGraphData: cloneSerializableData(serializedGraphData) } : {}),
 })
 
 export const getEditorSnapshotKey = (snapshot: EditorSnapshot): string => (
-  stableStringify(snapshot)
+  stableStringify({
+    content: snapshot.content,
+    dslContent: snapshot.dslContent,
+    graphData: snapshot.graphData,
+  })
 )

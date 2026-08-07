@@ -32,6 +32,7 @@ function ArtifactDimensionEditor({
   const [graphError, setGraphError] = useState<string | undefined>()
 
   const graphDataRef = useRef<object>(initialGraphRef.current)
+  const serializedGraphDataRef = useRef<object | null>(null)
   const dslContentRef = useRef(initialDslContent)
   const flowGraphRef = useRef<FlowGraphRef | null>(null)
   const pendingCanvasDataRef = useRef<Record<string, any> | null>(null)
@@ -52,6 +53,7 @@ function ArtifactDimensionEditor({
     flowGraphRef,
     dslContentRef,
     graphDataRef,
+    serializedGraphDataRef,
     pendingCanvasDataRef,
     setViewMode,
     setGraphData,
@@ -115,7 +117,7 @@ function ArtifactDimensionEditor({
       const graph = flowGraphRef.current?.getGraph()
       if (graph) {
         ;(graph as any).canvasData = pending
-        graph.trigger('canvas:change:data', { data: pending })
+        graph.trigger('canvas:change:data', { data: pending, initial: true })
         pendingCanvasDataRef.current = null
       }
     }

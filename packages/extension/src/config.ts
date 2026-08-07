@@ -60,6 +60,10 @@ export function getRuntimeConfig(
         'lspWs.internalComposition',
         'ws://127.0.0.1:3003',
       ),
+      dialogMap: config.get<string>(
+        'lspWs.dialogMap',
+        'ws://127.0.0.1:3004',
+      ),
     },
   }
 }
@@ -74,6 +78,7 @@ export function getConnectSources(config: RuntimeConfig): string[] {
     getOrigin(config.lspWs.environment),
     getOrigin(config.lspWs.interaction),
     getOrigin(config.lspWs.internalComposition),
+    getOrigin(config.lspWs.dialogMap),
   ].filter(Boolean)
 }
 

@@ -70,7 +70,7 @@
 
 ### req_requirement_model
 
-作用：存储需求各维度的一对多模型。一个需求版本的 IBD、ESD、SC、BDD、ISD
+作用：存储需求各维度的一对多模型。一个需求版本的 IBD、ESD、SC、BDD、ISD、UI
 维度都可以包含多条模型记录；每条记录严格对应一份 DSL 和一份图 JSON。
 
 模型身份分为两层：
@@ -88,7 +88,7 @@
 - `requirement_group_id` (CHAR(36)) — 必需：所属逻辑需求 ID，与
   `req_requirement.requirement_group_id` 对应，便于直接按需求查询模型。
 - `dimension_code` (VARCHAR(16)) — 必需：模型维度。当前转换和接口支持
-  `IBD`、`ESD`、`SC`、`BDD`、`ISD`。
+  `IBD`、`ESD`、`SC`、`BDD`、`ISD`、`UI`；UI 对应 DialogMap。
 - `model_type` (VARCHAR(100)) — 可选：业务模型类型；当前不额外限定取值。
 - `name` (VARCHAR(200)) — 必需：模型显示名称。
 - `model_key` (VARCHAR(200)) — 必需：模型业务键；在同一需求版本、同一维度内唯一。
@@ -120,6 +120,12 @@
 - SQLite 使用部分唯一索引保证
   `(requirement_version_id, dimension_code)` 最多只有一条 `is_primary = 1` 记录。
 - MySQL 初始化结构未使用部分唯一索引，主模型唯一性由后端事务逻辑保证。
+
+UI 兼容说明：
+
+- UI 模型与其他维度一样在模型表中同时保存 `dsl_text` 和 `graph_json`。
+- `req_requirement` 历史主表没有 `dsl_UI`、`graph_UI` 固定字段，因此 UI 主模型不会
+  镜像到旧字段；必须通过需求模型接口读取。
 
 版本与删除规则：
 

@@ -10,29 +10,34 @@ interface UseDimensionEditorSnapshotOptions {
   initialContent: string
   initialDslContent: string
   initialGraphData: object
+  initialSerializedGraphData?: object | null
   content: string
   dslContent: string
   graphData: object
   contentRef: MutableRef<string>
   dslContentRef: MutableRef<string>
   graphDataRef: MutableRef<object>
+  serializedGraphDataRef: MutableRef<object | null>
 }
 
 export function useDimensionEditorSnapshot({
   initialContent,
   initialDslContent,
   initialGraphData,
+  initialSerializedGraphData,
   content,
   dslContent,
   graphData,
   contentRef,
   dslContentRef,
   graphDataRef,
+  serializedGraphDataRef,
 }: UseDimensionEditorSnapshotOptions) {
   const savedSnapshotRef = useRef(createEditorSnapshot(
     initialContent,
     initialDslContent,
     initialGraphData,
+    initialSerializedGraphData,
   ))
   const [savedSnapshotKey, setSavedSnapshotKey] = useState(() => (
     getEditorSnapshotKey(savedSnapshotRef.current)
@@ -47,6 +52,7 @@ export function useDimensionEditorSnapshot({
       patch.content ?? savedSnapshotRef.current.content,
       patch.dslContent ?? savedSnapshotRef.current.dslContent,
       patch.graphData ?? savedSnapshotRef.current.graphData,
+      patch.serializedGraphData ?? savedSnapshotRef.current.serializedGraphData,
     )
 
     savedSnapshotRef.current = nextSnapshot
@@ -58,11 +64,12 @@ export function useDimensionEditorSnapshot({
       contentRef.current,
       dslContentRef.current,
       graphDataRef.current,
+      serializedGraphDataRef.current,
     )
 
     savedSnapshotRef.current = nextSnapshot
     setSavedSnapshotKey(getEditorSnapshotKey(nextSnapshot))
-  }, [contentRef, dslContentRef, graphDataRef])
+  }, [contentRef, dslContentRef, graphDataRef, serializedGraphDataRef])
 
   return {
     savedSnapshotRef,

@@ -6,12 +6,14 @@ export type ViewMode = 'visual' | 'dsl'
 export type ConvertedVisualData = {
   cellsData: object
   canvasData?: Record<string, any>
+  serializedGraphData?: object
 }
 
 export type EditorSnapshot = {
   content: string
   dslContent: string
   graphData: object
+  serializedGraphData?: object
 }
 
 // SectionKey 与 CreateRequirement.tsx 保持一致

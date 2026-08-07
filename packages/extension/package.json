@@ -131,6 +131,11 @@
           "type": "string",
           "default": "ws://127.0.0.1:3003",
           "description": "WebSocket URL for the internal composition language server."
+        },
+        "baic.lspWs.dialogMap": {
+          "type": "string",
+          "default": "ws://127.0.0.1:3004",
+          "description": "WebSocket URL for the DialogMap language server."
         }
       }
     }

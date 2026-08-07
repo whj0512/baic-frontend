@@ -1,11 +1,12 @@
 import { register } from '@antv/x6-react-shape'
+import type { Edge } from '@antv/x6'
 import type { FormConfig, GraphStrategy } from './types'
-import { ensureInternalConstraintsRequiredNodes } from './internalConstraintsRequiredNodes'
 import Start from '../../nodes/internalConstraints/Start'
 import Page from '../../nodes/dialogMap/Page'
-import End from '../../nodes/dialogMap/End'
 import DialogMapEdgeTrigger from '../form-panel/controls/dialogMap/DialogMapEdgeTrigger'
 import DialogMapWidgets from '../form-panel/controls/dialogMap/DialogMapWidgets'
+import DialogMapDataCarried from '../form-panel/controls/dialogMap/DialogMapDataCarried'
+import DialogMapTriggerType from '../form-panel/controls/dialogMap/DialogMapTriggerType'
 
 const basePortStyle = {
   r: 4,
@@ -16,6 +17,22 @@ const basePortStyle = {
 }
 
 const formConfig: FormConfig = {
+  canvas: {
+    tabs: [
+      {
+        name: '数据',
+        groups: [
+          {
+            title: '基础信息',
+            controls: [
+              { label: 'DialogMap 名称', name: 'name', shape: 'InputText' },
+              { label: '描述', name: 'desc', shape: 'InputText' },
+            ],
+          },
+        ],
+      },
+    ],
+  },
   edge: {
     tabs: [
       {
@@ -31,17 +48,20 @@ const formConfig: FormConfig = {
           {
             title: '触发配置',
             controls: [
-              { label: '触发组件', name: 'trigger', shape: 'DialogMapEdgeTrigger' },
+              {
+                label: '触发组件',
+                name: 'trigger',
+                shape: 'DialogMapEdgeTrigger',
+                hidden: true,
+                dependencies: [{ name: 'trigger_type', condition: 'click', hidden: false }],
+              },
               {
                 label: '触发类型',
                 name: 'trigger_type',
-                shape: 'Select',
-                options: [
-                  { label: 'click', value: 'click' },
-                  { label: 'auto', value: 'auto' },
-                ],
+                shape: 'DialogMapTriggerType',
               },
               { label: '条件', name: 'condition', shape: 'InputText' },
+              { label: '携带数据', name: 'data_carried', shape: 'DialogMapDataCarried' },
             ],
           },
         ],
@@ -60,6 +80,8 @@ const formConfig: FormConfig = {
     ],
     controlMap: {
       'DialogMapEdgeTrigger': DialogMapEdgeTrigger,
+      'DialogMapTriggerType': DialogMapTriggerType,
+      'DialogMapDataCarried': DialogMapDataCarried,
     },
   },
   nodes: {
@@ -126,38 +148,70 @@ const formConfig: FormConfig = {
         'DialogMapWidgets': DialogMapWidgets,
       },
     },
-    'end-node': {
-      schema: {
-        tabs: [
-          {
-            name: '数据',
-            groups: [
-              {
-                controls: [
-                  { label: '节点名称', name: 'nodeName', shape: 'InputText' },
-                ],
-              },
-            ],
-          },
-          {
-            name: '样式',
-            groups: [
-              {
-                controls: [
-                  { label: '边框颜色', name: 'stroke', shape: 'InputText' },
-                  { label: '填充颜色', name: 'fill', shape: 'InputText' },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    },
   },
 }
 
+const createUniqueName = (usedNames: Set<string>, prefix: string) => {
+  let index = 1
+  while (usedNames.has(`${prefix}_${index}`)) index += 1
+  return `${prefix}_${index}`
+}
+
+const ensureDialogMapEntry: GraphStrategy['ensureRequiredNodes'] = graph => {
+  if (graph.getNodes().some(node => node.shape === 'start-node')) return
+
+  graph.addNode({
+    shape: 'start-node',
+    x: 80,
+    y: 80,
+    width: 30,
+    height: 30,
+    data: {
+      nodeName: 'Start',
+      stroke: '#333',
+      fill: '#686666',
+    },
+  })
+}
+
 const dialogMapStrategy: GraphStrategy = {
-  ensureRequiredNodes: ensureInternalConstraintsRequiredNodes,
+  ensureRequiredNodes: ensureDialogMapEntry,
+  initializeNode: (node, graph) => {
+    if (node.shape !== 'page-node') return
+    const data = node.getData() || {}
+    if (data.nodeName && data.nodeName !== 'page') return
+    const usedNames = new Set(
+      graph.getNodes()
+        .filter(candidate => candidate.id !== node.id)
+        .map(candidate => String(candidate.getData()?.nodeName || '').trim())
+        .filter(Boolean),
+    )
+    node.setData({ ...data, nodeName: createUniqueName(usedNames, 'Page') })
+  },
+  finalizeEdgeData: (edgeData, source, _target, graph) => {
+    const usedNames = new Set(
+      graph.getEdges()
+        .map(edge => String(edge.getData()?.edgeName || '').trim())
+        .filter(Boolean),
+    )
+    const edgeName = String(edgeData.edgeName || '').trim()
+      || createUniqueName(usedNames, 'Transition')
+    if (source.shape === 'start-node') {
+      return { ...edgeData, edgeName, trigger: '', trigger_type: 'auto' }
+    }
+    return {
+      ...edgeData,
+      edgeName,
+      trigger_type: edgeData.trigger_type === 'auto' ? 'auto' : 'click',
+      ...(edgeData.trigger_type === 'auto' ? { trigger: '' } : {}),
+    }
+  },
+  canRemoveCell: cell => cell.shape !== 'start-node',
+  canCopyCell: cell => {
+    if (cell.shape === 'start-node') return false
+    if (!cell.isEdge()) return true
+    return (cell as Edge).getSourceCell()?.shape !== 'start-node'
+  },
   getDefaultEdgeData: () => ({
     trigger: '',
     trigger_type: 'click',
@@ -166,23 +220,10 @@ const dialogMapStrategy: GraphStrategy = {
   }),
   preConnectionRules: {
     maxDistance: 200,
-    canUseSource: node => node.shape !== 'end-node',
+    canUseSource: () => true,
     canUseTarget: node => node.shape !== 'start-node',
   },
   sidebarItems: [
-    {
-      type: 'start',
-      label: 'start',
-      shape: 'start-node',
-      color: '#e6f7ff',
-      tooltip: '会话图起点',
-      defaultAttrs: {
-        data: {
-          stroke: '#333',
-          fill: '#686666',
-        },
-      },
-    },
     {
       type: 'page',
       label: 'page',
@@ -196,22 +237,6 @@ const dialogMapStrategy: GraphStrategy = {
           stroke: '#333',
           fill: '#f3f4f6',
           widgets: [],
-        },
-      },
-    },
-    {
-      type: 'end',
-      label: 'end',
-      shape: 'end-node',
-      color: '#f3f4f6',
-      tooltip: '会话图结束节点',
-      defaultAttrs: {
-        width: 30,
-        height: 30,
-        data: {
-          nodeName: 'End',
-          stroke: '#111',
-          fill: '#000',
         },
       },
     },
@@ -229,12 +254,6 @@ const dialogMapStrategy: GraphStrategy = {
       height: 80,
       component: Page,
     })
-    register({
-      shape: 'end-node',
-      width: 30,
-      height: 30,
-      component: End,
-    })
   },
   formConfig,
   edgeRules: {
@@ -246,10 +265,6 @@ const dialogMapStrategy: GraphStrategy = {
         },
       }
 
-      if (nodeShape === 'end-node') {
-        return inPortGroup
-      }
-
       return {
         ...inPortGroup,
         out: {
@@ -258,8 +273,8 @@ const dialogMapStrategy: GraphStrategy = {
         },
       }
     },
-    getInitialPorts: (nodeShape: string) => nodeShape === 'end-node' ? [{ id: 'in-0', group: 'in' }] : [],
-    supportsMultiplePorts: (nodeShape: string) => nodeShape !== 'end-node',
+    getInitialPorts: () => [],
+    supportsMultiplePorts: () => true,
     hasMultipleOutputs: () => false,
     getOutputOptions: () => [],
   },
@@ -273,7 +288,7 @@ const dialogMapStrategy: GraphStrategy = {
     marginY: 0,
   },
   stencilGraphWidth: 180,
-  stencilGraphHeight: 320,
+  stencilGraphHeight: 120,
   stencilGraphPadding: 10,
 }
 

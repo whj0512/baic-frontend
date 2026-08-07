@@ -3,6 +3,7 @@ import interactionStrategy from "./interaction";
 import internalCompositionStrategy from "./internalComposition";
 import internalConstraintsStrategy from "./internalConstraints";
 import moduleResponsesStrategy from './moduleResponses';
+import dialogMapStrategy from './dialogMap';
 import type { DslEditorStrategy } from "./type";
 
 const strategies: Record<string, DslEditorStrategy> = {
@@ -11,6 +12,7 @@ const strategies: Record<string, DslEditorStrategy> = {
     internalComposition: internalCompositionStrategy,
     moduleResponses: moduleResponsesStrategy,
     internalConstraints: internalConstraintsStrategy,
+    dialogMap: dialogMapStrategy,
 }
 
 // Default fallback (can be empty or environment)

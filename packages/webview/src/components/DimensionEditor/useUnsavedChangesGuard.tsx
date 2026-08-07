@@ -27,6 +27,7 @@ interface UseUnsavedChangesGuardOptions {
   contentRef: MutableRef<string>
   dslContentRef: MutableRef<string>
   graphDataRef: MutableRef<object>
+  serializedGraphDataRef: MutableRef<object | null>
   pendingCanvasDataRef: MutableRef<Record<string, any> | null>
   flowGraphRef: MutableRef<FlowGraphRef | null>
   markSnapshotSaved: (snapshot?: EditorSnapshot) => void
@@ -45,6 +46,7 @@ interface UseUnsavedChangesGuardOptions {
   onSnapshotSaved?: () => void
   onDiscardUnsavedChanges?: () => void
   persistDisabledReason?: string
+  modelBacked: boolean
 }
 
 export function useUnsavedChangesGuard({
@@ -59,6 +61,7 @@ export function useUnsavedChangesGuard({
   contentRef,
   dslContentRef,
   graphDataRef,
+  serializedGraphDataRef,
   pendingCanvasDataRef,
   flowGraphRef,
   markSnapshotSaved,
@@ -74,6 +77,7 @@ export function useUnsavedChangesGuard({
   onSnapshotSaved,
   onDiscardUnsavedChanges,
   persistDisabledReason,
+  modelBacked,
 }: UseUnsavedChangesGuardOptions) {
   const prepareSnapshotForSave = useCallback(async (): Promise<EditorSnapshot | null> => {
     if (persistDisabledReason) {
@@ -82,11 +86,12 @@ export function useUnsavedChangesGuard({
     }
     const currentContent = contentRef.current
 
-    if (!config.graphField || !config.dslField) {
+    if (!modelBacked && (!config.graphField || !config.dslField)) {
       return createEditorSnapshot(
         currentContent,
         dslContentRef.current,
         graphDataRef.current,
+        serializedGraphDataRef.current,
       )
     }
 
@@ -105,6 +110,7 @@ export function useUnsavedChangesGuard({
         currentContent,
         currentDslContent,
         convertedVisualData.cellsData,
+        convertedVisualData.serializedGraphData,
       )
     }
 
@@ -116,6 +122,7 @@ export function useUnsavedChangesGuard({
       currentContent,
       nextDslContent,
       graphDataRef.current,
+      serializedGraphDataRef.current,
     )
   }, [
     applyDslView,
@@ -127,6 +134,8 @@ export function useUnsavedChangesGuard({
     convertGraphToDsl,
     dslContentRef,
     graphDataRef,
+    serializedGraphDataRef,
+    modelBacked,
     persistDisabledReason,
     viewMode,
   ])
@@ -136,6 +145,7 @@ export function useUnsavedChangesGuard({
       contentRef.current,
       dslContentRef.current,
       graphDataRef.current,
+      serializedGraphDataRef.current,
     ),
   ): Promise<boolean> => {
     if (!onPersist) {
@@ -198,6 +208,7 @@ export function useUnsavedChangesGuard({
     contentRef.current = snapshot.content
     dslContentRef.current = snapshot.dslContent
     graphDataRef.current = nextGraphData
+    serializedGraphDataRef.current = snapshot.serializedGraphData ?? null
     pendingCanvasDataRef.current = null
     setContent(snapshot.content)
     setDslContent(snapshot.dslContent)
@@ -209,6 +220,7 @@ export function useUnsavedChangesGuard({
     dslContentRef,
     flowGraphRef,
     graphDataRef,
+    serializedGraphDataRef,
     pendingCanvasDataRef,
     savedSnapshotRef,
     setContent,

@@ -14,7 +14,6 @@ export interface RuntimeConfig {
     environment: string
     interaction: string
     internalComposition: string
-    dialogMap: string
   }
 }
 
@@ -57,7 +56,7 @@ const envConfig: RuntimeConfig = {
     internalComposition:
       import.meta.env.VITE_LSP_WS_INTERNAL_COMPOSITION ?? 'ws://127.0.0.1:3003',
     dialogMap:
-      import.meta.env.VITE_LSP_WS_DIALOG_MAP ?? 'ws://127.0.0.1:3004',
+      import.meta.env.VITE_LSP_WS_DIALOG_MAP ?? 'ws://127.0.0.1;3004',
   },
 }
 
@@ -69,10 +68,6 @@ export function getRuntimeConfig(): RuntimeConfig {
 
   return {
     ...runtimeConfig,
-    lspWs: {
-      ...envConfig.lspWs,
-      ...runtimeConfig.lspWs,
-    },
     qwenPawChatTimeoutMs: readPositiveNumber(
       runtimeConfig.qwenPawChatTimeoutMs,
       envConfig.qwenPawChatTimeoutMs,

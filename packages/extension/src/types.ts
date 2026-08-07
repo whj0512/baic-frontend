@@ -3,6 +3,7 @@ export interface LspWsConfig {
   environment: string
   interaction: string
   internalComposition: string
+  dialogMap: string
 }
 
 export interface RuntimeConfig {

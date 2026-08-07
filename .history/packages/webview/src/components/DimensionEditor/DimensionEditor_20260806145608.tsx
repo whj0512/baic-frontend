@@ -3,7 +3,6 @@ import { Button, message, Modal } from 'antd'
 import { ArrowLeftOutlined, SaveOutlined, DownloadOutlined, FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons'
 import type { FlowGraphRef } from '../graph'
 import { getModelStrategy } from '../../models/strategies'
-import type { ModelStrategy } from '../../models/strategies'
 import { exportGraphToRBG } from '../../models/strategies/internalConstraints/exportGraph'
 import ArtifactDimensionEditor from './ArtifactDimensionEditor'
 import DimensionModelingSurface from './DimensionModelingSurface'
@@ -27,58 +26,6 @@ import {
 } from '../../utils/editorDraftStorage'
 import './DimensionEditor.css'
 
-type PreparedGraphData = {
-  graphData: object
-  canvasData: Record<string, any> | null
-  error?: string
-}
-
-const isRecord = (value: unknown): value is Record<string, any> => (
-  value !== null && typeof value === 'object' && !Array.isArray(value)
-)
-
-const getCanvasData = (graphData: object): Record<string, any> | null => {
-  if (!isRecord(graphData) || !isRecord(graphData.canvasData)) return null
-  return graphData.canvasData
-}
-
-const isLegacyX6GraphData = (graphData: object) => (
-  isRecord(graphData) && Array.isArray(graphData.cells)
-)
-
-const createEmptyEditorGraph = (modelStrategy: ModelStrategy, modelName: string) => (
-  modelStrategy.createEmptyGraphData?.({ modelName }) ?? { cells: [] }
-)
-
-const prepareModelGraphData = (
-  sourceGraph: object,
-  modelStrategy: ModelStrategy,
-  modelName: string,
-  dimensionLabel: string,
-): PreparedGraphData => {
-  if (!Object.keys(sourceGraph).length) {
-    const graphData = createEmptyEditorGraph(modelStrategy, modelName)
-    return { graphData, canvasData: getCanvasData(graphData) }
-  }
-
-  try {
-    const graphData = isLegacyX6GraphData(sourceGraph)
-      ? sourceGraph
-      : modelStrategy.importGraphFromJSON(
-        JSON.stringify(sourceGraph),
-        { modelName },
-      )
-    return { graphData, canvasData: getCanvasData(graphData) }
-  } catch (error) {
-    const graphData = createEmptyEditorGraph(modelStrategy, modelName)
-    return {
-      graphData,
-      canvasData: getCanvasData(graphData),
-      error: error instanceof Error ? error.message : `${dimensionLabel}图数据无效`,
-    }
-  }
-}
-
 function RequirementDimensionEditor({
   draftProjectScope,
   requirement,
@@ -94,30 +41,46 @@ function RequirementDimensionEditor({
   const config = SECTION_CONFIG[sectionKey]
   const modelStrategy = getModelStrategy(sectionKey)
   const draftUserId = getDraftUserId()
+  const isDialogMap = sectionKey === 'dialogMap'
 
   const rawInitialGraphData = model
     ? (model.graph_json ?? {})
-    : (config.graphField ? (requirement[config.graphField] as object) : {}) || {}
+    : (config.graphField ? (requirement[config.graphField] as object) : (requirement as any).graph_DialogMap) || {}
   const initialDslContent = model
     ? (model.dsl_text ?? '')
-    : (config.dslField ? (requirement[config.dslField] as string) : '') || ''
+    : (config.dslField ? (requirement[config.dslField] as string) : (requirement as any).dsl_DialogMap) || ''
   const initialContent = model ? '' : (requirement.nl_text || '')
   const preparedInitialGraph = useMemo(() => {
-    if (!model) {
+    if (!isDialogMap || !model) {
+      return { graphData: rawInitialGraphData, canvasData: null, error: undefined }
+    }
+    if (!Object.keys(rawInitialGraphData).length) {
+      const canvasData = { name: model.name, desc: '' }
       return {
-        graphData: rawInitialGraphData,
-        canvasData: getCanvasData(rawInitialGraphData),
+        graphData: { cells: [], canvasData },
+        canvasData,
         error: undefined,
       }
     }
 
-    return prepareModelGraphData(
-      rawInitialGraphData,
-      modelStrategy,
-      model.name,
-      config.label,
-    )
-  }, [config.label, model, modelStrategy, rawInitialGraphData])
+    try {
+      const imported = modelStrategy.importGraphFromJSON(JSON.stringify(rawInitialGraphData)) as any
+      const { canvasData, ...graphData } = imported
+      const nextCanvasData = { ...canvasData, name: canvasData?.name || model.name }
+      return {
+        graphData: { ...graphData, canvasData: nextCanvasData },
+        canvasData: nextCanvasData,
+        error: undefined,
+      }
+    } catch (error) {
+      const canvasData = { name: model.name, desc: '' }
+      return {
+        graphData: { cells: [], canvasData },
+        canvasData,
+        error: error instanceof Error ? error.message : 'DialogMap 图数据无效',
+      }
+    }
+  }, [isDialogMap, model, modelStrategy, rawInitialGraphData])
   const initialGraphData = preparedInitialGraph.graphData
 
   const [content, setContent] = useState(initialContent)
@@ -149,14 +112,12 @@ function RequirementDimensionEditor({
     initialContent,
     initialDslContent,
     initialGraphData,
-    initialSerializedGraphData: model?.graph_json ?? null,
     content,
     dslContent,
     graphData,
     contentRef,
     dslContentRef,
     graphDataRef,
-    serializedGraphDataRef,
   })
 
   const {
@@ -224,7 +185,6 @@ function RequirementDimensionEditor({
     onSnapshotSaved: clearCurrentDraft,
     onDiscardUnsavedChanges: clearCurrentDraft,
     persistDisabledReason: visualDisabledReason,
-    modelBacked: Boolean(model),
   })
 
   const handleGraphChange = useCallback((data: object) => {
@@ -383,34 +343,31 @@ function RequirementDimensionEditor({
       ? (model.graph_json ?? {})
       : (config.graphField ? (requirement[config.graphField] as object) : {}) || {}
     const remoteStr = JSON.stringify(remoteGraph)
-    const localStr = JSON.stringify(model ? serializedGraphDataRef.current : graphDataRef.current)
+    const localStr = JSON.stringify(isDialogMap ? serializedGraphDataRef.current : graphDataRef.current)
 
     if (remoteStr !== localStr) {
       let nextGraph = remoteGraph
       let nextCanvasData: Record<string, any> | null = null
-      if (model) {
-        const preparedGraph = prepareModelGraphData(
-          remoteGraph,
-          modelStrategy,
-          model.name,
-          config.label,
-        )
-        if (preparedGraph.error) {
-          setGraphError(preparedGraph.error)
+      if (isDialogMap && model) {
+        try {
+          const imported = modelStrategy.importGraphFromJSON(JSON.stringify(remoteGraph)) as any
+          const { canvasData, ...cellsData } = imported
+          nextCanvasData = { ...canvasData, name: canvasData?.name || model.name }
+          nextGraph = { ...cellsData, canvasData: nextCanvasData }
+          setGraphError(undefined)
+        } catch (error) {
+          setGraphError(error instanceof Error ? error.message : 'DialogMap 图数据无效')
           return
         }
-        nextGraph = preparedGraph.graphData
-        nextCanvasData = preparedGraph.canvasData
-        setGraphError(undefined)
       }
       message.info('其他用户更新了图数据，已自动同步')
       graphDataRef.current = nextGraph
-      serializedGraphDataRef.current = model ? remoteGraph : null
+      serializedGraphDataRef.current = isDialogMap ? remoteGraph : null
       pendingCanvasDataRef.current = nextCanvasData
       setGraphData(nextGraph)
       updateSavedSnapshot({
         graphData: nextGraph,
-        ...(model ? { serializedGraphData: remoteGraph } : {}),
+        ...(isDialogMap ? { serializedGraphData: remoteGraph } : {}),
       })
       flowGraphRef.current?.loadData(nextGraph)
       const graph = flowGraphRef.current?.getGraph()
@@ -420,7 +377,7 @@ function RequirementDimensionEditor({
         pendingCanvasDataRef.current = null
       }
     }
-  }, [config.graphField, config.label, hasUnsavedChanges, model, modelStrategy, requirement, updateSavedSnapshot])
+  }, [hasUnsavedChanges, requirement, model, config.graphField, isDialogMap, modelStrategy, updateSavedSnapshot])
 
   useEffect(() => {
     if (!config.dslField && !model) return

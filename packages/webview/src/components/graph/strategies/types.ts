@@ -1,5 +1,5 @@
 import React from 'react'
-import type { Graph, Node } from '@antv/x6'
+import type { Cell, Graph, Node } from '@antv/x6'
 
 export interface SidebarItem {
   type: string
@@ -102,6 +102,13 @@ export interface GraphStrategy {
   registerNodes?: () => void
   // 在图初始化或重新加载数据后补齐该类型图所需的节点
   ensureRequiredNodes?: (graph: Graph) => void
+  // 节点进入画布后的策略级初始化（不用于服务端数据导入前的转换）
+  initializeNode?: (node: Node, graph: Graph) => void
+  // 规则连线完成后规范化业务数据
+  finalizeEdgeData?: (edgeData: Record<string, any>, source: Node, target: Node, graph: Graph) => Record<string, any>
+  // 策略级单元保护，供菜单和键盘操作共同使用
+  canRemoveCell?: (cell: Cell) => boolean
+  canCopyCell?: (cell: Cell) => boolean
   // 表单配置
   formConfig?: FormConfig
   // 边规则配置（基于 Port 的连线，优先级最高）

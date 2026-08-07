@@ -55,6 +55,11 @@ export const registerGraphEventHandlers = (
   if (!options.readOnly && options.strategy.sequenceConnection) {
     registerSequenceConnection(graph, options.strategy, options.onChange)
   }
+  if (!options.readOnly && options.strategy.initializeNode) {
+    graph.on('node:added', ({ node }: { node: Node }) => {
+      options.strategy.initializeNode?.(node, graph)
+    })
+  }
   registerChangeEvents(graph, options)
   registerEdgeLabelEvents(graph)
 
@@ -64,7 +69,7 @@ export const registerGraphEventHandlers = (
   }
 
   registerPlugins(graph)
-  registerKeyboardShortcuts(graph, options.readOnly)
+  registerKeyboardShortcuts(graph, options.readOnly, options.strategy)
 }
 
 const registerPreConnectionEvents = (graph: Graph, strategy: GraphStrategy) => {
@@ -113,6 +118,9 @@ const registerChangeEvents = (
   graph.on('edge:change:target', updateEdgeData)
   graph.on('edge:change:vertices', updateEdgeData)
   graph.on('cell:change:data', updateCellData)
+  graph.on('canvas:change:data', ({ initial }: { initial?: boolean } = {}) => {
+    if (!initial) updateData()
+  })
 }
 
 const registerEdgeLabelEvents = (graph: Graph) => {
@@ -406,12 +414,12 @@ const preventKeyboardDefault = (event: KeyboardEvent) => {
   event.stopPropagation()
 }
 
-const registerKeyboardShortcuts = (graph: Graph, readOnly: boolean) => {
+const registerKeyboardShortcuts = (graph: Graph, readOnly: boolean, strategy: GraphStrategy) => {
   graph.bindKey(['backspace', 'del'], (event) => {
     preventKeyboardDefault(event)
     if (readOnly) return
 
-    const cells = graph.getSelectedCells()
+    const cells = graph.getSelectedCells().filter(cell => strategy.canRemoveCell?.(cell) !== false)
     if (cells.length) {
       graph.removeCells(cells)
       graph.cleanSelection()
@@ -421,7 +429,7 @@ const registerKeyboardShortcuts = (graph: Graph, readOnly: boolean) => {
   graph.bindKey(['ctrl+c', 'meta+c', 'command+c'], (event) => {
     preventKeyboardDefault(event)
 
-    const cells = graph.getSelectedCells()
+    const cells = graph.getSelectedCells().filter(cell => strategy.canCopyCell?.(cell) !== false)
     if (cells.length) {
       graph.copy(cells)
     }

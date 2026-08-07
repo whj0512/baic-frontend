@@ -389,8 +389,9 @@ curl -X POST http://127.0.0.1:8000/dsl-to-rbg/ESD -H "Content-Type: text/plain; 
 
 - 字段兼容说明：
   - `children` 保存 `if`、`while`、并行块等场景的真实嵌套结构。
-  - `_ast` 用于保留场景名称、注释和原始顺序；需要无损往返时不应删除。
+  - `_ast` 用于保留场景名称、注释和原始顺序；其中 `footer` 保存根 `Scenario { ... }` 结束后的行注释或块注释，需要无损往返时不应删除。
   - `interactions`、`interactionRelations`、`components` 是为现有前端保留的兼容字段。
+- Scenario DSL 注释规则：根 `Scenario { ... }` 之前、内部以及结束大括号之后均允许 `//` 行注释和 `/* ... */` 块注释；结束大括号之后的非注释内容仍视为语法错误。
 - 常见错误：
   - 400：请求体为空或请求 JSON 不是对象。
   - 400：缺少 Environment DSL，返回 `{"error":"Environment DSL is required by the current Scenario model", ...}`。
@@ -445,7 +446,131 @@ Scenario Demo {
   - 400：Content-Type 非 `application/json`，返回 `{"error":"Expected application/json content type"}`。
   - 400：JSON 无法解析，返回包含行号、列号和请求体预览的错误信息。
   - 400：转换失败时返回 `{"error":"Failed to convert ESD JSON to DSL: ..."}`。
-  - 500：其他内部异常。
+- 500：其他内部异常。
+
+---
+
+### 3.g POST /dsl-to-rbg/UI
+
+- 用途：依据 `grammar_dialogmap.tx` 将 DialogMap DSL 转换为 UI 图 JSON。
+- URL：`POST /dsl-to-rbg/UI`
+- 请求头：推荐 `Content-Type: text/plain; charset=utf-8`。
+- 请求体：原始 DialogMap DSL 文本。
+
+```text
+DialogMap MediaDialog {
+  Entry Start;
+  Page Home {
+    widgets: [
+      { widget_id: "W1" type: "button" name: "Open" action: "Open detail" action_type: "navigate" target: "Detail" condition: "" }
+    ]
+  };
+  Page Detail { widgets: [] };
+  Transition OpenDetail {
+    trigger: "W1"
+    trigger_type: "click"
+    from: Home
+    to: Detail
+    condition: ""
+    data_carried: []
+  };
+}
+```
+
+```bash
+curl -X POST http://127.0.0.1:8000/dsl-to-rbg/UI -H "Content-Type: text/plain; charset=utf-8" --data-binary @dialogmap.dsl
+```
+
+- 成功响应：`200 application/json`。
+
+```json
+{
+  "id": "graph-uuid",
+  "name": "MediaDialog",
+  "desc": "",
+  "graph_type": "UI",
+  "entry_node": "entry-node-uuid",
+  "nodes": [
+    {
+      "id": "entry-node-uuid",
+      "type": "entry",
+      "type_name": "entry",
+      "name": "Start",
+      "x": 80,
+      "y": 80
+    },
+    {
+      "id": "page-node-uuid",
+      "type": "page",
+      "type_name": "page",
+      "name": "Home",
+      "widgets": [
+        {
+          "id": "W1",
+          "widget_id": "W1",
+          "type": "button",
+          "name": "Open",
+          "action": "Open detail",
+          "action_type": "navigate",
+          "target": "Detail",
+          "condition": "",
+          "display_variants": []
+        }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "id": "transition-uuid",
+      "name": "OpenDetail",
+      "trigger": "W1",
+      "trigger_type": "click",
+      "source_node": "page-node-uuid",
+      "target_node": "detail-node-uuid",
+      "condition": "",
+      "data_carried": []
+    }
+  ]
+}
+```
+
+字段说明：
+
+- `nodes` 同时包含唯一的 `entry` 节点和全部 `page` 节点。
+- Page 的 `widgets` 保留 `widget_id`、动作、目标、条件和 `display_variants`。
+- `transitions.source_node`、`target_node` 引用节点 `id`。
+- 服务端为节点和转换生成 UUID，并提供确定性的基础布局坐标。
+- 全局重复的 `widget_id`、重复节点名、空 DSL 或语法错误返回 `400`。
+
+---
+
+### 3.h POST /rbg-to-dsl/UI
+
+- 用途：将 UI 图 JSON 转换为规范化 DialogMap DSL，并在返回前使用
+  `grammar_dialogmap.tx` 重新解析校验。
+- URL：`POST /rbg-to-dsl/UI`
+- 请求头：必须为 `Content-Type: application/json; charset=utf-8`。
+- 请求体：直接发送 `/dsl-to-rbg/UI` 返回的完整 JSON 对象。
+- 成功响应：`200 text/plain`，内容为 DialogMap DSL。
+
+```bash
+curl -X POST http://127.0.0.1:8000/rbg-to-dsl/UI -H "Content-Type: application/json; charset=utf-8" --data-binary @dialogmap.json
+```
+
+兼容输入：
+
+- 推荐使用 `nodes` 和 `transitions`。
+- 也接受 `entry`、`pages` 分离形式。
+- 转换的 source/target 可以使用 `source_node`/`target_node` 节点 ID，也可以使用
+  `source`/`target`、`from`/`to` 名称或包含 `id`/`name` 的对象。
+- Widget 同时接受 `widget_id`/`widgetId`、`action_type`/`actionType`、
+  `display_variants`/`variants` 命名。
+
+常见错误：
+
+- `400`：Content-Type 不是 JSON、JSON 无效、节点引用不存在、缺少唯一 Entry、字段类型
+  错误或生成结果不符合 DialogMap 元模型。
+- `500`：其他内部异常。
 
 ---
 
@@ -878,14 +1003,14 @@ curl -X PUT http://127.0.0.1:8000/requirements/3fa85f64-... \
 
 ## 12.a 需求维度多模型接口
 
-一条需求的 IBD、ESD、SC、BDD、ISD 每个维度均可保存多张图。每张图对应唯一的一份
+一条需求的 IBD、ESD、SC、BDD、ISD、UI 每个维度均可保存多张图。每张图对应唯一的一份
 DSL，使用稳定的 `model_group_id` 标识；修改模型会创建新的需求版本。
 
 ### 模型请求字段 `RequirementModelInput`
 
 | 字段 | 类型 | 必需 | 说明 |
 |---|---|---|---|
-| `dimension_code` | string | 是 | `IBD`、`ESD`、`SC`、`BDD` 或 `ISD` |
+| `dimension_code` | string | 是 | `IBD`、`ESD`、`SC`、`BDD`、`ISD` 或 `UI` |
 | `model_group_id` | string | 否 | 模型逻辑 ID；新增时省略则自动生成 |
 | `model_type` | string/null | 否 | 业务模型类型，当前不额外规范取值 |
 | `name` | string/null | 否 | 模型显示名称 |
@@ -902,7 +1027,8 @@ DSL，使用稳定的 `model_group_id` 标识；修改模型会创建新的需�
 
 只提交 `dsl_text` 时，后端自动生成 `graph_json`；只提交 `graph_json` 时自动生成
 `dsl_text`。ESD/ISD 仅提交 DSL 时，需要通过 `context_model_group_id` 指定 IBD，或保证
-该需求只有明确的主 IBD。数据库最终始终同时保存 DSL 和图。
+该需求只有明确的主 IBD。UI 使用 DialogMap 转换器，不需要 IBD 上下文。数据库最终
+始终同时保存 DSL 和图。
 
 ### GET /requirements/{requirement_id}/models
 

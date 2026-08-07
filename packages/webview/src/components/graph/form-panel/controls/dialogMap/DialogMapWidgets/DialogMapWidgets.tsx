@@ -13,7 +13,14 @@ export interface DialogMapWidget {
   name: string
   action: string
   action_type: WidgetActionType | string
-  target: string
+  target: string | null
+  condition: string
+  display_variants: DialogMapDisplayVariant[]
+}
+
+export interface DialogMapDisplayVariant {
+  variant_id: string
+  display_text: string
   condition: string
 }
 
@@ -86,11 +93,25 @@ const createDefaultWidget = (
   action_type: 'execute',
   target: '',
   condition: '',
+  display_variants: [],
 })
 
 const normalizeWidgets = (value?: DialogMapWidget[]) => (
-  Array.isArray(value) ? value : []
+  Array.isArray(value)
+    ? value.map(widget => ({
+      ...widget,
+      display_variants: Array.isArray(widget.display_variants) ? widget.display_variants : [],
+    }))
+    : []
 )
+
+const createNextVariantId = (variants: DialogMapDisplayVariant[]) => {
+  const maxIndex = variants.reduce((maxValue, variant) => {
+    const match = /^VAR_(\d+)$/.exec(variant.variant_id || '')
+    return match ? Math.max(maxValue, Number(match[1])) : maxValue
+  }, 0)
+  return `VAR_${String(maxIndex + 1).padStart(3, '0')}`
+}
 
 const getWidgetCollapseId = (widget: DialogMapWidget, index: number) => (
   widget.widget_id || `Widget ${index + 1}`
@@ -178,6 +199,33 @@ const DialogMapWidgets: React.FC<DialogMapWidgetsProps> = ({ value, onChange, gr
 
     nextWidgets[index] = nextWidget
     commit(nextWidgets)
+  }
+
+  const handleAddVariant = (widgetIndex: number) => {
+    const variants = widgets[widgetIndex].display_variants || []
+    handleUpdate(widgetIndex, {
+      display_variants: [
+        ...variants,
+        { variant_id: createNextVariantId(variants), display_text: '', condition: '' },
+      ],
+    })
+  }
+
+  const handleUpdateVariant = (
+    widgetIndex: number,
+    variantIndex: number,
+    updates: Partial<DialogMapDisplayVariant>,
+  ) => {
+    const variants = [...(widgets[widgetIndex].display_variants || [])]
+    variants[variantIndex] = { ...variants[variantIndex], ...updates }
+    handleUpdate(widgetIndex, { display_variants: variants })
+  }
+
+  const handleDeleteVariant = (widgetIndex: number, variantIndex: number) => {
+    handleUpdate(widgetIndex, {
+      display_variants: (widgets[widgetIndex].display_variants || [])
+        .filter((_, index) => index !== variantIndex),
+    })
   }
 
   const toggleWidget = (widgetId: string) => {
@@ -352,6 +400,47 @@ const DialogMapWidgets: React.FC<DialogMapWidgetsProps> = ({ value, onChange, gr
                     placeholder="条件"
                   />
                 </label>
+
+                <div className="dialog-map-widgets__variants">
+                  <div className="dialog-map-widgets__variants-header">
+                    <span>显示变体</span>
+                    <Button size="small" type="dashed" onClick={() => handleAddVariant(index)}>
+                      新增变体
+                    </Button>
+                  </div>
+                  {(widget.display_variants || []).map((variant, variantIndex) => (
+                    <div key={variantIndex} className="dialog-map-widgets__variant">
+                      <Input
+                        size="small"
+                        value={variant.variant_id}
+                        onChange={(event) => handleUpdateVariant(index, variantIndex, { variant_id: event.target.value })}
+                        placeholder="variant_id"
+                      />
+                      <Input
+                        size="small"
+                        value={variant.display_text}
+                        onChange={(event) => handleUpdateVariant(index, variantIndex, { display_text: event.target.value })}
+                        placeholder="display_text"
+                      />
+                      <Input
+                        size="small"
+                        value={variant.condition}
+                        onChange={(event) => handleUpdateVariant(index, variantIndex, { condition: event.target.value })}
+                        placeholder="condition"
+                      />
+                      <Button
+                        size="small"
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={() => handleDeleteVariant(index, variantIndex)}
+                      />
+                    </div>
+                  ))}
+                  {(widget.display_variants || []).length === 0 && (
+                    <span className="dialog-map-widgets__variants-empty">暂无显示变体</span>
+                  )}
+                </div>
                 </div>
               )}
             </div>

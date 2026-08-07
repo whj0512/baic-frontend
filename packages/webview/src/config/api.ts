@@ -21,6 +21,8 @@ export const API_ENDPOINTS = {
   rbgToDslESD: `${SERVICE_BASE_URL}/rbg-to-dsl/ESD`,
   dslToRbgESD: `${SERVICE_BASE_URL}/dsl-to-rbg/ESD`,
   dslToRbgISD: `${SERVICE_BASE_URL}/dsl-to-rbg/ISD`,
+  rbgToDslUI: `${SERVICE_BASE_URL}/rbg-to-dsl/UI`,
+  dslToRbgUI: `${SERVICE_BASE_URL}/dsl-to-rbg/UI`,
   nlToDsl: `${SERVICE_BASE_URL}/nl-to-dsl`,
   projects: `${SERVICE_BASE_URL}/projects`,
   projectById: (projectId: string) =>
@@ -92,6 +94,7 @@ export function getDslToRbgEndpoint(dimensionCode: string): string {
     case 'BDD': return API_ENDPOINTS.dslToRbgBDD
     case 'ESD': return API_ENDPOINTS.dslToRbgESD
     case 'ISD': return API_ENDPOINTS.dslToRbgISD
+    case 'UI': return API_ENDPOINTS.dslToRbgUI
     default: return API_ENDPOINTS.dslToRbg
   }
 }
@@ -113,7 +116,7 @@ export function createDslToRbgRequest(
 
   return {
     endpoint,
-    headers: { 'Content-Type': 'text/plain' },
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     body: dsl,
   }
 }
@@ -124,6 +127,7 @@ export function getRbgToDslEndpoint(dimensionCode: string): string {
     case 'BDD': return API_ENDPOINTS.rbgToDslBDD
     case 'ESD': return API_ENDPOINTS.rbgToDslESD
     case 'ISD': return API_ENDPOINTS.rbgToDslESD
+    case 'UI': return API_ENDPOINTS.rbgToDslUI
     default: return API_ENDPOINTS.rbgToDsl
   }
 }

@@ -65,6 +65,7 @@ const fullWidthControlShapes = new Set([
   'TruthTable',
   'VariableActionList',
   'DialogMapWidgets',
+  'DialogMapDataCarried',
 ])
 
 const FormPanel: React.FC<Props> = ({ schema, controlMap, data, onUpdate, targetType, graph, selectedCell }) => {

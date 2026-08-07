@@ -45,7 +45,6 @@ import type {
 } from '../models/RequirementModel'
 import type { RequirementModelMetadataValue } from '../components/RequirementModelMetadataModal'
 import { DIMENSION_CODE_TO_SECTION } from '../components/DimensionEditor/dimensionEditorConfig'
-import { isUiRequirementType } from '../components/DimensionList/requirementSections'
 import type { EditorSnapshot } from '../components/DimensionEditor/types'
 
 type WorkspaceView = 'requirements' | 'testCases'
@@ -89,21 +88,7 @@ const getPersistableCreateDraft = (
   formData: CreateRequirementFormData,
   view: CreateCenterView,
   section: SectionKey | null,
-) => {
-  const { dialogMap: _dialogMapGraph, ...sectionData } = formData.sectionData
-  const { dialogMap: _dialogMapDsl, ...sectionDslData } = formData.sectionDslData
-  const nextSection = section === 'dialogMap' ? null : section
-
-  return {
-    formData: {
-      ...formData,
-      sectionData,
-      sectionDslData,
-    },
-    view: view === 'create-editor' && section === 'dialogMap' ? 'create' : view,
-    section: nextSection,
-  }
-}
+) => ({ formData, view, section })
 
 const CREATE_SECTION_KEYS: SectionKey[] = [
   'environment',
@@ -128,7 +113,7 @@ const toRequirementModelInput = (
   name: model.name.trim(),
   model_key: model.model_key.trim(),
   dsl_text: snapshot?.dslContent ?? model.dsl_text,
-  graph_json: snapshot?.graphData ?? model.graph_json,
+  graph_json: snapshot?.serializedGraphData ?? snapshot?.graphData ?? model.graph_json,
   context_model_group_id: model.context_model_group_id ?? null,
   is_primary: Boolean(model.is_primary),
   sort_order: model.sort_order ?? 0,
@@ -420,7 +405,7 @@ function ProjectWorkSpace() {
           name: draft.modelName,
           model_key: draft.modelKey,
           dsl_text: draft.snapshot.dslContent,
-          graph_json: draft.snapshot.graphData,
+          graph_json: draft.snapshot.serializedGraphData ?? draft.snapshot.graphData,
           context_model_group_id: draft.contextModelGroupId ?? null,
           is_primary: draft.modelIsPrimary ?? false,
           sort_order: draft.modelSortOrder ?? 0,
@@ -459,22 +444,16 @@ function ProjectWorkSpace() {
       setModelsLoading(false)
       return
     }
-    if (isUiRequirementType(selectedRequirementSnapshot?.type)) {
-      setModelsLoading(false)
-      setModelsLoadedRequirementId(selectedRequirement)
-      return
-    }
     void loadRequirementModels(selectedRequirement)
-  }, [loadRequirementModels, selectedRequirement, selectedRequirementSnapshot?.type])
+  }, [loadRequirementModels, selectedRequirement])
 
   useEffect(() => () => modelRequestRef.current.controller?.abort(), [])
 
   useEffect(() => {
     if (!lastRequirementChange) return
     if (lastRequirementChange.requirementId !== selectedRequirementRef.current) return
-    if (isUiRequirementType(selectedRequirementSnapshot?.type)) return
     void reloadRequirementModels()
-  }, [lastRequirementChange, reloadRequirementModels, selectedRequirementSnapshot?.type])
+  }, [lastRequirementChange, reloadRequirementModels])
 
   // 获取选中需求的详细信息（包括版本历史）
   useEffect(() => {
@@ -666,7 +645,7 @@ function ProjectWorkSpace() {
         if (model.clientId === identity.clientId) {
           const isOnlyPrimary = Boolean(model.is_primary)
             && !requirementModels.some(candidate => candidate.dimension_code === model.dimension_code)
-            && !previous.some(candidate => (
+            && !requirementModelDrafts.some(candidate => (
               candidate.clientId !== model.clientId
               && candidate.dimension_code === model.dimension_code
               && candidate.is_primary
@@ -1109,7 +1088,11 @@ function ProjectWorkSpace() {
     setCreateFormData(previous => ({
       ...previous,
       dimensionModels: previous.dimensionModels.map(model => model.clientId === clientId
-        ? { ...model, dsl_text: snapshot.dslContent, graph_json: snapshot.graphData }
+        ? {
+          ...model,
+          dsl_text: snapshot.dslContent,
+          graph_json: snapshot.serializedGraphData ?? snapshot.graphData,
+        }
         : model),
     }))
   }
@@ -1142,14 +1125,12 @@ function ProjectWorkSpace() {
     graph_BDD: createFormData.sectionData.internalComposition,
     graph_ISD: createFormData.sectionData.moduleResponses,
     graph_SC: createFormData.sectionData.internalConstraints,
-    graph_DialogMap: createFormData.sectionData.dialogMap,
     // Map section DSL data to requirement DSL fields
     dsl_IBD: createFormData.sectionDslData.environment,
     dsl_ESD: createFormData.sectionDslData.interaction,
     dsl_BDD: createFormData.sectionDslData.internalComposition,
     dsl_ISD: createFormData.sectionDslData.moduleResponses,
     dsl_SC: createFormData.sectionDslData.internalConstraints,
-    dsl_DialogMap: createFormData.sectionDslData.dialogMap,
   } as Requirement // Cast as we might be missing some required fields but sufficient for editor
 
   // 类型显示名称映射

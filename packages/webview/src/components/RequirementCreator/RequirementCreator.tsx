@@ -13,7 +13,7 @@ import DimensionList from '../DimensionList'
 import type { DimensionListModelItem } from '../DimensionList/DimensionList'
 import type { SectionKey } from '../DimensionEditor/types'
 import { DIMENSION_CODE_TO_SECTION } from '../DimensionEditor/dimensionEditorConfig'
-import { getRequirementSections, isUiRequirementType } from '../DimensionList/requirementSections'
+import { getRequirementSections } from '../DimensionList/requirementSections'
 import RequirementModelMetadataModal, {
   type RequirementModelMetadataValue,
 } from '../RequirementModelMetadataModal'
@@ -65,9 +65,8 @@ function RequirementCreator({
   } | null>(null)
 
   const currentFormData = formData || localFormData
-  const sections = getRequirementSections(currentFormData.req_type)
-  const isUiRequirement = isUiRequirementType(currentFormData.req_type)
-  const sectionTitle = isUiRequirement ? '会话图定义' : '五维模型定义'
+  const sections = getRequirementSections()
+  const sectionTitle = '六维模型定义'
   const dimensionModels = currentFormData.dimensionModels
 
   const updateFormData = (newData: CreateRequirementFormData) => {
@@ -213,7 +212,7 @@ function RequirementCreator({
   }
 
   const validateModels = () => {
-    const dimensionCodes: RequirementDimensionCode[] = ['IBD', 'ESD', 'BDD', 'ISD', 'SC']
+    const dimensionCodes: RequirementDimensionCode[] = ['IBD', 'ESD', 'BDD', 'ISD', 'SC', 'UI']
     for (const dimensionCode of dimensionCodes) {
       const models = dimensionModels.filter(model => model.dimension_code === dimensionCode)
       const keys = new Set<string>()
@@ -244,10 +243,8 @@ function RequirementCreator({
     if (!name) return void message.error('请输入需求名称')
     if (!nlText) return void message.error('请输入需求描述')
 
-    if (!isUiRequirement) {
-      const modelError = validateModels()
-      if (modelError) return void message.error(modelError)
-    }
+    const modelError = validateModels()
+    if (modelError) return void message.error(modelError)
 
     try {
       const dimension_models = dimensionModels.map(model => ({
@@ -268,7 +265,7 @@ function RequirementCreator({
           name,
           req_type: currentFormData.req_type.trim() || undefined,
           nl_text: nlText,
-          ...(isUiRequirement ? {} : { dimension_models }),
+          dimension_models,
         }),
       })
       if (!response.ok) {
@@ -342,12 +339,9 @@ function RequirementCreator({
           <div className="section-header"><span className="section-title">{sectionTitle}</span></div>
           <DimensionList
             sections={sections}
-            isSectionDefined={(section) => isUiRequirement
-              ? Boolean(currentFormData.sectionData?.[section.key])
-              : dimensionModels.some(model => model.dimension_code === section.dimensionCode)}
-            models={isUiRequirement ? undefined : modelItems}
-            editable={!isUiRequirement}
-            onSectionClick={(section) => onModelOpen?.(section.key)}
+            isSectionDefined={(section) => dimensionModels.some(model => model.dimension_code === section.dimensionCode)}
+            models={modelItems}
+            editable
             onAddModel={(section) => handleAddModel(section.dimensionCode as RequirementDimensionCode)}
             onOpenModel={(item, section) => onModelOpen?.(section.key, item.identity)}
             onEditModel={(item) => {

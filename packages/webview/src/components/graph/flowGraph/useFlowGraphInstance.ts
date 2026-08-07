@@ -71,6 +71,9 @@ export const useFlowGraphInstance = ({
 
     if (data && Object.keys(data).length > 0) {
       graph.fromJSON(data)
+      if ((data as any).canvasData && typeof (data as any).canvasData === 'object') {
+        ;(graph as any).canvasData = (data as any).canvasData
+      }
       ensureGraphConnectionPorts(graph, strategy)
       syncInitialEdgeLabels(graph)
       scheduleGraphConnectionViewRefresh(graph, strategy)
