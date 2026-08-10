@@ -34,6 +34,7 @@ import type {
   RequirementDslArtifactsPanelPayload,
   RequirementDslArtifactType,
 } from './types'
+import RequirementDslModelsBrowser from './RequirementDslModelsBrowser'
 
 const DslEditor = lazy(() => import('../../../../dsl-editor'))
 const DimensionEditor = lazy(() => import('../../../../DimensionEditor'))
@@ -144,6 +145,15 @@ function RequirementDslArtifactsPanel({
         kind="error"
         title={`查询失败：${payload.envelope.error.code}`}
         message={payload.envelope.error.message}
+      />
+    )
+  }
+
+  if (payload.envelope.protocol_version === '2.0') {
+    return (
+      <RequirementDslModelsBrowser
+        envelope={payload.envelope}
+        assistantName={context.assistantName}
       />
     )
   }

@@ -99,6 +99,8 @@ function DimensionModelingSurface({
               sectionKey={sectionKey}
               data={graphData}
               onChange={onGraphChange}
+              initialFormPanelCollapsed={!artifactMode}
+              preserveFormPanelOnBlank={artifactMode}
               errorMessage={graphError}
               onDismissError={onDismissGraphError}
             />

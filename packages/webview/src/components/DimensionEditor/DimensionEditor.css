@@ -232,10 +232,14 @@
 }
 
 .dimension-editor--artifact {
+  width: 100%;
+  min-width: 0;
   min-height: 0;
 }
 
 .dimension-modeling-surface--artifact {
+  width: 100%;
+  min-width: 0;
   min-height: 0;
   flex: 1;
   gap: 0;
@@ -286,6 +290,8 @@
 }
 
 .dimension-modeling-surface--artifact .editor-canvas-container {
+  width: 100%;
+  min-width: 0;
   height: auto;
   min-height: 0;
   flex: 1;
@@ -326,6 +332,7 @@
 /* 覆盖 FlowGraph 原始的 min-height，使用固定高度 */
 .editor-canvas-container .flow-graph-container {
   min-height: unset !important;
+  min-width: 0;
   height: 100% !important;
 }
 

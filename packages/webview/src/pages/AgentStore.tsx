@@ -10,6 +10,7 @@ import type {
   WorkspaceNavigationTarget,
 } from '../components/AgentWorkspace/ConversationWorkspace'
 import { useQwenPawWorkspace } from '../components/AgentWorkspace/qwenPaw/useQwenPawWorkspace'
+import { isQwenPawDemoMode } from '../components/AgentWorkspace/qwenPaw/qwenPawMode'
 import { useAgentTaskWorkflow } from '../components/AgentWorkspace/workflowCore/useAgentTaskWorkflow'
 import { ontologyIngestionDefinition } from '../components/AgentWorkspace/workflows/ontologyIngestion/definition'
 import { API_ENDPOINTS, authFetch } from '../config/api'
@@ -26,6 +27,7 @@ const EMPTY_PROJECT_FORM: NewProjectForm = {
 }
 
 const EXPOSED_AGENT_IDS = ['tqqRiu', 'ontology_qa'] as const
+const QWENPAW_DEMO_MODE = isQwenPawDemoMode()
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -393,6 +395,7 @@ function AgentStore() {
     <div
       className="agent-store-page"
       data-qwenpaw-connection={qwenPawWorkspace.connectionState}
+      data-qwenpaw-mode={QWENPAW_DEMO_MODE ? 'demo' : 'real'}
       data-qwenpaw-agent-id={qwenPawWorkspace.activeAgentId ?? undefined}
       data-qwenpaw-conversation-kind={
         qwenPawWorkspace.activeConversation?.kind ?? undefined
@@ -479,6 +482,7 @@ function AgentStore() {
                 ? 'ontology-qa'
                 : undefined
           }
+          demoMode={QWENPAW_DEMO_MODE}
           onSend={handleConversationSend}
           onRetry={qwenPawWorkspace.retry}
           onStop={qwenPawWorkspace.stop}

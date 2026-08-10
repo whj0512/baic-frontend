@@ -42,6 +42,7 @@ function ConversationWorkspace({
   conversationStatus,
   registrationState,
   workflowMode,
+  demoMode,
   projectDisplayName,
   onSend,
   onRetry,
@@ -454,6 +455,7 @@ function ConversationWorkspace({
         conversationStatus={conversationStatus}
         historyStatus={historyStatus}
         registrationState={registrationState}
+        demoMode={demoMode}
         onOpenSidebar={onOpenSidebar}
         onWorkspaceNavigate={onWorkspaceNavigate}
       />
@@ -475,6 +477,7 @@ function ConversationWorkspace({
         quickPrompts={workflowMode === 'ontology-qa' ? (
           <OntologyQaQuickPrompts
             projectDisplayName={projectDisplayName}
+            demoMode={demoMode}
             disabled={!canCompose || streaming || attachmentsUploading}
             disabledReason={
               streaming

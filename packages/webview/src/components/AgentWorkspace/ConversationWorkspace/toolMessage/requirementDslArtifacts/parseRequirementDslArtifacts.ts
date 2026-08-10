@@ -1,11 +1,20 @@
 import type { ConversationPart } from '../../../qwenPaw/types'
+import {
+  isRequirementDimensionCode,
+  REQUIREMENT_DIMENSION_CODES,
+} from '../../../../../models/RequirementModel'
 import type {
   RequirementDslArtifact,
   RequirementDslArtifactsEnvelope,
   RequirementDslArtifactsPanelPayload,
   RequirementDslArtifactType,
+  RequirementDslModel,
+  RequirementDslModelsEnvelope,
+  RequirementDslModelRequirement,
+  RequirementDslModelSummary,
   RequirementDslRequirement,
   RequirementDslSummary,
+  RequirementDslToolEnvelope,
 } from './types'
 
 type ToolPart = Extract<ConversationPart, { type: 'tool' }>
@@ -221,7 +230,9 @@ function matchesSummary(
   )
 }
 
-function parseEnvelope(value: unknown): RequirementDslArtifactsEnvelope | null {
+function parseLegacyEnvelope(
+  value: unknown,
+): RequirementDslArtifactsEnvelope | null {
   if (
     !isRecord(value)
     || value.protocol_version !== '1.0'
@@ -289,6 +300,203 @@ function parseEnvelope(value: unknown): RequirementDslArtifactsEnvelope | null {
   }
 }
 
+function parseNonNegativeInteger(value: unknown): number | null {
+  return typeof value === 'number'
+    && Number.isInteger(value)
+    && value >= 0
+    ? value
+    : null
+}
+
+function parseModelSummary(value: unknown): RequirementDslModelSummary | null {
+  if (!isRecord(value) || !isRecord(value.dimension_counts)) return null
+
+  const countFields = [
+    'feature_count',
+    'requirement_count',
+    'source_requirement_count',
+    'model_count',
+    'relationship_count',
+    'empty_model_requirement_count',
+    'missing_name_count',
+    'missing_description_count',
+    'metadata_missing_count',
+    'orphan_requirement_count',
+    'unmapped_source_requirement_count',
+  ] as const
+  const counts = Object.fromEntries(countFields.map((field) => [
+    field,
+    parseNonNegativeInteger(value[field]),
+  ])) as Record<(typeof countFields)[number], number | null>
+  if (countFields.some((field) => counts[field] === null)) return null
+
+  const dimensionCounts = Object.fromEntries(
+    REQUIREMENT_DIMENSION_CODES.map((dimensionCode) => [
+      dimensionCode,
+      parseNonNegativeInteger(value.dimension_counts[dimensionCode]),
+    ]),
+  ) as Record<(typeof REQUIREMENT_DIMENSION_CODES)[number], number | null>
+  if (REQUIREMENT_DIMENSION_CODES.some(
+    (dimensionCode) => dimensionCounts[dimensionCode] === null,
+  )) return null
+
+  return {
+    ...counts,
+    dimension_counts: dimensionCounts,
+  } as RequirementDslModelSummary
+}
+
+function parseModelRequirements(
+  value: unknown,
+): Record<string, RequirementDslModelRequirement> | null {
+  if (!isRecord(value)) return null
+  const requirements: Record<string, RequirementDslModelRequirement> = {}
+  for (const [requirementId, rawRequirement] of Object.entries(value)) {
+    if (
+      !requirementId
+      || !isRecord(rawRequirement)
+      || typeof rawRequirement.name !== 'string'
+      || typeof rawRequirement.description !== 'string'
+      || typeof rawRequirement.nl_text !== 'string'
+      || typeof rawRequirement.req_type !== 'string'
+      || !Array.isArray(rawRequirement.model_ids)
+      || rawRequirement.model_ids.some(
+        (modelId) => typeof modelId !== 'string' || !modelId,
+      )
+    ) return null
+    requirements[requirementId] = {
+      name: rawRequirement.name,
+      description: rawRequirement.description,
+      nl_text: rawRequirement.nl_text,
+      req_type: rawRequirement.req_type,
+      model_ids: [...new Set(rawRequirement.model_ids as string[])],
+    }
+  }
+  return requirements
+}
+
+function parseModels(
+  value: unknown,
+): Record<string, RequirementDslModel> | null {
+  if (!isRecord(value)) return null
+  const models: Record<string, RequirementDslModel> = {}
+  for (const [modelId, rawModel] of Object.entries(value)) {
+    if (
+      !modelId
+      || !isRecord(rawModel)
+      || !isRequirementDimensionCode(rawModel.dimension_code)
+      || (rawModel.model_type !== null && typeof rawModel.model_type !== 'string')
+      || typeof rawModel.name !== 'string'
+      || typeof rawModel.model_key !== 'string'
+      || !rawModel.model_key
+      || typeof rawModel.dsl_text !== 'string'
+      || (rawModel.graph_json !== null && !isRecord(rawModel.graph_json))
+      || typeof rawModel.source_representation !== 'string'
+      || !rawModel.source_representation
+      || (rawModel.context_model_id !== null && typeof rawModel.context_model_id !== 'string')
+      || typeof rawModel.is_primary !== 'boolean'
+      || parseNonNegativeInteger(rawModel.sort_order) === null
+      || (rawModel.source_path !== null && typeof rawModel.source_path !== 'string')
+    ) return null
+    models[modelId] = rawModel as unknown as RequirementDslModel
+  }
+  return models
+}
+
+function matchesModelSummary(
+  summary: RequirementDslModelSummary,
+  requirements: Record<string, RequirementDslModelRequirement>,
+  models: Record<string, RequirementDslModel>,
+): boolean {
+  const requirementValues = Object.values(requirements)
+  const modelValues = Object.values(models)
+  return summary.requirement_count === requirementValues.length
+    && summary.model_count === modelValues.length
+    && summary.relationship_count === requirementValues.reduce(
+      (total, requirement) => total + requirement.model_ids.length,
+      0,
+    )
+    && summary.empty_model_requirement_count === requirementValues.filter(
+      (requirement) => requirement.model_ids.length === 0,
+    ).length
+    && summary.missing_name_count === requirementValues.filter(
+      (requirement) => !requirement.name,
+    ).length
+    && summary.missing_description_count === requirementValues.filter(
+      (requirement) => !requirement.description,
+    ).length
+    && summary.metadata_missing_count === requirementValues.filter(
+      (requirement) => !requirement.name || !requirement.description,
+    ).length
+    && REQUIREMENT_DIMENSION_CODES.every((dimensionCode) => (
+      summary.dimension_counts[dimensionCode]
+      === modelValues.filter(
+        (model) => model.dimension_code === dimensionCode,
+      ).length
+    ))
+}
+
+function parseModelsEnvelope(value: unknown): RequirementDslModelsEnvelope | null {
+  if (
+    !isRecord(value)
+    || value.protocol_version !== '2.0'
+    || !Array.isArray(value.warnings)
+  ) return null
+
+  if (value.status === 'error') {
+    if (
+      value.summary !== null
+      || !isRecord(value.requirements)
+      || Object.keys(value.requirements).length > 0
+      || !isRecord(value.models)
+      || Object.keys(value.models).length > 0
+      || !isRecord(value.error)
+      || typeof value.error.code !== 'string'
+      || typeof value.error.message !== 'string'
+    ) return null
+    return {
+      protocol_version: '2.0',
+      status: 'error',
+      summary: null,
+      requirements: {},
+      models: {},
+      warnings: value.warnings,
+      error: { code: value.error.code, message: value.error.message },
+    }
+  }
+  if (value.status !== 'success' || value.error !== null) return null
+
+  const summary = parseModelSummary(value.summary)
+  const requirements = parseModelRequirements(value.requirements)
+  const models = parseModels(value.models)
+  if (!summary || !requirements || !models) return null
+  const hasUnknownReference = Object.values(requirements).some((requirement) =>
+    requirement.model_ids.some((modelId) => !(modelId in models)))
+  const hasUnknownContext = Object.values(models).some((model) =>
+    model.context_model_id !== null && !(model.context_model_id in models))
+  if (
+    hasUnknownReference
+    || hasUnknownContext
+    || !matchesModelSummary(summary, requirements, models)
+  ) return null
+  return {
+    protocol_version: '2.0',
+    status: 'success',
+    summary,
+    requirements,
+    models,
+    warnings: value.warnings,
+    error: null,
+  }
+}
+
+function parseEnvelope(value: unknown): RequirementDslToolEnvelope | null {
+  if (!isRecord(value)) return null
+  return value.protocol_version === '2.0'
+    ? parseModelsEnvelope(value)
+    : parseLegacyEnvelope(value)
+}
+
 export function parseRequirementDslArtifactsToolPart(
   part: ToolPart,
 ): RequirementDslArtifactsPanelPayload {
@@ -308,7 +516,7 @@ export function parseRequirementDslArtifactsToolPart(
   if (!envelope) {
     return {
       state: 'parse-error',
-      message: '工具结果不是完整、有效的 Requirement DSL Artifacts v1.0 数据。',
+      message: '工具结果不是完整、有效的 Requirement DSL Artifacts v1.0/v2.0 数据。',
     }
   }
 

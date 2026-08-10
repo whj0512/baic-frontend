@@ -3,6 +3,8 @@ import {
   type QwenPawChatFilters,
 } from '../../../config/api'
 import { readQwenPawSse } from './qwenPawSse'
+import { isQwenPawDemoMode } from './qwenPawMode'
+import type { QwenPawTransport } from './transport'
 import {
   QwenPawError,
   type QwenPawAgent,
@@ -228,7 +230,7 @@ async function fetchJson(
   }
 }
 
-export async function fetchAgents(
+async function realFetchAgents(
   signal?: AbortSignal,
 ): Promise<QwenPawAgent[]> {
   const response = parseAgentsResponse(
@@ -237,7 +239,7 @@ export async function fetchAgents(
   return response.agents
 }
 
-export async function fetchChats(
+async function realFetchChats(
   agentId: string,
   filters?: QwenPawChatFilters,
   signal?: AbortSignal,
@@ -247,7 +249,7 @@ export async function fetchChats(
   )
 }
 
-export async function fetchChatHistory(
+async function realFetchChatHistory(
   agentId: string,
   chatId: string,
   signal?: AbortSignal,
@@ -257,7 +259,7 @@ export async function fetchChatHistory(
   )
 }
 
-export async function uploadFile(
+async function realUploadFile(
   agentId: string,
   file: File,
   signal?: AbortSignal,
@@ -295,7 +297,7 @@ export async function uploadFile(
   }
 }
 
-export async function* streamChat(
+async function* realStreamChat(
   request: QwenPawChatRequest,
   signal: AbortSignal,
   onActivity?: () => void,
@@ -362,4 +364,70 @@ export async function* streamChat(
   } catch (error) {
     throw classifyRequestError(error, signal)
   }
+}
+
+const realQwenPawTransport: QwenPawTransport = {
+  fetchAgents: realFetchAgents,
+  fetchChats: realFetchChats,
+  fetchChatHistory: realFetchChatHistory,
+  uploadFile: realUploadFile,
+  streamChat: realStreamChat,
+}
+
+let demoTransportPromise: Promise<QwenPawTransport> | null = null
+
+function getQwenPawTransport(): Promise<QwenPawTransport> {
+  if (!isQwenPawDemoMode()) {
+    return Promise.resolve(realQwenPawTransport)
+  }
+
+  demoTransportPromise ??= import('./demo/demoTransport')
+    .then((module) => module.demoQwenPawTransport)
+  return demoTransportPromise
+}
+
+export async function fetchAgents(
+  signal?: AbortSignal,
+): Promise<QwenPawAgent[]> {
+  return (await getQwenPawTransport()).fetchAgents(signal)
+}
+
+export async function fetchChats(
+  agentId: string,
+  filters?: QwenPawChatFilters,
+  signal?: AbortSignal,
+): Promise<QwenPawChatSpec[]> {
+  return (await getQwenPawTransport()).fetchChats(agentId, filters, signal)
+}
+
+export async function fetchChatHistory(
+  agentId: string,
+  chatId: string,
+  signal?: AbortSignal,
+): Promise<QwenPawChatHistory> {
+  return (await getQwenPawTransport()).fetchChatHistory(
+    agentId,
+    chatId,
+    signal,
+  )
+}
+
+export async function uploadFile(
+  agentId: string,
+  file: File,
+  signal?: AbortSignal,
+): Promise<QwenPawUploadResponse> {
+  return (await getQwenPawTransport()).uploadFile(agentId, file, signal)
+}
+
+export async function* streamChat(
+  request: QwenPawChatRequest,
+  signal: AbortSignal,
+  onActivity?: () => void,
+): AsyncGenerator<QwenPawSseEvent> {
+  yield* (await getQwenPawTransport()).streamChat(
+    request,
+    signal,
+    onActivity,
+  )
 }

@@ -38,6 +38,7 @@ export interface ConversationWorkspaceProps {
   conversationStatus: QwenPawConversationStatus
   registrationState: QwenPawRegistrationState
   workflowMode?: ConversationWorkflowMode
+  demoMode: boolean
   projectDisplayName: string
   onSend: (draft: ConversationDraft) => Promise<void>
   onRetry: () => Promise<void>

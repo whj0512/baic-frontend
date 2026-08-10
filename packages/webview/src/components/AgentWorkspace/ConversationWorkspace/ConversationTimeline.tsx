@@ -15,6 +15,51 @@ import type {
 } from '../qwenPaw/types'
 import ConversationMessageEntry from './ConversationMessageEntry'
 
+interface EmptyStateGuide {
+  description: string
+  steps: readonly {
+    title: string
+    detail: string
+  }[]
+}
+
+const EMPTY_STATE_GUIDES: Readonly<Record<string, EmptyStateGuide>> = {
+  tqqRiu: {
+    description: '按顺序完成需求文档处理、功能建模与本体入库。',
+    steps: [
+      {
+        title: '文档条目化',
+        detail: '上传源需求文档与同版本 MinerU Markdown，解析并确认可建模功能。',
+      },
+      {
+        title: '单功能建模',
+        detail: '逐个功能生成上下文、DSL、对齐结果与测试用例。',
+      },
+      {
+        title: '本体关系管理',
+        detail: '生成并校验 TTL，在确认授权后写入 GraphDB 并执行推理。',
+      },
+    ],
+  },
+  ontology_qa: {
+    description: '先选择问答场景，再填写对应参数并查看生成结果。',
+    steps: [
+      {
+        title: '选择问答场景',
+        detail: '根据目标选择场景 9 本体关系推理，或场景 10 只读关系查询。',
+      },
+      {
+        title: '场景 9：推理与结果查询',
+        detail: '填写 GraphDB 仓库并逐次授权，完成推理后查询已输出的结果。',
+      },
+      {
+        title: '场景 10：关系与结果查询',
+        detail: '填写 GraphDB 仓库和功能名执行只读查询，完成后查询功能关系结果。',
+      },
+    ],
+  },
+}
+
 interface ConversationTimelineProps {
   canvasRef: RefObject<HTMLElement | null>
   activeConversation: ActiveConversationRef | null
@@ -56,6 +101,9 @@ function ConversationTimeline({
     && activeConversation?.kind === 'persisted'
     && !hasMessages
   const showBlockingHistoryError = Boolean(historyError) && !hasMessages
+  const emptyStateGuide = activeConversation?.channel === 'console'
+    ? EMPTY_STATE_GUIDES[activeConversation.agentId]
+    : undefined
 
   return (
     <section
@@ -84,13 +132,35 @@ function ConversationTimeline({
               <RobotOutlined />
             </span>
             <strong>{emptyStateName}</strong>
-            <span>
-              {activeConversation
-                ? activeConversation.channel === 'console'
-                  ? '输入消息，开始新的对话'
-                  : `该 ${activeConversation.channel} 渠道会话当前仅支持查看`
-                : '正在准备对话上下文...'}
-            </span>
+            {emptyStateGuide ? (
+              <div
+                className="conversation-canvas__empty-guide"
+                role="region"
+                aria-label={`${emptyStateName}使用流程`}
+              >
+                <p>{emptyStateGuide.description}</p>
+                <ol>
+                  {emptyStateGuide.steps.map((step) => (
+                    <li key={step.title}>
+                      <span className="conversation-canvas__empty-guide-title">
+                        {step.title}
+                      </span>
+                      <span className="conversation-canvas__empty-guide-detail">
+                        {step.detail}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ) : (
+              <span>
+                {activeConversation
+                  ? activeConversation.channel === 'console'
+                    ? '输入消息，开始新的对话'
+                    : `该 ${activeConversation.channel} 渠道会话当前仅支持查看`
+                  : '正在准备对话上下文...'}
+              </span>
+            )}
           </div>
         ) : (
           messages.map((message) => (

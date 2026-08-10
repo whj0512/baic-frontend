@@ -36,6 +36,8 @@ interface FlowGraphProps {
   data?: any
   onChange?: (data: any) => void
   readOnly?: boolean
+  initialFormPanelCollapsed?: boolean
+  preserveFormPanelOnBlank?: boolean
   errorMessage?: string
   onDismissError?: () => void
 }
@@ -55,14 +57,23 @@ export interface FlowGraphRef {
 }
 
 const FlowGraphContent = forwardRef<FlowGraphRef, FlowGraphProps>(
-  ({ sectionKey, data, onChange, readOnly = false, errorMessage, onDismissError }, ref) => {
+  ({
+    sectionKey,
+    data,
+    onChange,
+    readOnly = false,
+    initialFormPanelCollapsed = true,
+    preserveFormPanelOnBlank = false,
+    errorMessage,
+    onDismissError,
+  }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null)
     const stencilContainerRef = useRef<HTMLDivElement>(null)
     const graphRef = useRef<Graph | null>(null)
     const stencilRef = useRef<Stencil | null>(null)
     const [graphReady, setGraphReady] = useState(false)
     const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
-    const [formPanelCollapsed, setFormPanelCollapsed] = useState(true)
+    const [formPanelCollapsed, setFormPanelCollapsed] = useState(initialFormPanelCollapsed)
     const [formPanelWidth, setFormPanelWidth] = useState(DEFAULT_FORM_PANEL_WIDTH)
     const [formPanelResizing, setFormPanelResizing] = useState(false)
     const formPanelResizeStartRef = useRef({
@@ -171,6 +182,7 @@ const FlowGraphContent = forwardRef<FlowGraphRef, FlowGraphProps>(
       setGraphReady,
       setContextMenu,
       setFormPanelCollapsed,
+      preserveFormPanelOnBlank,
     })
 
     return (

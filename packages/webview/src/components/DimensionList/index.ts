@@ -1,2 +1,6 @@
 export { default } from './DimensionList'
-export type { DimensionListSection } from './DimensionList'
+export type {
+  DimensionListModelItem,
+  DimensionListProps,
+  DimensionListSection,
+} from './DimensionList'

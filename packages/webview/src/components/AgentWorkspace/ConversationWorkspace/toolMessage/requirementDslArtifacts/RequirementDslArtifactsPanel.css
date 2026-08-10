@@ -1,0 +1,123 @@
+.requirement-dsl-v2__sandbox {
+  padding: 3px 9px;
+  border: 1px solid rgba(250, 173, 20, 0.38);
+  border-radius: 999px;
+  color: #ad6800;
+  background: #fffbe6;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.requirement-dsl-v2__summary {
+  grid-template-columns: repeat(9, minmax(54px, 1fr));
+}
+
+.requirement-dsl-v2__overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  min-height: 0;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 16px;
+  overflow: auto;
+}
+
+.requirement-dsl-v2__requirement-editor,
+.requirement-dsl-v2__dimensions {
+  align-self: stretch;
+  min-height: 0;
+  padding: 16px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  background: var(--panel-background, #fff);
+  overflow: auto;
+}
+
+.requirement-dsl-v2__overview-heading,
+.requirement-dsl-v2__dimensions-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.requirement-dsl-v2__overview-heading div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.requirement-dsl-v2__overview-heading span,
+.requirement-dsl-v2__dimensions-heading span,
+.requirement-dsl-v2__requirement-editor small {
+  color: var(--text-secondary, #6b7280);
+  font-size: 12px;
+}
+
+.requirement-dsl-v2__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.requirement-dsl-v2__fields label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text-secondary, #4b5563);
+  font-size: 12px;
+}
+
+.requirement-dsl-v2__fields input,
+.requirement-dsl-v2__fields textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 6px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  resize: vertical;
+}
+
+.requirement-dsl-v2__fields input:focus,
+.requirement-dsl-v2__fields textarea:focus {
+  border-color: #1677ff;
+  outline: 2px solid rgba(22, 119, 255, 0.14);
+  outline-offset: 1px;
+}
+
+.requirement-dsl-v2__wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 980px) {
+  .requirement-dsl-v2__summary {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .requirement-dsl-v2__overview {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .requirement-dsl-v2__sandbox {
+    display: none;
+  }
+
+  .requirement-dsl-v2__fields {
+    grid-template-columns: 1fr;
+  }
+
+  .requirement-dsl-v2__wide {
+    grid-column: auto;
+  }
+}

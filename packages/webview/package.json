@@ -5,9 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:demo": "vite --mode demo",
     "dev:platform": "vite --mode platform",
     "build": "vite build",
+    "build:demo": "vite build --mode demo",
     "build:platform": "vite build --mode platform",
+    "generate:agent-demo-snapshot": "node scripts/generate-agent-demo-snapshot.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },

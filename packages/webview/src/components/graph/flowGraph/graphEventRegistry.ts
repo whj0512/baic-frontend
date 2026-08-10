@@ -38,6 +38,7 @@ interface RegisterGraphEventHandlersOptions {
   onChange?: (data: any) => void
   setContextMenu: Dispatch<SetStateAction<FlowGraphContextMenuState>>
   setFormPanelCollapsed: Dispatch<SetStateAction<boolean>>
+  preserveFormPanelOnBlank: boolean
 }
 
 type Terminal = {
@@ -243,6 +244,7 @@ const registerUiEvents = (
     sectionKey,
     setContextMenu,
     setFormPanelCollapsed,
+    preserveFormPanelOnBlank,
   }: RegisterGraphEventHandlersOptions,
 ) => {
   graph.on('cell:contextmenu', ({ e, cell }: any) => {
@@ -258,7 +260,9 @@ const registerUiEvents = (
 
   graph.on('blank:click', () => {
     setContextMenu(prev => ({ ...prev, visible: false, cell: null }))
-    setFormPanelCollapsed(true)
+    if (!preserveFormPanelOnBlank) {
+      setFormPanelCollapsed(true)
+    }
   })
 
   graph.on('node:click', () => {

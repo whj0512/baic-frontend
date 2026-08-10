@@ -50,6 +50,16 @@ function FunctionModelingStagePanel({
   const dslFeatureCount = dslPayload?.state === 'success'
     ? dslPayload.envelope.summary.feature_count
     : null
+  const dslModelCount = dslPayload?.state === 'success'
+    ? dslPayload.envelope.protocol_version === '2.0'
+      ? dslPayload.envelope.summary.model_count
+      : dslPayload.envelope.summary.artifact_count
+    : null
+  const emptyDslRequirementCount = dslPayload?.state === 'success'
+    ? dslPayload.envelope.protocol_version === '2.0'
+      ? dslPayload.envelope.summary.empty_model_requirement_count
+      : dslPayload.envelope.summary.empty_artifact_requirement_count
+    : null
   const dslCoverageMatches =
     dslFeatureCount !== null && dslFeatureCount === evidence.functions.length
   const ready = Boolean(
@@ -266,9 +276,9 @@ function FunctionModelingStagePanel({
                 <div><dt>chunks 功能</dt><dd>{evidence.functions.length}</dd></div>
                 <div><dt>DSL 功能</dt><dd>{dslPayload.envelope.summary.feature_count}</dd></div>
                 <div><dt>需求</dt><dd>{dslPayload.envelope.summary.requirement_count}</dd></div>
-                <div><dt>DSL 产物</dt><dd>{dslPayload.envelope.summary.artifact_count}</dd></div>
+                <div><dt>DSL 模型</dt><dd>{dslModelCount}</dd></div>
                 <div><dt>映射</dt><dd>{dslPayload.envelope.summary.relationship_count}</dd></div>
-                <div><dt>无产物需求</dt><dd>{dslPayload.envelope.summary.empty_artifact_requirement_count}</dd></div>
+                <div><dt>无模型需求</dt><dd>{emptyDslRequirementCount}</dd></div>
                 <div><dt>元数据缺失</dt><dd>{dslPayload.envelope.summary.metadata_missing_count}</dd></div>
                 <div><dt>Warnings</dt><dd>{dslPayload.envelope.warnings.length}</dd></div>
               </dl>

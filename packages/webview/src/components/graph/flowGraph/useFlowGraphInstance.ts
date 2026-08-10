@@ -33,6 +33,7 @@ interface UseFlowGraphInstanceOptions {
   setGraphReady: Dispatch<SetStateAction<boolean>>
   setContextMenu: Dispatch<SetStateAction<FlowGraphContextMenuState>>
   setFormPanelCollapsed: Dispatch<SetStateAction<boolean>>
+  preserveFormPanelOnBlank: boolean
 }
 
 export const useFlowGraphInstance = ({
@@ -48,6 +49,7 @@ export const useFlowGraphInstance = ({
   setGraphReady,
   setContextMenu,
   setFormPanelCollapsed,
+  preserveFormPanelOnBlank,
 }: UseFlowGraphInstanceOptions) => {
   useEffect(() => {
     strategy.registerNodes?.()
@@ -88,6 +90,7 @@ export const useFlowGraphInstance = ({
       onChange,
       setContextMenu,
       setFormPanelCollapsed,
+      preserveFormPanelOnBlank,
     })
     strategy.ensureRequiredNodes?.(graph)
 
@@ -109,5 +112,5 @@ export const useFlowGraphInstance = ({
 
       setGraphReady(false)
     }
-  }, [strategy, sectionKey, readOnly])
+  }, [strategy, sectionKey, readOnly, preserveFormPanelOnBlank])
 }

@@ -11,6 +11,7 @@ export interface ConversationQuickPrompt {
 
 export interface OntologyQaQuickPromptsProps {
   projectDisplayName: string
+  demoMode: boolean
   disabled: boolean
   disabledReason?: string
   onApplyPrompt: (prompt: string, onApplied?: () => void) => void

@@ -19,6 +19,7 @@ const INFERENCE_AUTHORIZATION =
 
 function OntologyQaQuickPrompts({
   projectDisplayName,
+  demoMode,
   disabled,
   disabledReason,
   onApplyPrompt,
@@ -31,8 +32,12 @@ function OntologyQaQuickPrompts({
   const [scene10RepositoryName, setScene10RepositoryName] = useState(
     DEFAULT_REPOSITORY_NAME,
   )
-  const [scene10FunctionName, setScene10FunctionName] = useState('')
-  const [scene10QueryFunctionName, setScene10QueryFunctionName] = useState('')
+  const [scene10FunctionName, setScene10FunctionName] = useState(
+    demoMode ? '蓝牙音乐' : '',
+  )
+  const [scene10QueryFunctionName, setScene10QueryFunctionName] = useState(
+    demoMode ? '蓝牙音乐' : '',
+  )
   const [inferenceAuthorized, setInferenceAuthorized] = useState(false)
   const trimmedRepositoryName = repositoryName.trim()
   const trimmedQueryRepositoryName = queryRepositoryName.trim()

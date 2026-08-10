@@ -26,6 +26,7 @@ interface ConversationHeaderProps {
   conversationStatus: QwenPawConversationStatus
   historyStatus: QwenPawHistoryStatus
   registrationState: QwenPawRegistrationState
+  demoMode: boolean
   onOpenSidebar: () => void
   onWorkspaceNavigate: (target: WorkspaceNavigationTarget) => void
 }
@@ -63,6 +64,7 @@ function getHeaderStatus(
   historyStatus: QwenPawHistoryStatus,
   registrationState: QwenPawRegistrationState,
   activeConversation: ActiveConversationRef | null,
+  demoMode: boolean,
 ): {
   label: string
   tone: 'success' | 'pending' | 'error'
@@ -72,11 +74,17 @@ function getHeaderStatus(
     return { label: '正在加载会话', tone: 'pending', icon: LoadingOutlined }
   }
   if (status === 'generating') {
-    return { label: '智能体处理中', tone: 'pending', icon: LoadingOutlined }
+    return {
+      label: demoMode ? 'Demo 回复生成中' : '智能体处理中',
+      tone: 'pending',
+      icon: LoadingOutlined,
+    }
   }
   if (status === 'finalizing') {
     return {
-      label: '回复已完成，正在同步会话记录',
+      label: demoMode
+        ? 'Demo 回复已完成，正在同步本地记录'
+        : '回复已完成，正在同步会话记录',
       tone: 'pending',
       icon: LoadingOutlined,
     }
@@ -89,7 +97,7 @@ function getHeaderStatus(
   }
   if (historyStatus === 'refreshing') {
     return {
-      label: '正在同步会话记录',
+      label: demoMode ? '正在同步 Demo 本地记录' : '正在同步会话记录',
       tone: 'pending',
       icon: LoadingOutlined,
     }
@@ -102,20 +110,30 @@ function getHeaderStatus(
     }
   }
   if (registrationState === 'syncing') {
-    return { label: '正在同步至 QwenPaw', tone: 'pending', icon: LoadingOutlined }
+    return {
+      label: demoMode ? '正在登记 Demo 本地会话' : '正在同步至 QwenPaw',
+      tone: 'pending',
+      icon: LoadingOutlined,
+    }
   }
   if (registrationState === 'pending') {
     return {
-      label: '回复已完成，等待会话同步',
+      label: demoMode
+        ? 'Demo 回复已完成，等待本地会话登记'
+        : '回复已完成，等待会话同步',
       tone: 'pending',
       icon: LoadingOutlined,
     }
   }
   if (activeConversation?.kind === 'draft') {
-    return { label: '新对话尚未发送', tone: 'pending', icon: MessageOutlined }
+    return {
+      label: demoMode ? '新 Demo 对话尚未发送' : '新对话尚未发送',
+      tone: 'pending',
+      icon: MessageOutlined,
+    }
   }
   return {
-    label: '已同步至 QwenPaw',
+    label: demoMode ? 'Demo 本地会话已同步' : '已同步至 QwenPaw',
     tone: 'success',
     icon: CheckCircleOutlined,
   }
@@ -128,6 +146,7 @@ function ConversationHeader({
   conversationStatus,
   historyStatus,
   registrationState,
+  demoMode,
   onOpenSidebar,
   onWorkspaceNavigate,
 }: ConversationHeaderProps) {
@@ -136,6 +155,7 @@ function ConversationHeader({
     historyStatus,
     registrationState,
     activeConversation,
+    demoMode,
   )
   const HeaderStatusIcon = headerStatus.icon
 
@@ -154,6 +174,9 @@ function ConversationHeader({
         <div>
           <div className="conversation-header__title">
             <strong>{activeAgent?.name || 'QwenPaw 智能体'}</strong>
+            {demoMode ? (
+              <span className="conversation-header__demo-badge">演示模式</span>
+            ) : null}
             <span aria-hidden="true">/</span>
             <span>{activeChat?.name.trim() || '新对话'}</span>
           </div>
