@@ -113,6 +113,7 @@
 /* Content */
 .dimension-editor-content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   scrollbar-color: #ffffff #ffffff;
   padding: 1rem;
@@ -127,6 +128,18 @@
   flex-direction: column;
   gap: 0.5rem;
   flex-shrink: 0;
+}
+
+.dimension-modeling-surface {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+.dimension-modeling-surface .editor-canvas-container {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
 }
 
 /* Scrollbar */
