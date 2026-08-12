@@ -1,32 +1,32 @@
-// 将 dsl-to-rbg API 返回的 JSON 转换为 X6 图数据格式
-// API 返回的节点渲染配置
+import { internalConstraintsCanvasLayout as layoutConfig } from '../../../components/graph/strategies/internalConstraints'
+import type { ModelImportOptions } from '../types'
+
 interface RenderConfig {
-  x: number
-  y: number
+  x?: number
+  y?: number
   width?: number
   height?: number
   color?: string
   visible?: boolean
 }
 
-// API 返回的 port 数据
 interface ApiPortItem {
   id: string
-  group: string // 后端使用 'top' | 'bottom' | 'left' | 'right'
+  group: string
 }
 
 interface ApiPorts {
   items: ApiPortItem[]
 }
 
-// API 返回的节点数据
 interface ApiNode {
   id: string
   type_name: string
   desc?: string
-  render_config: RenderConfig
+  render_config?: RenderConfig
   ports?: ApiPorts
-  // State 节点属性
+  branch_yes?: string
+  branch_no?: string
   pre_think_time?: number
   post_think_time?: number
   entry_action_list?: any[]
@@ -35,28 +35,21 @@ interface ApiNode {
   normal_test_action_list?: any[]
   dynamic_test_action_list?: any[]
   forward_propagation?: boolean
-  // Condition 节点属性
   condition?: string
   time_tolerance?: any
-  // Call 节点属性
   params_list?: any[]
   in_list?: string[]
   return_list?: string[]
   script?: string
   enable_inverse?: boolean
-  // Comment 节点属性
   comment?: string
-  // Graph-ref 节点属性
   graph_id?: string
   has_return_val?: boolean
   return_val?: string
-  // Truth 节点属性
   truthTable?: any
-  // Goto 节点属性
   friend?: { id: string; name: string }
 }
 
-// API 返回的边数据
 interface ApiTransition {
   id: string
   source_node: string
@@ -75,36 +68,57 @@ interface ApiTransition {
   test_coverage?: any
 }
 
-// API 返回的图数据
 interface ApiGraphData {
   id: string
   desc?: string
   graph_type?: string
-  // 画布属性（对应 formConfig.canvas 的字段）
   local_variable_list?: any[]
   variable_action_list?: any[]
   test_coverage?: any
   h_function?: string
   entry_action_list?: any[]
   exit_action_list?: any[]
-  nodes: ApiNode[]
-  transitions: ApiTransition[]
+  nodes?: ApiNode[]
+  transitions?: ApiTransition[]
 }
 
-// type_name 到 X6 shape 的映射
+interface X6PortItem {
+  id: string
+  group: string
+}
+
+interface ImportedNode {
+  id: string
+  shape: string
+  x?: number
+  y?: number
+  width: number
+  height: number
+  data: Record<string, any>
+  ports: {
+    groups: Record<string, any>
+    items: X6PortItem[]
+  }
+}
+
+interface ValidTransition {
+  transition: ApiTransition
+  source: string
+  target: string
+}
+
 const typeNameToShape: Record<string, string> = {
-  'start': 'start-node',
-  'then': 'then-node',
-  'state': 'state-node',
-  'condition': 'condition-node',
-  'call': 'call-node',
-  'comment': 'comment-node',
+  start: 'start-node',
+  then: 'then-node',
+  state: 'state-node',
+  condition: 'condition-node',
+  call: 'call-node',
+  comment: 'comment-node',
   'graph-ref': 'graph-node',
-  'truth': 'truth-node',
-  'goto': 'goto-node',
+  truth: 'truth-node',
+  goto: 'goto-node',
 }
 
-// 节点默认尺寸
 const defaultNodeSize: Record<string, { width: number; height: number }> = {
   'start-node': { width: 30, height: 30 },
   'then-node': { width: 30, height: 30 },
@@ -117,7 +131,6 @@ const defaultNodeSize: Record<string, { width: number; height: number }> = {
   'goto-node': { width: 120, height: 60 },
 }
 
-// 节点默认样式
 const defaultNodeStyle: Record<string, { stroke: string; fill: string }> = {
   'start-node': { stroke: '#333', fill: '#686666' },
   'then-node': { stroke: '#333', fill: '#fff' },
@@ -130,15 +143,6 @@ const defaultNodeStyle: Record<string, { stroke: string; fill: string }> = {
   'goto-node': { stroke: '#333', fill: '#fff' },
 }
 
-// 后端 port group 名称 → X6 port group 名称 的映射
-const portGroupMapping: Record<string, string> = {
-  'top': 'in',
-  'bottom': 'out',
-  'left': 'out-yes',
-  'right': 'out-no',
-}
-
-// Port 基础样式
 const basePortStyle = {
   r: 4,
   magnet: true,
@@ -147,7 +151,21 @@ const basePortStyle = {
   strokeWidth: 1,
 }
 
-// 根据 shape 获取 port groups 配置（与 edgeRules.getPortGroups 保持一致）
+const isFiniteNumber = (value: unknown): value is number => (
+  typeof value === 'number' && Number.isFinite(value)
+)
+
+const isPositiveNumber = (value: unknown): value is number => (
+  isFiniteNumber(value) && value > 0
+)
+
+const stableSort = <T,>(items: T[], compare: (left: T, right: T) => number) => (
+  items
+    .map((item, index) => ({ item, index }))
+    .sort((left, right) => compare(left.item, right.item) || left.index - right.index)
+    .map(({ item }) => item)
+)
+
 const getPortGroupsForShape = (shape: string): Record<string, any> => {
   if (shape === 'condition-node') {
     return {
@@ -165,6 +183,7 @@ const getPortGroupsForShape = (shape: string): Record<string, any> => {
       },
     }
   }
+
   return {
     in: {
       position: 'top',
@@ -178,71 +197,36 @@ const getPortGroupsForShape = (shape: string): Record<string, any> => {
 }
 
 const getX6PortGroup = (shape: string, item: ApiPortItem) => {
-  let x6Group = portGroupMapping[item.group] || item.group
-
-  // 针对 condition 节点的特殊处理，后端返回 group 为 condition，通过 id 区分 yes/no
   if (shape === 'condition-node' && item.group === 'condition') {
-    if (item.id === 'yes') {
-      x6Group = 'out-yes'
-    } else if (item.id === 'no') {
-      x6Group = 'out-no'
-    }
+    return item.id === 'no' ? 'out-no' : 'out-yes'
   }
 
-  return x6Group
+  if (item.group === 'top') return 'in'
+  if (item.group === 'bottom') return 'out'
+  if (item.group === 'left') return 'out-yes'
+  if (item.group === 'right') return 'out-no'
+  return item.group
 }
 
-const normalizeConditionPortId = (portId: string, x6Group?: string) => {
-  if (x6Group === 'in' && ['top', 'top1', 'top_1', 'in', 'in-0'].includes(portId)) {
+const normalizeConditionPortId = (portId: string | undefined, group?: string) => {
+  if (group === 'in' || portId === 'in' || portId === 'in-0' || /_top_\d+$/.test(portId || '') || /^top_?\d*$/.test(portId || '')) {
     return 'in-0'
   }
-
-  if (x6Group === 'out-yes' && ['yes', 'left', 'out-yes'].includes(portId)) {
+  if (group === 'out-yes' || portId === 'yes' || portId === 'left' || portId === 'out-yes') {
     return 'out-yes'
   }
-
-  if (x6Group === 'out-no' && ['no', 'right', 'out-no'].includes(portId)) {
+  if (group === 'out-no' || portId === 'no' || portId === 'right' || portId === 'out-no') {
     return 'out-no'
   }
-
   return portId
 }
 
-const normalizePortIdForShape = (portId: string | undefined, shape?: string, x6Group?: string) => {
-  if (!portId) return undefined
-
-  if (shape === 'condition-node') {
-    const inferredGroup = x6Group
-      || (['yes', 'left', 'out-yes'].includes(portId) ? 'out-yes' : undefined)
-      || (['no', 'right', 'out-no'].includes(portId) ? 'out-no' : undefined)
-      || (['top', 'top1', 'top_1', 'in', 'in-0'].includes(portId) ? 'in' : undefined)
-
-    return normalizeConditionPortId(portId, inferredGroup)
-  }
-
-  // 处理 top_1 和 top1 不一致的问题
-  if (portId === 'top_1') {
-    return 'top1'
-  }
-
-  return portId
-}
-
-/**
- * 将 API 节点转换为 X6 节点数据
- */
-const convertNode = (apiNode: ApiNode): any => {
-  const shape = typeNameToShape[apiNode.type_name] || 'custom-rect-node'
-  const defaultSize = defaultNodeSize[shape] || { width: 120, height: 60 }
-  const defaultStyle = defaultNodeStyle[shape] || { stroke: '#333', fill: '#fff' }
-
-  // 基础节点数据
-  const nodeData: any = {
+const createNodeData = (apiNode: ApiNode, shape: string) => {
+  const nodeData: Record<string, any> = {
     nodeName: apiNode.desc || apiNode.type_name,
-    ...defaultStyle,
+    ...(defaultNodeStyle[shape] || { stroke: '#333', fill: '#fff' }),
   }
 
-  // 根据节点类型添加特定属性
   switch (apiNode.type_name) {
     case 'state':
       nodeData.pre_think_time = apiNode.pre_think_time ?? 0
@@ -254,12 +238,10 @@ const convertNode = (apiNode: ApiNode): any => {
       nodeData.dynamic_test_action_list = apiNode.dynamic_test_action_list ?? []
       nodeData.forward_propagation = apiNode.forward_propagation ?? false
       break
-
     case 'condition':
       nodeData.condition = apiNode.condition ?? ''
       nodeData.time_tolerance = apiNode.time_tolerance
       break
-
     case 'call':
       nodeData.params_list = apiNode.params_list ?? []
       nodeData.in_list = apiNode.in_list ?? []
@@ -267,101 +249,319 @@ const convertNode = (apiNode: ApiNode): any => {
       nodeData.script = apiNode.script ?? ''
       nodeData.enable_inverse = apiNode.enable_inverse ?? false
       break
-
     case 'comment':
       nodeData.comment = apiNode.comment ?? ''
       break
-
     case 'graph-ref':
       nodeData.graph_id = apiNode.graph_id ?? ''
       nodeData.params_list = apiNode.params_list ?? []
       nodeData.has_return_val = apiNode.has_return_val ?? false
       nodeData.return_val = apiNode.return_val ?? ''
       break
-
     case 'truth':
       nodeData.truthTable = apiNode.truthTable
       break
-
     case 'goto':
       nodeData.friend = apiNode.friend ?? { id: '', name: '' }
       break
   }
 
-  // 解析 ports
-  const portGroups = getPortGroupsForShape(shape)
-  const portItems: any[] = []
-  const addedPortIds = new Set<string>()
+  return nodeData
+}
 
-  if (apiNode.ports?.items) {
-    apiNode.ports.items.forEach(item => {
-      const x6Group = getX6PortGroup(shape, item)
-      const portId = normalizePortIdForShape(item.id, shape, x6Group)
+const convertNode = (apiNode: ApiNode): ImportedNode => {
+  const shape = typeNameToShape[apiNode.type_name] || 'custom-rect-node'
+  const fallbackSize = defaultNodeSize[shape] || { width: 120, height: 60 }
+  const groups = getPortGroupsForShape(shape)
+  const items: X6PortItem[] = []
+  const portIds = new Set<string>()
 
-      // 仅添加 port groups 中存在的 group
-      if (portId && portGroups[x6Group] && !addedPortIds.has(portId)) {
-        addedPortIds.add(portId)
-        portItems.push({
-          id: portId,
-          group: x6Group,
-        })
-      }
+  apiNode.ports?.items?.forEach(item => {
+    const group = getX6PortGroup(shape, item)
+    const id = shape === 'condition-node'
+      ? normalizeConditionPortId(item.id, group)
+      : item.id
+    if (!id || !groups[group] || portIds.has(id)) return
+
+    portIds.add(id)
+    items.push({ id, group })
+  })
+
+  if (shape === 'condition-node') {
+    ;[
+      { id: 'in-0', group: 'in' },
+      { id: 'out-yes', group: 'out-yes' },
+      { id: 'out-no', group: 'out-no' },
+    ].forEach(port => {
+      if (portIds.has(port.id)) return
+      portIds.add(port.id)
+      items.push(port)
     })
   }
 
-  return {
+  const node: ImportedNode = {
     id: apiNode.id,
     shape,
-    x: apiNode.render_config?.x,
-    y: apiNode.render_config?.y,
-    width: defaultSize.width,
-    height: defaultSize.height,
-    data: nodeData,
-    ports: {
-      groups: portGroups,
-      items: portItems,
-    },
+    width: isPositiveNumber(apiNode.render_config?.width) ? apiNode.render_config.width : fallbackSize.width,
+    height: isPositiveNumber(apiNode.render_config?.height) ? apiNode.render_config.height : fallbackSize.height,
+    data: createNodeData(apiNode, shape),
+    ports: { groups, items },
   }
+
+  if (isFiniteNumber(apiNode.render_config?.x) && isFiniteNumber(apiNode.render_config?.y)) {
+    node.x = apiNode.render_config.x
+    node.y = apiNode.render_config.y
+  }
+
+  return node
 }
 
-/**
- * 将 API 边转换为 X6 边数据
- */
-const convertEdge = (apiTransition: ApiTransition, nodeShapeById: Map<string, string>): any => {
-  const edgeData: any = {
-    edgeName: apiTransition.desc || '',
-    condition: apiTransition.condition ?? '',
-    loop_times: apiTransition.loop_times ?? 0,
-    time_tolerance: apiTransition.time_tolerance,
-    action_list: apiTransition.action_list ?? [],
-    event_list: apiTransition.event_list ?? [],
-    test_layer: apiTransition.test_layer,
-    test_coverage: apiTransition.test_coverage,
+const collectWeakComponents = (nodeIds: string[], undirected: Map<string, Set<string>>) => {
+  const components: string[][] = []
+  const visited = new Set<string>()
+
+  nodeIds.forEach(startId => {
+    if (visited.has(startId)) return
+    const component: string[] = []
+    const queue = [startId]
+    visited.add(startId)
+
+    for (let index = 0; index < queue.length; index += 1) {
+      const nodeId = queue[index]
+      component.push(nodeId)
+      undirected.get(nodeId)?.forEach(neighborId => {
+        if (visited.has(neighborId)) return
+        visited.add(neighborId)
+        queue.push(neighborId)
+      })
+    }
+    components.push(component)
+  })
+
+  return components
+}
+
+const buildComponentLayers = (
+  component: string[],
+  nodesById: Map<string, ImportedNode>,
+  outgoing: Map<string, Set<string>>,
+  incoming: Map<string, Set<string>>,
+  undirected: Map<string, Set<string>>,
+  order: Map<string, number>,
+) => {
+  const componentIds = new Set(component)
+  const starts = component.filter(nodeId => nodesById.get(nodeId)?.shape === 'start-node')
+  const zeroIncoming = component.filter(nodeId => (
+    [...(incoming.get(nodeId) || [])].every(sourceId => !componentIds.has(sourceId))
+  ))
+  const seedIds = [...new Set([...starts, ...zeroIncoming])]
+  const seeds = seedIds.length > 0
+    ? seedIds
+    : [stableSort(component, (left, right) => {
+      const degreeDelta = (undirected.get(right)?.size || 0) - (undirected.get(left)?.size || 0)
+      return degreeDelta || (order.get(left) || 0) - (order.get(right) || 0)
+    })[0]]
+  const layerById = new Map<string, number>()
+  const queue = stableSort(seeds, (left, right) => (order.get(left) || 0) - (order.get(right) || 0))
+  queue.forEach(nodeId => layerById.set(nodeId, 0))
+
+  for (let index = 0; index < queue.length; index += 1) {
+    const nodeId = queue[index]
+    const nextLayer = (layerById.get(nodeId) || 0) + 1
+    stableSort([...(outgoing.get(nodeId) || [])], (left, right) => (
+      (order.get(left) || 0) - (order.get(right) || 0)
+    )).forEach(targetId => {
+      if (!componentIds.has(targetId) || layerById.has(targetId)) return
+      layerById.set(targetId, nextLayer)
+      queue.push(targetId)
+    })
   }
 
-  const sourcePort = normalizePortIdForShape(
-    apiTransition.sourcePort ?? apiTransition.source_port_name,
-    nodeShapeById.get(apiTransition.source_node)
-  )
-  const targetPort = normalizePortIdForShape(
-    apiTransition.targetPort ?? apiTransition.target_port_name,
-    nodeShapeById.get(apiTransition.target_node)
-  )
+  while (layerById.size < component.length) {
+    const nextId = stableSort(
+      component.filter(nodeId => !layerById.has(nodeId)),
+      (left, right) => (order.get(left) || 0) - (order.get(right) || 0),
+    ).find(nodeId => [...(undirected.get(nodeId) || [])].some(neighborId => layerById.has(neighborId)))
+    if (!nextId) break
 
-  // 构建 source / target（带 port 连接）
-  const source: any = sourcePort
-    ? { cell: apiTransition.source_node, port: sourcePort }
-    : apiTransition.source_node
+    const positionedNeighbors = [...(undirected.get(nextId) || [])].filter(nodeId => layerById.has(nodeId))
+    const sourceId = positionedNeighbors.find(nodeId => outgoing.get(nodeId)?.has(nextId))
+    const anchorId = sourceId || positionedNeighbors[0]
+    layerById.set(nextId, (layerById.get(anchorId) || 0) + (sourceId ? 1 : 0))
+  }
 
-  const target: any = targetPort
-    ? { cell: apiTransition.target_node, port: targetPort }
-    : apiTransition.target_node
+  const layers: string[][] = []
+  component.forEach(nodeId => {
+    const layer = layerById.get(nodeId) || 0
+    layers[layer] ||= []
+    layers[layer].push(nodeId)
+  })
 
+  for (let layerIndex = 1; layerIndex < layers.length; layerIndex += 1) {
+    const previousPositions = new Map(layers[layerIndex - 1].map((nodeId, index) => [nodeId, index]))
+    layers[layerIndex] = stableSort(layers[layerIndex], (left, right) => {
+      const barycenter = (nodeId: string) => {
+        const positions = [...(incoming.get(nodeId) || [])]
+          .map(sourceId => previousPositions.get(sourceId))
+          .filter((position): position is number => position !== undefined)
+        return positions.length
+          ? positions.reduce((sum, position) => sum + position, 0) / positions.length
+          : Number.POSITIVE_INFINITY
+      }
+      const delta = barycenter(left) - barycenter(right)
+      return Number.isFinite(delta) ? delta : (order.get(left) || 0) - (order.get(right) || 0)
+    })
+  }
+
+  return layers.filter(Boolean)
+}
+
+const getLayerWidth = (layer: string[], nodesById: Map<string, ImportedNode>) => (
+  layer.reduce((width, nodeId, index) => (
+    width + (nodesById.get(nodeId)?.width || 0) + (index > 0 ? layoutConfig.nodeGap : 0)
+  ), 0)
+)
+
+const placeConnectedComponent = (
+  layers: string[][],
+  nodesById: Map<string, ImportedNode>,
+  startY: number,
+) => {
+  let currentX = layoutConfig.originX
+  let componentBottom = startY
+
+  for (let bandStart = 0; bandStart < layers.length; bandStart += layoutConfig.nodesPerBand) {
+    const bandLayers = layers.slice(bandStart, bandStart + layoutConfig.nodesPerBand)
+    const bandWidth = Math.max(...bandLayers.map(layer => getLayerWidth(layer, nodesById)), 0)
+    let currentY = startY
+
+    bandLayers.forEach(layer => {
+      const layerWidth = getLayerWidth(layer, nodesById)
+      const layerHeight = Math.max(...layer.map(nodeId => nodesById.get(nodeId)?.height || 0), 0)
+      let nodeX = currentX + (bandWidth - layerWidth) / 2
+
+      layer.forEach(nodeId => {
+        const node = nodesById.get(nodeId)
+        if (!node) return
+        node.x = nodeX
+        node.y = currentY + (layerHeight - node.height) / 2
+        nodeX += node.width + layoutConfig.nodeGap
+      })
+
+      currentY += layerHeight + layoutConfig.layerGap
+    })
+
+    componentBottom = Math.max(componentBottom, currentY - layoutConfig.layerGap)
+    currentX += bandWidth + layoutConfig.bandGap
+  }
+
+  return componentBottom - startY
+}
+
+const placeIsolatedNodes = (
+  nodeIds: string[],
+  nodesById: Map<string, ImportedNode>,
+  startY: number,
+) => {
+  if (!nodeIds.length) return
+  const columns = Math.ceil(Math.sqrt(nodeIds.length))
+  const cellWidth = Math.max(...nodeIds.map(nodeId => nodesById.get(nodeId)?.width || 0), 0) + layoutConfig.nodeGap
+  const cellHeight = Math.max(...nodeIds.map(nodeId => nodesById.get(nodeId)?.height || 0), 0) + layoutConfig.layerGap
+
+  nodeIds.forEach((nodeId, index) => {
+    const node = nodesById.get(nodeId)
+    if (!node) return
+    node.x = layoutConfig.originX + (index % columns) * cellWidth
+    node.y = startY + Math.floor(index / columns) * cellHeight
+  })
+}
+
+const applyAutomaticLayout = (
+  nodesById: Map<string, ImportedNode>,
+  transitions: ValidTransition[],
+) => {
+  const nodeIds = [...nodesById.keys()]
+  const order = new Map(nodeIds.map((nodeId, index) => [nodeId, index]))
+  const outgoing = new Map(nodeIds.map(nodeId => [nodeId, new Set<string>()]))
+  const incoming = new Map(nodeIds.map(nodeId => [nodeId, new Set<string>()]))
+  const undirected = new Map(nodeIds.map(nodeId => [nodeId, new Set<string>()]))
+
+  transitions.forEach(({ source, target }) => {
+    if (source === target) return
+    outgoing.get(source)?.add(target)
+    incoming.get(target)?.add(source)
+    undirected.get(source)?.add(target)
+    undirected.get(target)?.add(source)
+  })
+
+  const components = collectWeakComponents(nodeIds, undirected)
+  const connected = components.filter(component => component.length > 1)
+  const isolated = components.filter(component => component.length === 1).flat()
+  let currentY = layoutConfig.originY
+
+  connected.forEach(component => {
+    const layers = buildComponentLayers(component, nodesById, outgoing, incoming, undirected, order)
+    currentY += placeConnectedComponent(layers, nodesById, currentY) + layoutConfig.componentGap
+  })
+
+  placeIsolatedNodes(isolated, nodesById, currentY)
+}
+
+const addPort = (node: ImportedNode, port: X6PortItem) => {
+  if (!node.ports.items.some(item => item.id === port.id)) {
+    node.ports.items.push(port)
+  }
+  return port.id
+}
+
+const allocateOrdinaryPort = (
+  node: ImportedNode,
+  direction: 'source' | 'target',
+  preferredId: string | undefined,
+  usedPortIds: Set<string>,
+) => {
+  const group = direction === 'source' ? 'out' : 'in'
+  const availablePorts = node.ports.items.filter(port => port.group === group)
+  const preferred = availablePorts.find(port => port.id === preferredId && !usedPortIds.has(port.id))
+  const selected = preferred || availablePorts.find(port => !usedPortIds.has(port.id))
+  if (selected) {
+    usedPortIds.add(selected.id)
+    return selected.id
+  }
+
+  const side = direction === 'source' ? 'bottom' : 'top'
+  const existingIds = new Set(node.ports.items.map(port => port.id))
+  let index = 0
+  let id = `${node.id}_${side}_${index}`
+  while (existingIds.has(id) || usedPortIds.has(id)) {
+    index += 1
+    id = `${node.id}_${side}_${index}`
+  }
+
+  addPort(node, { id, group })
+  usedPortIds.add(id)
+  return id
+}
+
+const getConditionSourcePort = (transition: ApiTransition, sourceNode: ApiNode) => {
+  if (sourceNode.branch_no === transition.id) return 'out-no'
+  if (sourceNode.branch_yes === transition.id) return 'out-yes'
+
+  const explicit = normalizeConditionPortId(transition.sourcePort ?? transition.source_port_name)
+  return explicit === 'out-no' ? 'out-no' : 'out-yes'
+}
+
+const convertEdge = (
+  entry: ValidTransition,
+  sourcePort: string,
+  targetPort: string,
+) => {
+  const { transition, source, target } = entry
   return {
-    id: apiTransition.id,
+    id: transition.id,
     shape: 'edge',
-    source,
-    target,
+    source: { cell: source, port: sourcePort },
+    target: { cell: target, port: targetPort },
     attrs: {
       line: {
         stroke: '#1890ff',
@@ -373,44 +573,80 @@ const convertEdge = (apiTransition: ApiTransition, nodeShapeById: Map<string, st
         },
       },
     },
-    router: {
-      name: 'manhattan',
+    router: { name: 'manhattan' },
+    connector: { name: 'rounded', args: { radius: 8 } },
+    data: {
+      edgeName: transition.desc || '',
+      condition: transition.condition ?? '',
+      loop_times: transition.loop_times ?? 0,
+      time_tolerance: transition.time_tolerance,
+      action_list: transition.action_list ?? [],
+      event_list: transition.event_list ?? [],
+      test_layer: transition.test_layer,
+      test_coverage: transition.test_coverage,
+      sourceOutput: sourcePort,
     },
-    connector: {
-      name: 'rounded',
-      args: { radius: 8 },
-    },
-    data: edgeData,
   }
 }
 
-/**
- * 将 dsl-to-rbg API 返回的 JSON 字符串解析为 X6 图数据格式
- * @param jsonString API 返回的 JSON 字符串
- * @returns X6 图数据格式 { cells: [...] }
- */
-export const importGraphFromJSON = (jsonString: string): any => {
+export const importGraphFromJSON = (
+  jsonString: string,
+  options: ModelImportOptions = {},
+): any => {
   const apiData: ApiGraphData = JSON.parse(jsonString)
+  const apiNodes = Array.isArray(apiData.nodes) ? apiData.nodes : []
+  const apiTransitions = Array.isArray(apiData.transitions) ? apiData.transitions : []
+  const nodesById = new Map<string, ImportedNode>()
+  const apiNodesById = new Map<string, ApiNode>()
 
-  const cells: any[] = []
-  const nodeShapeById = new Map<string, string>()
+  apiNodes.forEach(apiNode => {
+    nodesById.set(apiNode.id, convertNode(apiNode))
+    apiNodesById.set(apiNode.id, apiNode)
+  })
 
-  // 转换节点
-  if (apiData.nodes && Array.isArray(apiData.nodes)) {
-    apiData.nodes.forEach(node => {
-      nodeShapeById.set(node.id, typeNameToShape[node.type_name] || 'custom-rect-node')
-      cells.push(convertNode(node))
-    })
+  const validTransitions = apiTransitions
+    .filter(transition => nodesById.has(transition.source_node) && nodesById.has(transition.target_node))
+    .map(transition => ({
+      transition,
+      source: transition.source_node,
+      target: transition.target_node,
+    }))
+
+  if (options.autoLayout) {
+    applyAutomaticLayout(nodesById, validTransitions)
   }
 
-  // 转换边
-  if (apiData.transitions && Array.isArray(apiData.transitions)) {
-    apiData.transitions.forEach(transition => {
-      cells.push(convertEdge(transition, nodeShapeById))
-    })
-  }
+  const usedSourcePorts = new Map<string, Set<string>>()
+  const usedTargetPorts = new Map<string, Set<string>>()
+  const edges = validTransitions.map(entry => {
+    const sourceNode = nodesById.get(entry.source)!
+    const targetNode = nodesById.get(entry.target)!
+    const apiSourceNode = apiNodesById.get(entry.source)!
+    const sourceUsed = usedSourcePorts.get(entry.source) || new Set<string>()
+    const targetUsed = usedTargetPorts.get(entry.target) || new Set<string>()
+    usedSourcePorts.set(entry.source, sourceUsed)
+    usedTargetPorts.set(entry.target, targetUsed)
 
-  // 提取画布属性（对应 formConfig.canvas 的字段）
+    const sourcePort = sourceNode.shape === 'condition-node'
+      ? getConditionSourcePort(entry.transition, apiSourceNode)
+      : allocateOrdinaryPort(
+        sourceNode,
+        'source',
+        entry.transition.sourcePort ?? entry.transition.source_port_name,
+        sourceUsed,
+      )
+    const targetPort = targetNode.shape === 'condition-node'
+      ? 'in-0'
+      : allocateOrdinaryPort(
+        targetNode,
+        'target',
+        entry.transition.targetPort ?? entry.transition.target_port_name,
+        targetUsed,
+      )
+
+    return convertEdge(entry, sourcePort, targetPort)
+  })
+
   const canvasData: Record<string, any> = {
     desc: apiData.desc || '',
     local_variable_list: apiData.local_variable_list ?? [],
@@ -421,7 +657,7 @@ export const importGraphFromJSON = (jsonString: string): any => {
     exit_action_list: apiData.exit_action_list ?? [],
   }
 
-  return { cells, canvasData }
+  return { cells: [...nodesById.values(), ...edges], canvasData }
 }
 
 export default importGraphFromJSON

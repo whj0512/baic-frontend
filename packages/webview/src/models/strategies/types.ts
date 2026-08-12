@@ -4,6 +4,7 @@ import type { Graph } from '@antv/x6'
 
 export interface ModelImportOptions {
   modelName?: string
+  autoLayout?: boolean
 }
 
 /**

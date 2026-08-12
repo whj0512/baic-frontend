@@ -52,6 +52,16 @@ const DISABLED_TARGET_SHAPES = new Set([
   'start-node',
 ])
 
+export const internalConstraintsCanvasLayout = {
+  originX: 100,
+  originY: 100,
+  nodesPerBand: 5,
+  nodeGap: 100,
+  layerGap: 120,
+  bandGap: 180,
+  componentGap: 180,
+} as const
+
 // 表单配置
 const formConfig: FormConfig = {
   // 画布表单

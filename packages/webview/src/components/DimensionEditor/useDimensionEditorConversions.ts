@@ -108,7 +108,9 @@ export function useDimensionEditorConversions({
 
       const result = await response.text()
       const serializedGraphData = JSON.parse(result) as object
-      const x6Data = modelStrategy.importGraphFromJSON(result)
+      const x6Data = modelStrategy.importGraphFromJSON(result, {
+        autoLayout: config.dimensionCode === 'SC',
+      })
       const { canvasData, ...cellsData } = (x6Data as any)
 
       return {
