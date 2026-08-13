@@ -86,6 +86,8 @@ function ArtifactDimensionEditor({
   }, [publishDraft])
 
   const handleSwitchToDsl = useCallback(async () => {
+    const pendingGraphData = flowGraphRef.current?.flushChanges()
+    if (pendingGraphData) graphDataRef.current = pendingGraphData
     const nextDslContent = await convertGraphToDsl()
     if (nextDslContent !== null) {
       applyDslView(nextDslContent)

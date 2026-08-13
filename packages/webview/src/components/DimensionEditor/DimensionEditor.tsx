@@ -277,6 +277,9 @@ function RequirementDimensionEditor({
   const saveCurrentDraft = useCallback(() => {
     if (!draftProjectScope) return
 
+    const pendingGraphData = flowGraphRef.current?.flushChanges()
+    if (pendingGraphData) graphDataRef.current = pendingGraphData
+
     saveDimensionEditorDraft(draftProjectScope, draftUserId, requirement.id, sectionKey, modelIdentity, {
       modelIdentityKind: model ? ('clientId' in model ? 'draft' : 'persisted') : undefined,
       dimensionCode: model?.dimension_code,
@@ -296,7 +299,7 @@ function RequirementDimensionEditor({
         serializedGraphDataRef.current,
       ),
     })
-  }, [draftProjectScope, draftUserId, model, modelIdentity, requirement.id, requirement.updated_at, sectionKey, viewMode])
+  }, [draftProjectScope, draftUserId, flowGraphRef, graphDataRef, model, modelIdentity, requirement.id, requirement.updated_at, sectionKey, viewMode])
 
   useEffect(() => {
     if (!draftProjectScope) return

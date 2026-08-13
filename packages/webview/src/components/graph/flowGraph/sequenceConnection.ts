@@ -3,7 +3,6 @@ import type { GraphStrategy, SequenceConnectionConfig } from '../strategies/type
 import {
   ensureSequenceEdgeVerticesTool,
   finalizeSequenceEdge,
-  toSerializableGraphJSON,
 } from '../edgeConnection'
 import { sequenceConnectionPreviewData } from './sequenceConnectionData'
 
@@ -15,7 +14,6 @@ type Point = {
 interface RegisteredSequenceConnection {
   strategy: GraphStrategy
   config: SequenceConnectionConfig
-  onChange?: (data: any) => void
 }
 
 interface ActiveSequenceConnection {
@@ -24,7 +22,6 @@ interface ActiveSequenceConnection {
   sourceNode: Node
   sourcePoint: Point
   previewEdge: Edge | null
-  onChange?: (data: any) => void
   handlePointerMove: (event: PointerEvent) => void
   handlePointerUp: (event: PointerEvent) => void
   handlePointerCancel: () => void
@@ -149,20 +146,17 @@ const completeSequenceConnection = (active: ActiveSequenceConnection, event: Poi
   }
 
   ensureSequenceEdgeVerticesTool(edge)
-  active.onChange?.(toSerializableGraphJSON(active.graph))
 }
 
 export const registerSequenceConnection = (
   graph: Graph,
   strategy: GraphStrategy,
-  onChange?: (data: any) => void,
 ) => {
   if (!strategy.sequenceConnection) return
 
   registeredConnections.set(graph, {
     strategy,
     config: strategy.sequenceConnection,
-    onChange,
   })
 }
 
@@ -190,7 +184,6 @@ export const beginSequenceConnection = (graph: Graph, sourceNode: Node, event: P
     sourceNode,
     sourcePoint,
     previewEdge: null,
-    onChange: registered.onChange,
     handlePointerMove: (moveEvent) => {
       moveEvent.preventDefault()
       updatePreviewEdge(active, toGraphPoint(graph, moveEvent))

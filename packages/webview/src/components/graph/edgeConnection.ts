@@ -1,5 +1,5 @@
 import { Graph as X6Graph } from '@antv/x6'
-import type { Edge, EdgeView, Graph, Node } from '@antv/x6'
+import type { Cell, Edge, EdgeView, Graph, Node, NodeView } from '@antv/x6'
 import type { GraphStrategy } from './strategies/types'
 import { isPreConnectionPreview } from './flowGraph/preConnectionData'
 import { isSequenceConnectionPreview } from './flowGraph/sequenceConnectionData'
@@ -320,7 +320,19 @@ const showPreviouslyHiddenDynamicPorts = (node: Node) => {
 const ensureHotPorts = (node: Node) => {
   mergePortGroups(node, hotPortGroups)
   hotPorts.forEach((port) => addPortIfMissing(node, port))
-  setNodeConnectionHotAreaVisible(node, false)
+  hotPorts.forEach((port) => {
+    if (!port.id) return
+    const nextAttrs = getHotPortRectAttrs(node, port.id, false)
+    const existingAttrs = (node.getPortProp(port.id, 'attrs/rect') || {}) as Record<string, any>
+    if (
+      existingAttrs.width !== nextAttrs.width ||
+      existingAttrs.height !== nextAttrs.height ||
+      existingAttrs.x !== nextAttrs.x ||
+      existingAttrs.y !== nextAttrs.y
+    ) {
+      node.setPortProp(port.id, 'attrs/rect', nextAttrs)
+    }
+  })
 }
 
 export const ensureNodeConnectionPorts = (node: Node, strategy: GraphStrategy) => {
@@ -337,6 +349,31 @@ export const ensureNodeConnectionPorts = (node: Node, strategy: GraphStrategy) =
   ensureHotPorts(node)
 }
 
+export const toSerializableCellJSON = (cell: Cell | Record<string, any>) => {
+  const json = typeof (cell as Cell).toJSON === 'function'
+    ? (cell as Cell).toJSON()
+    : cell
+
+  if (isPreConnectionPreview(json) || isSequenceConnectionPreview(json)) return null
+  if (!json.ports) return json
+
+  const groups = Object.fromEntries(
+    Object.entries(json.ports.groups || {}).filter(([groupName]) => !isHotPortGroup(groupName)),
+  )
+  const items = (json.ports.items || []).filter(
+    (port: any) => !isHotPortId(port.id) && !isHotPortGroup(port.group),
+  )
+
+  return {
+    ...json,
+    ports: {
+      ...json.ports,
+      groups,
+      items,
+    },
+  }
+}
+
 export const toSerializableGraphJSON = (graph: Graph) => {
   const json = graph.toJSON() as any
   const canvasData = (graph as any).canvasData
@@ -345,35 +382,26 @@ export const toSerializableGraphJSON = (graph: Graph) => {
     ...json,
     ...(canvasData && typeof canvasData === 'object' ? { canvasData } : {}),
     cells: json.cells
-      ?.filter((cell: any) => !isPreConnectionPreview(cell) && !isSequenceConnectionPreview(cell))
-      .map((cell: any) => {
-        if (!cell.ports) return cell
-
-        const groups = Object.fromEntries(
-          Object.entries(cell.ports.groups || {}).filter(([groupName]) => !isHotPortGroup(groupName))
-        )
-        const items = (cell.ports.items || []).filter((port: any) => !isHotPortId(port.id) && !isHotPortGroup(port.group))
-
-        return {
-          ...cell,
-          ports: {
-            ...cell.ports,
-            groups,
-            items,
-          },
-        }
-      }),
+      ?.map((cell: any) => toSerializableCellJSON(cell))
+      .filter(Boolean),
   }
 }
 
-export const setNodeConnectionHotAreaVisible = (node: Node, visible: boolean) => {
+export const setNodeConnectionHotAreaVisible = (
+  graph: Graph,
+  node: Node,
+  visible: boolean,
+) => {
+  const view = graph.findViewByCell(node) as NodeView | null
+  if (!view) return
+
   hotPorts.forEach((port) => {
-    if (!port.id || !node.getPorts().some((item) => item.id === port.id)) return
-    const existingAttrs = (node.getPortProp(port.id, 'attrs/rect') || {}) as Record<string, any>
-    node.setPortProp(port.id, 'attrs/rect', {
-      ...existingAttrs,
-      ...getHotPortRectAttrs(node, port.id, visible),
-    })
+    if (!port.id) return
+    const magnet = view.findPortElem(port.id, 'rect') as SVGElement | null
+    if (!magnet) return
+
+    magnet.style.opacity = visible ? '0.95' : '0'
+    magnet.style.pointerEvents = visible ? 'all' : 'none'
   })
 }
 

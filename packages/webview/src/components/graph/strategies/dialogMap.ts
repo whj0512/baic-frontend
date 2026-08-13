@@ -1,4 +1,4 @@
-import { register } from '@antv/x6-react-shape'
+import { register } from '../flowGraph/reactNodeRegistry'
 import type { Edge } from '@antv/x6'
 import type { FormConfig, GraphStrategy } from './types'
 import Start from '../../nodes/internalConstraints/Start'

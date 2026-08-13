@@ -4,6 +4,7 @@ import type { GraphStrategy } from '../strategies/types'
 import { PRE_CONNECTION_PREVIEW_DATA_KEY } from './preConnectionData'
 
 const DEFAULT_MAX_DISTANCE = 200
+const SPATIAL_GRID_SIZE = 200
 const MOVE_BATCH_NAME = 'pre-connection-move'
 const PREVIEW_FLOW_STYLE_ID = 'baic-pre-connection-preview-flow-style'
 const PREVIEW_FLOW_ANIMATION_NAME = 'baic-pre-connection-preview-flow'
@@ -26,6 +27,9 @@ interface PreConnectionState {
   cleanupTimer: ReturnType<typeof setTimeout> | null
   historyBatchStarted: boolean
   stencil: boolean
+  spatialIndex: Map<string, Node[]>
+  updateFrame: number | null
+  pendingCenter?: Point
 }
 
 interface BeginPreConnectionOptions {
@@ -33,6 +37,52 @@ interface BeginPreConnectionOptions {
 }
 
 const states = new WeakMap<Graph, PreConnectionState>()
+
+const getGridKey = (x: number, y: number) => `${x}:${y}`
+
+const getGridRange = (bounds: Bounds, padding = 0) => ({
+  minX: Math.floor((bounds.x - padding) / SPATIAL_GRID_SIZE),
+  maxX: Math.floor((bounds.x + bounds.width + padding) / SPATIAL_GRID_SIZE),
+  minY: Math.floor((bounds.y - padding) / SPATIAL_GRID_SIZE),
+  maxY: Math.floor((bounds.y + bounds.height + padding) / SPATIAL_GRID_SIZE),
+})
+
+const buildSpatialIndex = (graph: Graph) => {
+  const index = new Map<string, Node[]>()
+
+  graph.getNodes().forEach((node) => {
+    const range = getGridRange(node.getBBox())
+    for (let x = range.minX; x <= range.maxX; x += 1) {
+      for (let y = range.minY; y <= range.maxY; y += 1) {
+        const key = getGridKey(x, y)
+        const nodes = index.get(key)
+        if (nodes) nodes.push(node)
+        else index.set(key, [node])
+      }
+    }
+  })
+
+  return index
+}
+
+const getNearbyNodes = (
+  state: PreConnectionState,
+  bounds: Bounds,
+  padding: number,
+) => {
+  const range = getGridRange(bounds, padding)
+  const nearby = new Map<string, Node>()
+
+  for (let x = range.minX; x <= range.maxX; x += 1) {
+    for (let y = range.minY; y <= range.maxY; y += 1) {
+      state.spatialIndex.get(getGridKey(x, y))?.forEach((node) => {
+        nearby.set(node.id, node)
+      })
+    }
+  }
+
+  return nearby.values()
+}
 
 const ensurePreviewFlowStyle = () => {
   if (typeof document === 'undefined' || document.getElementById(PREVIEW_FLOW_STYLE_ID)) {
@@ -97,6 +147,8 @@ const stopMoveBatch = (graph: Graph, state: PreConnectionState) => {
 const releaseState = (graph: Graph, state: PreConnectionState) => {
   clearTimer(state)
   clearDocumentEvents(state)
+  if (state.updateFrame !== null) cancelAnimationFrame(state.updateFrame)
+  state.updateFrame = null
   states.delete(graph)
   stopMoveBatch(graph, state)
 }
@@ -144,7 +196,7 @@ const getCenterDistance = (a: Bounds, b: Bounds) => {
 }
 
 const findNearestSource = (
-  graph: Graph,
+  state: PreConnectionState,
   strategy: GraphStrategy,
   targetNode: Node,
   targetBounds: Bounds,
@@ -155,8 +207,8 @@ const findNearestSource = (
   let nearestDistance = Infinity
   let nearestCenterDistance = Infinity
 
-  graph.getNodes().forEach((node) => {
-    if (node.id === targetNode.id || rules?.canUseSource?.(node) === false) return
+  for (const node of getNearbyNodes(state, targetBounds, maxDistance)) {
+    if (node.id === targetNode.id || rules?.canUseSource?.(node) === false) continue
 
     const sourceBounds = node.getBBox()
     const distance = getBoundsDistance(targetBounds, sourceBounds)
@@ -173,7 +225,7 @@ const findNearestSource = (
       nearestDistance = distance
       nearestCenterDistance = centerDistance
     }
-  })
+  }
 
   return nearestNode
 }
@@ -227,7 +279,7 @@ const updatePreview = (
   }
 
   const target = getTargetGeometry(state.targetNode, center)
-  const sourceNode = findNearestSource(graph, strategy, state.targetNode, target.bounds)
+  const sourceNode = findNearestSource(state, strategy, state.targetNode, target.bounds)
   if (!sourceNode) {
     removePreviewEdge(graph, state)
     return
@@ -238,13 +290,33 @@ const updatePreview = (
     graph.getCellById(state.previewEdge.id) &&
     state.candidateSourceId === sourceNode.id
   ) {
-    state.previewEdge.setTarget(target.top)
+    const currentTarget = state.previewEdge.getTarget() as Point
+    if (currentTarget.x !== target.top.x || currentTarget.y !== target.top.y) {
+      state.previewEdge.setTarget(target.top)
+    }
     return
   }
 
   removePreviewEdge(graph, state)
   state.candidateSourceId = sourceNode.id
   state.previewEdge = createPreviewEdge(graph, sourceNode, target.top)
+}
+
+const schedulePreviewUpdate = (
+  graph: Graph,
+  strategy: GraphStrategy,
+  state: PreConnectionState,
+  center?: Point,
+) => {
+  state.pendingCenter = center
+  if (state.updateFrame !== null) return
+
+  state.updateFrame = requestAnimationFrame(() => {
+    state.updateFrame = null
+    const pendingCenter = state.pendingCenter
+    state.pendingCenter = undefined
+    if (states.get(graph) === state) updatePreview(graph, strategy, state, pendingCenter)
+  })
 }
 
 const getClientPoint = (event: MouseEvent | TouchEvent): Point | null => {
@@ -277,7 +349,7 @@ const updateFromDocumentEvent = (
   }
 
   const localCenter = graph.clientToLocal(clientPoint.x, clientPoint.y)
-  updatePreview(graph, strategy, state, localCenter)
+  schedulePreviewUpdate(graph, strategy, state, localCenter)
 }
 
 const restoreFormalEdgeStyle = (edge: Edge, strategy: GraphStrategy) => {
@@ -335,6 +407,8 @@ export const beginPreConnection = (
     cleanupTimer: null,
     historyBatchStarted: false,
     stencil,
+    spatialIndex: buildSpatialIndex(graph),
+    updateFrame: null,
   }
 
   states.set(graph, state)
@@ -353,7 +427,7 @@ export const updatePreConnection = (
 ) => {
   const state = states.get(graph)
   if (!state || state.targetNode.id !== targetNode.id) return
-  updatePreview(graph, strategy, state)
+  schedulePreviewUpdate(graph, strategy, state)
 }
 
 export const transferPreConnectionTarget = (
@@ -416,6 +490,11 @@ export const completePreConnection = (
   const state = states.get(graph)
   if (!state || state.targetNode !== targetNode) return false
 
+  if (state.updateFrame !== null) {
+    cancelAnimationFrame(state.updateFrame)
+    state.updateFrame = null
+    state.pendingCenter = undefined
+  }
   updatePreview(graph, strategy, state)
   const edge = state.previewEdge
   const sourceNode = state.candidateSourceId

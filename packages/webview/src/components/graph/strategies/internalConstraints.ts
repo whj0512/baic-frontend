@@ -1,4 +1,4 @@
-import { register } from '@antv/x6-react-shape'
+import { register } from '../flowGraph/reactNodeRegistry'
 import type { GraphStrategy, FormConfig } from './types'
 import { ensureInternalConstraintsRequiredNodes } from './internalConstraintsRequiredNodes'
 import Call from '../../nodes/internalConstraints/Call';

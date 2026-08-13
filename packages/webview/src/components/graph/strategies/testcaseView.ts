@@ -1,4 +1,4 @@
-import { register } from '@antv/x6-react-shape'
+import { register } from '../flowGraph/reactNodeRegistry'
 import type { FormConfig, GraphStrategy } from './types'
 import Assignment from '../../nodes/testcaseView/Assignment'
 import Executable from '../../nodes/testcaseView/Executable'

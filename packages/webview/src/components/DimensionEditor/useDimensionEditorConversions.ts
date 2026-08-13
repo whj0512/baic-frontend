@@ -51,6 +51,8 @@ export function useDimensionEditorConversions({
   const convertGraphToDsl = useCallback(async (): Promise<string | null> => {
     if (viewMode === 'dsl') return null
 
+    const pendingGraphData = flowGraphRef.current?.flushChanges()
+    if (pendingGraphData) graphDataRef.current = pendingGraphData
     const graph = flowGraphRef.current?.getGraph()
     if (!graph) return null
 
@@ -81,7 +83,7 @@ export function useDimensionEditorConversions({
     } finally {
       setDslLoading(false)
     }
-  }, [config.dimensionCode, flowGraphRef, modelStrategy, serializedGraphDataRef, setDslLoading, setGraphError, viewMode])
+  }, [config.dimensionCode, flowGraphRef, graphDataRef, modelStrategy, serializedGraphDataRef, setDslLoading, setGraphError, viewMode])
 
   const convertDslToVisual = useCallback(async (
     sourceDsl = dslContentRef.current,

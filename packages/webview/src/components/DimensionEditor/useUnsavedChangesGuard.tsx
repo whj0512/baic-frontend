@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { Button, message, Modal } from 'antd'
 import type { FlowGraphRef } from '../graph'
-import { cloneSerializableData, createEditorSnapshot } from './snapshot'
+import { cloneSerializableData, createEditorSnapshot, getEditorSnapshotKey } from './snapshot'
 import type {
   ConvertedVisualData,
   RequirementDimensionEditorProps,
@@ -85,6 +85,8 @@ export function useUnsavedChangesGuard({
       return null
     }
     const currentContent = contentRef.current
+    const pendingGraphData = flowGraphRef.current?.flushChanges()
+    if (pendingGraphData) graphDataRef.current = pendingGraphData
 
     if (!modelBacked && (!config.graphField || !config.dslField)) {
       return createEditorSnapshot(
@@ -134,6 +136,7 @@ export function useUnsavedChangesGuard({
     convertGraphToDsl,
     dslContentRef,
     graphDataRef,
+    flowGraphRef,
     serializedGraphDataRef,
     modelBacked,
     persistDisabledReason,
@@ -148,6 +151,16 @@ export function useUnsavedChangesGuard({
       serializedGraphDataRef.current,
     ),
   ): Promise<boolean> => {
+    const pendingGraphData = flowGraphRef.current?.flushChanges()
+    if (pendingGraphData) {
+      graphDataRef.current = pendingGraphData
+      snapshot = createEditorSnapshot(
+        snapshot.content,
+        snapshot.dslContent,
+        pendingGraphData,
+        snapshot.serializedGraphData,
+      )
+    }
     if (!onPersist) {
       onSave?.(sectionKey, snapshot.graphData, snapshot.dslContent, snapshot)
       markSnapshotSaved(snapshot)
@@ -175,6 +188,7 @@ export function useUnsavedChangesGuard({
     contentRef,
     dslContentRef,
     graphDataRef,
+    flowGraphRef,
     markSnapshotSaved,
     onSnapshotSaved,
     onSave,
@@ -235,7 +249,18 @@ export function useUnsavedChangesGuard({
   }, [onBack, onDiscardUnsavedChanges, restoreSavedSnapshot])
 
   const handleGuardedBack = useCallback(() => {
-    if (!hasUnsavedChanges) {
+    const pendingGraphData = flowGraphRef.current?.flushChanges()
+    if (pendingGraphData) graphDataRef.current = pendingGraphData
+    const currentSnapshot = createEditorSnapshot(
+      contentRef.current,
+      dslContentRef.current,
+      graphDataRef.current,
+      serializedGraphDataRef.current,
+    )
+    const hasCurrentUnsavedChanges = hasUnsavedChanges || (
+      getEditorSnapshotKey(currentSnapshot) !== getEditorSnapshotKey(savedSnapshotRef.current)
+    )
+    if (!hasCurrentUnsavedChanges) {
       onBack()
       return
     }
@@ -274,7 +299,19 @@ export function useUnsavedChangesGuard({
         </>
       ),
     })
-  }, [continueWithoutSaving, hasUnsavedChanges, onBack, prepareSnapshotForSave, saveSnapshot])
+  }, [
+    continueWithoutSaving,
+    flowGraphRef,
+    graphDataRef,
+    hasUnsavedChanges,
+    contentRef,
+    dslContentRef,
+    onBack,
+    prepareSnapshotForSave,
+    saveSnapshot,
+    savedSnapshotRef,
+    serializedGraphDataRef,
+  ])
 
   return {
     handleSave,

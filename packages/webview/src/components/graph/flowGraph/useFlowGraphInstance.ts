@@ -1,13 +1,12 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Graph } from '@antv/x6'
 import type { Dispatch, MutableRefObject, RefObject, SetStateAction } from 'react'
-import type { Stencil } from '@antv/x6'
-import {
-  ensureGraphConnectionPorts,
-  scheduleGraphConnectionViewRefresh,
-} from '../edgeConnection'
+import type { Cell, Stencil } from '@antv/x6'
 import type { GraphStrategy } from '../strategies/types'
-import { syncInitialEdgeLabels } from './edgeLabels'
+import {
+  createGraphChangeScheduler,
+  type GraphChangeScheduler,
+} from './changeScheduler'
 import {
   type FlowGraphContextMenuState,
   registerGraphEventHandlers,
@@ -19,6 +18,7 @@ import {
 } from './stencil'
 import { cancelPreConnection } from './preConnection'
 import { cancelSequenceConnection } from './sequenceConnection'
+import { loadFlowGraphData } from './loadGraphData'
 
 interface UseFlowGraphInstanceOptions {
   sectionKey: string
@@ -30,9 +30,11 @@ interface UseFlowGraphInstanceOptions {
   stencilContainerRef: RefObject<HTMLDivElement | null>
   graphRef: MutableRefObject<Graph | null>
   stencilRef: MutableRefObject<Stencil | null>
+  changeSchedulerRef: MutableRefObject<GraphChangeScheduler | null>
   setGraphReady: Dispatch<SetStateAction<boolean>>
   setContextMenu: Dispatch<SetStateAction<FlowGraphContextMenuState>>
   setFormPanelCollapsed: Dispatch<SetStateAction<boolean>>
+  setFormPanelCell: Dispatch<SetStateAction<Cell | null>>
   preserveFormPanelOnBlank: boolean
 }
 
@@ -46,11 +48,16 @@ export const useFlowGraphInstance = ({
   stencilContainerRef,
   graphRef,
   stencilRef,
+  changeSchedulerRef,
   setGraphReady,
   setContextMenu,
   setFormPanelCollapsed,
+  setFormPanelCell,
   preserveFormPanelOnBlank,
 }: UseFlowGraphInstanceOptions) => {
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
+
   useEffect(() => {
     strategy.registerNodes?.()
 
@@ -63,44 +70,40 @@ export const useFlowGraphInstance = ({
     container.appendChild(graphInnerContainer)
 
     const graph = new Graph(createFlowGraphOptions(graphInnerContainer, strategy, readOnly))
+    const changeScheduler = createGraphChangeScheduler(graph, () => onChangeRef.current)
 
     graphRef.current = graph
+    changeSchedulerRef.current = changeScheduler
     setGraphReady(true)
 
     if (!readOnly && stencilContainerRef.current) {
       stencilRef.current = createFlowGraphStencil(graph, stencilContainerRef.current, strategy)
     }
 
-    if (data && Object.keys(data).length > 0) {
-      scheduleGraphConnectionViewRefresh(graph, strategy)
-      graph.fromJSON(data)
-      if ((data as any).canvasData && typeof (data as any).canvasData === 'object') {
-        ;(graph as any).canvasData = (data as any).canvasData
-      }
-      ensureGraphConnectionPorts(graph, strategy)
-      syncInitialEdgeLabels(graph)
-    }
-
-    ensureGraphConnectionPorts(graph, strategy)
+    loadFlowGraphData({ data, graph, scheduler: changeScheduler, strategy })
 
     registerGraphEventHandlers(graph, {
       strategy,
       sectionKey,
       readOnly,
       onChange,
+      changeScheduler,
       setContextMenu,
       setFormPanelCollapsed,
+      setFormPanelCell,
       preserveFormPanelOnBlank,
     })
-    strategy.ensureRequiredNodes?.(graph)
 
     return () => {
       const currentStencil = stencilRef.current
       stencilRef.current = null
       graphRef.current = null
+      changeSchedulerRef.current = null
 
       cancelPreConnection(graph)
       cancelSequenceConnection(graph)
+      changeScheduler.flush()
+      changeScheduler.dispose()
 
       setTimeout(() => {
         disposeFlowGraphStencil(currentStencil, graph)

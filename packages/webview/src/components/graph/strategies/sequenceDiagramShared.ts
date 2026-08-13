@@ -5,7 +5,7 @@
  * 共用相同的节点注册、侧边栏组件、表单配置和画布布局，
  * 将这些公共部分提取到此文件以避免代码冗余。
  */
-import { register } from '@antv/x6-react-shape'
+import { register } from '../flowGraph/reactNodeRegistry'
 import type { FormConfig, SidebarItem } from './types'
 import ObjectNode from '../../nodes/interaction/BaseObject'
 import ActorNode from '../../nodes/interaction/Actor'

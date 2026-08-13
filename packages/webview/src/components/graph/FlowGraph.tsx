@@ -2,6 +2,8 @@ import {
   useRef,
   useMemo,
   useState,
+  lazy,
+  Suspense,
   forwardRef,
   useImperativeHandle,
   useCallback,
@@ -9,8 +11,7 @@ import {
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
 } from 'react'
-import type { Graph, Stencil } from '@antv/x6'
-import Editor from '@monaco-editor/react'
+import type { Cell, Graph, Stencil } from '@antv/x6'
 import { Button, Dropdown } from 'antd'
 import type { MenuProps } from 'antd'
 import { CloseCircleOutlined, DeleteOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
@@ -24,12 +25,11 @@ import {
   type FlowGraphContextMenuState,
 } from './flowGraph/graphEventRegistry'
 import { useFlowGraphInstance } from './flowGraph/useFlowGraphInstance'
-import {
-  ensureGraphConnectionPorts,
-  scheduleGraphConnectionViewRefresh,
-} from './edgeConnection'
-import { syncInitialEdgeLabels } from './flowGraph/edgeLabels'
+import type { GraphChangeScheduler } from './flowGraph/changeScheduler'
+import { loadFlowGraphData } from './flowGraph/loadGraphData'
 import './FlowGraph.css'
+
+const MonacoEditor = lazy(() => import('@monaco-editor/react'))
 
 interface FlowGraphProps {
   sectionKey: string
@@ -54,6 +54,7 @@ const clampFormPanelWidth = (width: number) => (
 export interface FlowGraphRef {
   getGraph: () => Graph | null
   loadData: (nextData: any) => void
+  flushChanges: () => object | null
 }
 
 const FlowGraphContent = forwardRef<FlowGraphRef, FlowGraphProps>(
@@ -71,11 +72,16 @@ const FlowGraphContent = forwardRef<FlowGraphRef, FlowGraphProps>(
     const stencilContainerRef = useRef<HTMLDivElement>(null)
     const graphRef = useRef<Graph | null>(null)
     const stencilRef = useRef<Stencil | null>(null)
+    const changeSchedulerRef = useRef<GraphChangeScheduler | null>(null)
     const [graphReady, setGraphReady] = useState(false)
     const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
     const [formPanelCollapsed, setFormPanelCollapsed] = useState(initialFormPanelCollapsed)
+    const [formPanelCell, setFormPanelCell] = useState<Cell | null>(null)
     const [formPanelWidth, setFormPanelWidth] = useState(DEFAULT_FORM_PANEL_WIDTH)
     const [formPanelResizing, setFormPanelResizing] = useState(false)
+    const formPanelWrapperRef = useRef<HTMLDivElement>(null)
+    const formPanelResizeFrameRef = useRef<number | null>(null)
+    const pendingFormPanelWidthRef = useRef(DEFAULT_FORM_PANEL_WIDTH)
     const formPanelResizeStartRef = useRef({
       x: 0,
       width: DEFAULT_FORM_PANEL_WIDTH,
@@ -96,18 +102,13 @@ const FlowGraphContent = forwardRef<FlowGraphRef, FlowGraphProps>(
       getGraph: () => graphRef.current,
       loadData: (nextData: any) => {
         const graph = graphRef.current
-        if (!graph) return
+        const scheduler = changeSchedulerRef.current
+        if (!graph || !scheduler) return
 
-        scheduleGraphConnectionViewRefresh(graph, strategy)
-        graph.fromJSON(nextData)
-        if (nextData?.canvasData && typeof nextData.canvasData === 'object') {
-          ;(graph as any).canvasData = nextData.canvasData
-          graph.trigger('canvas:change:data', { data: nextData.canvasData, initial: true })
-        }
-        ensureGraphConnectionPorts(graph, strategy)
-        syncInitialEdgeLabels(graph)
-        strategy.ensureRequiredNodes?.(graph)
+        setFormPanelCell(null)
+        loadFlowGraphData({ data: nextData, graph, scheduler, strategy })
       },
+      flushChanges: () => changeSchedulerRef.current?.snapshot() ?? null,
     }), [graphReady, strategy])
 
     const closeContextMenu = useCallback(() => {
@@ -130,6 +131,7 @@ const FlowGraphContent = forwardRef<FlowGraphRef, FlowGraphProps>(
         x: event.clientX,
         width: formPanelWidth,
       }
+      pendingFormPanelWidthRef.current = formPanelWidth
       setFormPanelResizing(true)
     }, [formPanelWidth])
 
@@ -141,10 +143,24 @@ const FlowGraphContent = forwardRef<FlowGraphRef, FlowGraphProps>(
       const handleMouseMove = (event: MouseEvent) => {
         const { x, width } = formPanelResizeStartRef.current
         const nextWidth = clampFormPanelWidth(width + x - event.clientX)
-        setFormPanelWidth(nextWidth)
+        pendingFormPanelWidthRef.current = nextWidth
+
+        if (formPanelResizeFrameRef.current !== null) return
+        formPanelResizeFrameRef.current = requestAnimationFrame(() => {
+          formPanelResizeFrameRef.current = null
+          formPanelWrapperRef.current?.style.setProperty(
+            '--form-panel-width',
+            `${pendingFormPanelWidthRef.current}px`,
+          )
+        })
       }
 
       const handleMouseUp = () => {
+        if (formPanelResizeFrameRef.current !== null) {
+          cancelAnimationFrame(formPanelResizeFrameRef.current)
+          formPanelResizeFrameRef.current = null
+        }
+        setFormPanelWidth(pendingFormPanelWidthRef.current)
         setFormPanelResizing(false)
       }
 
@@ -153,6 +169,10 @@ const FlowGraphContent = forwardRef<FlowGraphRef, FlowGraphProps>(
       document.body.classList.add('flow-graph-form-panel-resizing')
 
       return () => {
+        if (formPanelResizeFrameRef.current !== null) {
+          cancelAnimationFrame(formPanelResizeFrameRef.current)
+          formPanelResizeFrameRef.current = null
+        }
         document.removeEventListener('mousemove', handleMouseMove)
         document.removeEventListener('mouseup', handleMouseUp)
         document.body.classList.remove('flow-graph-form-panel-resizing')
@@ -179,14 +199,20 @@ const FlowGraphContent = forwardRef<FlowGraphRef, FlowGraphProps>(
       stencilContainerRef,
       graphRef,
       stencilRef,
+      changeSchedulerRef,
       setGraphReady,
       setContextMenu,
       setFormPanelCollapsed,
+      setFormPanelCell,
       preserveFormPanelOnBlank,
     })
 
     return (
-      <div className="flow-graph-container" onClick={closeContextMenu}>
+      <div
+        className="flow-graph-container"
+        onClick={closeContextMenu}
+        onBlurCapture={() => changeSchedulerRef.current?.flush()}
+      >
         {/* 错误横幅：转换失败时在顶部显示 */}
         {errorMessage && (
           <div className="flow-graph-error-banner">
@@ -224,6 +250,7 @@ const FlowGraphContent = forwardRef<FlowGraphRef, FlowGraphProps>(
         </div>
         {!readOnly && graphReady && graphRef.current && (
           <div
+            ref={formPanelWrapperRef}
             className={`form-panel-wrapper${formPanelCollapsed ? ' collapsed' : ''}${formPanelResizing ? ' resizing' : ''}`}
             style={{
               '--form-panel-width': `${formPanelWidth}px`,
@@ -241,10 +268,13 @@ const FlowGraphContent = forwardRef<FlowGraphRef, FlowGraphProps>(
               onMouseDown={handleFormPanelResizeStart}
               title="拖拽调整属性面板宽度"
             />
-            <FormPanelContainer
-              graph={graphRef.current}
-              formConfig={strategy.formConfig}
-            />
+            {!formPanelCollapsed && (
+              <FormPanelContainer
+                graph={graphRef.current}
+                formConfig={strategy.formConfig}
+                selectedCell={formPanelCell}
+              />
+            )}
           </div>
         )}
         {!readOnly && activeAdvancedEditor && (
@@ -278,22 +308,24 @@ const FlowGraphContent = forwardRef<FlowGraphRef, FlowGraphProps>(
               </span>
             </div>
             <div className="flow-advanced-editor-body">
-              <Editor
-                key={activeAdvancedEditor.id}
-                height="100%"
-                defaultLanguage={activeAdvancedEditor.editorLanguage}
-                value={activeAdvancedEditor.draftValue}
-                options={{
-                  minimap: { enabled: false },
-                  scrollBeyondLastLine: false,
-                  fixedOverflowWidgets: true,
-                  fontSize: 14,
-                  lineNumbers: 'on',
-                  automaticLayout: true,
-                }}
-                onChange={(nextValue) => activeAdvancedEditor.setDraftValue(nextValue ?? '')}
-                onMount={activeAdvancedEditor.handleEditorMount}
-              />
+              <Suspense fallback={<div className="flow-advanced-editor-loading">Loading editor...</div>}>
+                <MonacoEditor
+                  key={activeAdvancedEditor.id}
+                  height="100%"
+                  defaultLanguage={activeAdvancedEditor.editorLanguage}
+                  value={activeAdvancedEditor.draftValue}
+                  options={{
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                    fixedOverflowWidgets: true,
+                    fontSize: 14,
+                    lineNumbers: 'on',
+                    automaticLayout: true,
+                  }}
+                  onChange={(nextValue) => activeAdvancedEditor.setDraftValue(nextValue ?? '')}
+                  onMount={activeAdvancedEditor.handleEditorMount}
+                />
+              </Suspense>
             </div>
             <div className="flow-advanced-editor-footer">
               <Button onClick={activeAdvancedEditor.closeEditor}>

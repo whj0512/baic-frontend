@@ -8,9 +8,9 @@ import {
   finalizeNewEdgeConnection,
   isSequenceEdgeMode,
   setNodeConnectionHotAreaVisible,
-  toSerializableGraphJSON,
 } from '../edgeConnection'
 import type { GraphStrategy } from '../strategies/types'
+import type { GraphChangeScheduler } from './changeScheduler'
 import { syncEdgeLabelFromData } from './edgeLabels'
 import {
   beginPreConnection,
@@ -36,8 +36,10 @@ interface RegisterGraphEventHandlersOptions {
   sectionKey: string
   readOnly: boolean
   onChange?: (data: any) => void
+  changeScheduler: GraphChangeScheduler
   setContextMenu: Dispatch<SetStateAction<FlowGraphContextMenuState>>
   setFormPanelCollapsed: Dispatch<SetStateAction<boolean>>
+  setFormPanelCell: Dispatch<SetStateAction<Cell | null>>
   preserveFormPanelOnBlank: boolean
 }
 
@@ -54,7 +56,7 @@ export const registerGraphEventHandlers = (
     registerPreConnectionEvents(graph, options.strategy)
   }
   if (!options.readOnly && options.strategy.sequenceConnection) {
-    registerSequenceConnection(graph, options.strategy, options.onChange)
+    registerSequenceConnection(graph, options.strategy)
   }
   if (!options.readOnly && options.strategy.initializeNode) {
     graph.on('node:added', ({ node }: { node: Node }) => {
@@ -69,8 +71,10 @@ export const registerGraphEventHandlers = (
     registerUiEvents(graph, options)
   }
 
-  registerPlugins(graph)
-  registerKeyboardShortcuts(graph, options.readOnly, options.strategy)
+  if (!options.readOnly) {
+    registerPlugins(graph)
+    registerKeyboardShortcuts(graph, options.strategy)
+  }
 }
 
 const registerPreConnectionEvents = (graph: Graph, strategy: GraphStrategy) => {
@@ -99,28 +103,73 @@ const registerPreConnectionEvents = (graph: Graph, strategy: GraphStrategy) => {
 
 const registerChangeEvents = (
   graph: Graph,
-  { onChange, readOnly }: RegisterGraphEventHandlersOptions,
+  { changeScheduler, readOnly }: RegisterGraphEventHandlersOptions,
 ) => {
-  if (!onChange || readOnly) return
+  if (readOnly) return
 
-  const updateData = () => onChange(toSerializableGraphJSON(graph))
+  const movingNodes = new Set<string>()
+  let edgeBatchDepth = 0
+
   const updateEdgeData = ({ edge }: { edge: Edge }) => {
-    if (!isPreConnectionPreview(edge) && !isSequenceConnectionPreview(edge)) updateData()
+    if (!isPreConnectionPreview(edge) && !isSequenceConnectionPreview(edge)) {
+      changeScheduler.markCell(edge, edgeBatchDepth > 0 ? 'manual' : 'frame')
+    }
   }
   const updateCellData = ({ cell }: { cell: Cell }) => {
-    if (!isPreConnectionPreview(cell) && !isSequenceConnectionPreview(cell)) updateData()
+    if (!isPreConnectionPreview(cell) && !isSequenceConnectionPreview(cell)) {
+      changeScheduler.markCell(cell, 'data')
+    }
   }
-  graph.on('node:change:position', updateData)
-  graph.on('node:added', updateData)
-  graph.on('node:removed', updateData)
-  graph.on('edge:added', updateEdgeData)
-  graph.on('edge:removed', updateEdgeData)
+
+  graph.on('node:move', ({ node }: { node: Node }) => {
+    movingNodes.add(node.id)
+    changeScheduler.defer()
+  })
+  graph.on('node:moved', ({ node }: { node: Node }) => {
+    movingNodes.delete(node.id)
+    changeScheduler.markCell(node, 'manual')
+    changeScheduler.flush()
+  })
+  graph.on('node:change:position', ({ node }: { node: Node }) => {
+    changeScheduler.markCell(node, movingNodes.has(node.id) ? 'manual' : 'frame')
+  })
+  graph.on('node:added', ({ node }: { node: Node }) => {
+    if (!isPreConnectionPreview(node) && !isSequenceConnectionPreview(node)) {
+      changeScheduler.markStructure()
+    }
+  })
+  graph.on('node:removed', ({ node }: { node: Node }) => {
+    movingNodes.delete(node.id)
+    changeScheduler.markStructure()
+  })
+  graph.on('edge:added', ({ edge }: { edge: Edge }) => {
+    if (!isPreConnectionPreview(edge) && !isSequenceConnectionPreview(edge)) {
+      changeScheduler.markStructure()
+    }
+  })
+  graph.on('edge:removed', ({ edge }: { edge: Edge }) => {
+    if (!isPreConnectionPreview(edge) && !isSequenceConnectionPreview(edge)) {
+      changeScheduler.markStructure()
+    }
+  })
   graph.on('edge:change:source', updateEdgeData)
   graph.on('edge:change:target', updateEdgeData)
   graph.on('edge:change:vertices', updateEdgeData)
   graph.on('cell:change:data', updateCellData)
+  graph.on('edge:batch:start', () => {
+    edgeBatchDepth += 1
+    changeScheduler.defer()
+  })
+  graph.on('edge:batch:stop', () => {
+    edgeBatchDepth = Math.max(0, edgeBatchDepth - 1)
+    if (edgeBatchDepth === 0) changeScheduler.flush()
+  })
+  graph.on('edge:moved', ({ edge }: { edge: Edge }) => {
+    changeScheduler.markCell(edge, 'manual')
+    changeScheduler.flush()
+  })
   graph.on('canvas:change:data', ({ initial }: { initial?: boolean } = {}) => {
-    if (!initial) updateData()
+    if (!initial) changeScheduler.markCanvas('data')
   })
 }
 
@@ -132,7 +181,7 @@ const registerEdgeLabelEvents = (graph: Graph) => {
 
 const registerPortEvents = (
   graph: Graph,
-  { strategy, onChange }: RegisterGraphEventHandlersOptions,
+  { strategy }: RegisterGraphEventHandlersOptions,
 ) => {
   const sequenceEdgeMode = isSequenceEdgeMode(strategy)
   let activeConnectionHotAreaNode: Node | null = null
@@ -141,7 +190,7 @@ const registerPortEvents = (
     if (!activeConnectionHotAreaNode) return
     if (nextNode && activeConnectionHotAreaNode.id === nextNode.id) return
 
-    setNodeConnectionHotAreaVisible(activeConnectionHotAreaNode, false)
+    setNodeConnectionHotAreaVisible(graph, activeConnectionHotAreaNode, false)
     activeConnectionHotAreaNode = null
   }
 
@@ -153,17 +202,14 @@ const registerPortEvents = (
     const showConnectionHotArea = ({ node }: { node: Node }) => {
       if (activeConnectionHotAreaNode?.id === node.id) return
 
-      ensureNodeConnectionPorts(node, strategy)
       hideActiveConnectionHotArea(node)
-      setNodeConnectionHotAreaVisible(node, true)
+      setNodeConnectionHotAreaVisible(graph, node, true)
       activeConnectionHotAreaNode = node
     }
 
     graph.on('node:mouseenter', showConnectionHotArea)
-    graph.on('node:mousemove', showConnectionHotArea)
-
     graph.on('node:mouseleave', ({ node }: any) => {
-      setNodeConnectionHotAreaVisible(node, false)
+      setNodeConnectionHotAreaVisible(graph, node, false)
       if (activeConnectionHotAreaNode?.id === node.id) {
         activeConnectionHotAreaNode = null
       }
@@ -185,7 +231,6 @@ const registerPortEvents = (
       return
     }
 
-    onChange?.(toSerializableGraphJSON(graph))
   })
 
   graph.on('edge:removed', ({ edge }: { edge: Edge }) => {
@@ -244,6 +289,7 @@ const registerUiEvents = (
     sectionKey,
     setContextMenu,
     setFormPanelCollapsed,
+    setFormPanelCell,
     preserveFormPanelOnBlank,
   }: RegisterGraphEventHandlersOptions,
 ) => {
@@ -260,19 +306,26 @@ const registerUiEvents = (
 
   graph.on('blank:click', () => {
     setContextMenu(prev => ({ ...prev, visible: false, cell: null }))
+    setFormPanelCell(null)
     if (!preserveFormPanelOnBlank) {
       setFormPanelCollapsed(true)
     }
   })
 
-  graph.on('node:click', () => {
+  graph.on('node:click', ({ node }: { node: Node }) => {
     setContextMenu(prev => ({ ...prev, visible: false, cell: null }))
+    setFormPanelCell(node)
     setFormPanelCollapsed(false)
   })
 
-  graph.on('edge:click', () => {
+  graph.on('edge:click', ({ edge }: { edge: Edge }) => {
     setContextMenu(prev => ({ ...prev, visible: false, cell: null }))
+    setFormPanelCell(edge)
     setFormPanelCollapsed(false)
+  })
+
+  graph.on('cell:removed', ({ cell }: { cell: Cell }) => {
+    setFormPanelCell(current => current?.id === cell.id ? null : current)
   })
 
   if (sectionKey === 'interaction' || sectionKey === 'moduleResponses') {
@@ -418,11 +471,9 @@ const preventKeyboardDefault = (event: KeyboardEvent) => {
   event.stopPropagation()
 }
 
-const registerKeyboardShortcuts = (graph: Graph, readOnly: boolean, strategy: GraphStrategy) => {
+const registerKeyboardShortcuts = (graph: Graph, strategy: GraphStrategy) => {
   graph.bindKey(['backspace', 'del'], (event) => {
     preventKeyboardDefault(event)
-    if (readOnly) return
-
     const cells = graph.getSelectedCells().filter(cell => strategy.canRemoveCell?.(cell) !== false)
     if (cells.length) {
       graph.removeCells(cells)
@@ -441,7 +492,7 @@ const registerKeyboardShortcuts = (graph: Graph, readOnly: boolean, strategy: Gr
 
   graph.bindKey(['ctrl+v', 'meta+v', 'command+v'], (event) => {
     preventKeyboardDefault(event)
-    if (readOnly || graph.isClipboardEmpty()) return
+    if (graph.isClipboardEmpty()) return
 
     const cells = graph.paste({ offset: 32 })
     graph.cleanSelection()
@@ -450,14 +501,14 @@ const registerKeyboardShortcuts = (graph: Graph, readOnly: boolean, strategy: Gr
 
   graph.bindKey(['ctrl+z', 'meta+z'], (event) => {
     preventKeyboardDefault(event)
-    if (readOnly || !graph.canUndo()) return
+    if (!graph.canUndo()) return
 
     graph.undo()
   })
 
   graph.bindKey(['ctrl+y', 'meta+y'], (event) => {
     preventKeyboardDefault(event)
-    if (readOnly || !graph.canRedo()) return
+    if (!graph.canRedo()) return
 
     graph.redo()
   })
