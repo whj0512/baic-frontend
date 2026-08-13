@@ -98,6 +98,7 @@ const FlowGraphContent = forwardRef<FlowGraphRef, FlowGraphProps>(
         const graph = graphRef.current
         if (!graph) return
 
+        scheduleGraphConnectionViewRefresh(graph, strategy)
         graph.fromJSON(nextData)
         if (nextData?.canvasData && typeof nextData.canvasData === 'object') {
           ;(graph as any).canvasData = nextData.canvasData
@@ -105,7 +106,6 @@ const FlowGraphContent = forwardRef<FlowGraphRef, FlowGraphProps>(
         }
         ensureGraphConnectionPorts(graph, strategy)
         syncInitialEdgeLabels(graph)
-        scheduleGraphConnectionViewRefresh(graph, strategy)
         strategy.ensureRequiredNodes?.(graph)
       },
     }), [graphReady, strategy])

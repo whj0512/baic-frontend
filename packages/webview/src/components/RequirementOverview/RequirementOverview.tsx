@@ -19,6 +19,7 @@ import type {
   RequirementModelIdentity,
 } from '../../models/RequirementModel'
 import { createRequirementModelClientId } from '../../utils/editorDraftStorage'
+import { MarkdownEditor, MarkdownRenderer } from '../Markdown'
 import './RequirementOverview.css'
 
 const CUSTOM_TYPE_KEY = '__custom__'
@@ -498,15 +499,21 @@ function RequirementOverview({
             <span className="section-title">自然语言描述 (NL)</span>
           </div>
           {isEditing ? (
-            <Input.TextArea
-              rows={4}
+            <MarkdownEditor
               value={editForm.nl_text}
-              onChange={(event) => handleFieldChange('nl_text', event.target.value)}
-              placeholder="请输入需求描述"
+              onChange={(value) => handleFieldChange('nl_text', value)}
+              placeholder="请输入 Markdown 需求描述"
             />
+          ) : displayRequirement.nl_text ? (
+            <div className="text-content">
+              <MarkdownRenderer
+                key={displayRequirement.id}
+                value={displayRequirement.nl_text}
+              />
+            </div>
           ) : (
             <div className="text-content">
-              {displayRequirement.nl_text || <span className="text-placeholder">暂无描述</span>}
+              <span className="text-placeholder">暂无描述</span>
             </div>
           )}
         </div>

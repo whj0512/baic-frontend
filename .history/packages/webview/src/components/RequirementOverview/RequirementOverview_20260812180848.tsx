@@ -1,10 +1,25 @@
-import { useEffect, useRef, useState } from 'react'
-import { Button, message, Select, Input, Space } from 'antd'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Button, message, Select, Input, Modal, Space } from 'antd'
 import { CloseOutlined, EditOutlined, SaveOutlined } from '@ant-design/icons'
 import type { Requirement } from '../../models/Requirement'
 import type { RequirementVersion } from '../../models/RequirementVersion'
 import { API_ENDPOINTS, authFetch } from '../../config/api'
-import DimensionList, { type DimensionListSection } from '../DimensionList'
+import DimensionList from '../DimensionList'
+import type { DimensionListModelItem } from '../DimensionList/DimensionList'
+import type { SectionKey } from '../DimensionEditor/types'
+import { getLegacySnapshotSections, getRequirementSections } from '../DimensionList/requirementSections'
+import { DIMENSION_CODE_TO_SECTION } from '../DimensionEditor/dimensionEditorConfig'
+import RequirementModelMetadataModal, {
+  type RequirementModelMetadataValue,
+} from '../RequirementModelMetadataModal'
+import type {
+  RequirementDimensionCode,
+  RequirementModel,
+  RequirementModelDraft,
+  RequirementModelIdentity,
+} from '../../models/RequirementModel'
+import { createRequirementModelClientId } from '../../utils/editorDraftStorage'
+import { MarkdownEditor, MarkdownRenderer } from '../Markdown'
 import './RequirementOverview.css'
 
 const CUSTOM_TYPE_KEY = '__custom__'
@@ -12,34 +27,32 @@ const CUSTOM_TYPE_KEY = '__custom__'
 const PRESET_REQ_TYPES = [
   { value: '部件级', label: '部件级' },
   { value: '系统级', label: '系统级' },
+  { value: 'UI级', label: 'UI级' },
   { value: CUSTOM_TYPE_KEY, label: '自定义...' },
 ]
 
 const isPresetReqType = (value?: string) =>
     !value || PRESET_REQ_TYPES.some(option => option.value === value)
 
-// 与 CreateRequirement.tsx 保持一致的 SectionKey
-type SectionKey = 'environment' | 'interaction' | 'internalComposition' | 'moduleResponses' | 'internalConstraints'
-
 interface RequirementOverviewProps {
   requirement: Requirement | null
   versions: RequirementVersion[]
   projectKey: string
   onSectionClick?: (sectionKey: SectionKey, sectionLabel: string) => void
+  readOnly?: boolean
+  models?: RequirementModel[]
+  modelDrafts?: RequirementModelDraft[]
+  modelsLoading?: boolean
+  modelsError?: string | null
+  busyModelIdentities?: Set<string>
+  busyDimensions?: Set<RequirementDimensionCode>
+  onRetryModels?: () => void
+  onCreateModelDraft?: (draft: RequirementModelDraft) => void
+  onUpdateModelMetadata?: (identity: RequirementModelIdentity, value: RequirementModelMetadataValue) => Promise<void>
+  onOpenModel?: (identity: RequirementModelIdentity, sectionKey: SectionKey) => void
+  onSetPrimaryModel?: (identity: RequirementModelIdentity) => Promise<void>
+  onDeleteModel?: (identity: RequirementModelIdentity) => Promise<void>
 }
-
-type RequirementSection = DimensionListSection<SectionKey> & {
-  graphField: keyof Requirement
-  dslField: keyof Requirement
-}
-
-const SECTIONS: RequirementSection[] = [
-  { key: 'environment', dimensionCode: 'IBD', label: '所处环境', desc: '对系统所属的环境组成进行刻画，描述外部存在的实体以及这些实体之间存在的交互。', graphField: 'graph_IBD', dslField: 'dsl_IBD' },
-  { key: 'interaction', dimensionCode: 'ESD', label: '与环境交互', desc: '基于UML中顺序图的概念，通过实体之间的交互序列，来刻画系统和外部实体之间的交互场景。', graphField: 'graph_ESD', dslField: 'dsl_ESD' },
-  { key: 'internalComposition', dimensionCode: 'BDD', label: '内部组成', desc: '描述系统内部模块、部件及其组成层级和静态结构关系。', graphField: 'graph_BDD', dslField: 'dsl_BDD' },
-  { key: 'moduleResponses', dimensionCode: 'ISD', label: '组成模块间的响应', desc: '描述内部组成模块之间的响应、调用顺序和协作行为。', graphField: 'graph_ISD', dslField: 'dsl_ISD' },
-  { key: 'internalConstraints', dimensionCode: 'SC', label: '内部约束', desc: '通过状态机对系统内部的约束/状态迁移进行刻画。', graphField: 'graph_SC', dslField: 'dsl_SC' },
-]
 
 interface OverviewEditForm {
   name: string
@@ -59,7 +72,25 @@ const createEditForm = (requirement: Requirement): OverviewEditForm => ({
   nl_text: requirement.nl_text || '',
 })
 
-function RequirementOverview({ requirement, versions, projectKey, onSectionClick }: RequirementOverviewProps) {
+function RequirementOverview({
+  requirement,
+  versions,
+  projectKey,
+  onSectionClick,
+  readOnly = false,
+  models,
+  modelDrafts = [],
+  modelsLoading = false,
+  modelsError = null,
+  busyModelIdentities = new Set(),
+  busyDimensions = new Set(),
+  onRetryModels,
+  onCreateModelDraft,
+  onUpdateModelMetadata,
+  onOpenModel,
+  onSetPrimaryModel,
+  onDeleteModel,
+}: RequirementOverviewProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [localRequirement, setLocalRequirement] = useState<Requirement | null>(requirement)
@@ -70,6 +101,10 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
     requirement ? !isPresetReqType(requirement.type) : false
   )
   const previousRequirementIdRef = useRef<string | null>(requirement?.id ?? null)
+  const [metadataModal, setMetadataModal] = useState<{
+    mode: 'create' | 'edit'
+    value: RequirementModelMetadataValue
+  } | null>(null)
 
   useEffect(() => {
     const requirementId = requirement?.id ?? null
@@ -89,6 +124,14 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
   }, [requirement, isEditing])
 
   const displayRequirement = localRequirement || requirement
+  const sections = readOnly
+    ? getLegacySnapshotSections(isEditing ? editForm.req_type : displayRequirement?.type)
+    : getRequirementSections()
+  const allModels = useMemo(() => [...(models ?? []), ...modelDrafts], [modelDrafts, models])
+  const hasModelSource = models !== undefined
+  const sectionTitle = readOnly && sections.length === 1 && sections[0].key === 'dialogMap'
+    ? '会话图'
+    : readOnly ? '五维模型' : '六维模型'
   // 格式化日期
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -110,14 +153,151 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
   }
 
   // 检查 section 是否有数据
-  const hasSectionData = (graphField: keyof Requirement) => {
+  const hasSectionData = (field: keyof Requirement) => {
     if (!displayRequirement) return false
-    const data = displayRequirement[graphField]
+    const data = displayRequirement[field]
     return data !== undefined && data !== null
   }
 
+  const isSectionDefined = (section: (typeof sections)[number]) => {
+    if (section.key === 'dialogMap') {
+      return false
+    }
+
+    const field = section.dslField || section.graphField
+    return field ? hasSectionData(field) : false
+  }
+
+  const getModelIdentity = (model: RequirementModel | RequirementModelDraft): RequirementModelIdentity => (
+    'clientId' in model
+      ? { kind: 'draft', clientId: model.clientId }
+      : { kind: 'persisted', modelGroupId: model.model_group_id }
+  )
+
+  const getIdentityKey = (identity: RequirementModelIdentity) => (
+    identity.kind === 'persisted' ? identity.modelGroupId : identity.clientId
+  )
+
+  const modelItems: DimensionListModelItem[] | undefined = hasModelSource
+    ? allModels.map(model => {
+      const identity = getModelIdentity(model)
+      const hasPrimaryDraft = modelDrafts.some(candidate => (
+        candidate.dimension_code === model.dimension_code && candidate.is_primary
+      ))
+      return {
+        identity: getIdentityKey(identity),
+        dimensionCode: model.dimension_code,
+        name: model.name,
+        modelType: model.model_type ?? null,
+        modelKey: model.model_key,
+        isPrimary: Boolean(model.is_primary) && ('clientId' in model || !hasPrimaryDraft),
+        disabled: busyModelIdentities.has(getIdentityKey(identity)) || busyDimensions.has(model.dimension_code),
+        pending: identity.kind === 'draft',
+      }
+    })
+    : undefined
+
+  const findModelByItem = (item: DimensionListModelItem) => (
+    allModels.find(model => getIdentityKey(getModelIdentity(model)) === item.identity)
+  )
+
+  const createDefaultModelValue = (dimensionCode: RequirementDimensionCode): RequirementModelMetadataValue => {
+    const dimensionModels = allModels.filter(model => model.dimension_code === dimensionCode)
+    const usedKeys = new Set(dimensionModels.map(model => model.model_key))
+    const dimensionLabel = sections.find(section => section.dimensionCode === dimensionCode)?.label ?? dimensionCode
+    let sequence = dimensionModels.length + 1
+    while (usedKeys.has(`${dimensionCode.toLowerCase()}-${sequence}`)) sequence += 1
+    const ibdModels = allModels.filter((model): model is RequirementModel => (
+      model.dimension_code === 'IBD' && !('clientId' in model)
+    ))
+
+    return {
+      dimensionCode,
+      name: `${dimensionLabel} ${sequence}`,
+      modelType: null,
+      modelKey: `${dimensionCode.toLowerCase()}-${sequence}`,
+      isPrimary: dimensionModels.length === 0,
+      contextModelGroupId: ibdModels.length === 1 ? ibdModels[0].model_group_id : null,
+    }
+  }
+
+  const handleAddModel = (dimensionCode: RequirementDimensionCode) => {
+    if ((dimensionCode === 'ESD' || dimensionCode === 'ISD') && !allModels.some(model => model.dimension_code === 'IBD' && !('clientId' in model))) {
+      message.error('请先创建并保存 IBD 模型')
+      return
+    }
+    setMetadataModal({ mode: 'create', value: createDefaultModelValue(dimensionCode) })
+  }
+
+  const handleEditModel = (item: DimensionListModelItem) => {
+    const model = findModelByItem(item)
+    if (!model) return
+    const identity = getModelIdentity(model)
+    setMetadataModal({
+      mode: 'edit',
+      value: {
+        identity: getIdentityKey(identity),
+        dimensionCode: model.dimension_code,
+        name: model.name,
+        modelType: model.model_type ?? null,
+        modelKey: model.model_key,
+        isPrimary: Boolean(model.is_primary),
+        contextModelGroupId: model.context_model_group_id ?? null,
+      },
+    })
+  }
+
+  const handleMetadataSubmit = async (value: RequirementModelMetadataValue) => {
+    if (metadataModal?.mode === 'create') {
+      const draft: RequirementModelDraft = {
+        clientId: createRequirementModelClientId(),
+        dimension_code: value.dimensionCode,
+        model_type: value.modelType,
+        name: value.name,
+        model_key: value.modelKey,
+        dsl_text: '',
+        graph_json: {},
+        context_model_group_id: value.contextModelGroupId,
+        is_primary: value.isPrimary,
+        sort_order: allModels.filter(model => model.dimension_code === value.dimensionCode).length,
+      }
+      onCreateModelDraft?.(draft)
+      setMetadataModal(null)
+      onOpenModel?.({ kind: 'draft', clientId: draft.clientId }, DIMENSION_CODE_TO_SECTION[value.dimensionCode])
+      return
+    }
+
+    const model = allModels.find(item => getIdentityKey(getModelIdentity(item)) === value.identity)
+    if (!model) throw new Error('模型已不存在，请刷新后重试')
+    await onUpdateModelMetadata?.(getModelIdentity(model), value)
+    setMetadataModal(null)
+  }
+
+  const handleDeleteModel = (item: DimensionListModelItem) => {
+    const model = findModelByItem(item)
+    if (!model) return
+    const dependants = model.dimension_code === 'IBD'
+      ? allModels.filter(candidate => candidate.context_model_group_id === ('clientId' in model ? model.clientId : model.model_group_id))
+      : []
+    const primaryText = model.is_primary
+      ? '这是当前主模型；删除后服务端会选择剩余模型中的新主模型，若无剩余模型则清空该维度。'
+      : ''
+    const dependencyText = dependants.length
+      ? `以下模型引用它：${dependants.map(candidate => candidate.name).join('、')}。`
+      : ''
+
+    Modal.confirm({
+      title: `删除 ${model.dimension_code} 模型`,
+      content: `确定删除“${model.name}”吗？${primaryText}${dependencyText}`,
+      okText: '删除',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: () => onDeleteModel?.(getModelIdentity(model)),
+    })
+  }
+
   const handleEdit = () => {
-    if (!displayRequirement) return
+    if (!displayRequirement || readOnly) return
     const form = createEditForm(displayRequirement)
     setEditForm(form)
     setIsCustomType(!isPresetReqType(form.req_type))
@@ -136,7 +316,7 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
   }
 
   const handleSave = async () => {
-    if (!displayRequirement) return
+    if (!displayRequirement || readOnly) return
 
     const name = editForm.name.trim()
     const reqType = editForm.req_type.trim()
@@ -209,7 +389,7 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
           <h2>需求概览</h2>
           <div className="overview-header-actions">
             <span className="overview-badge">项目: {projectKey}</span>
-            {isEditing ? (
+            {readOnly ? null : isEditing ? (
               <>
                 <Button size="small" icon={<CloseOutlined />} onClick={handleCancelEdit} disabled={saving}>
                   取消
@@ -319,15 +499,21 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
             <span className="section-title">自然语言描述 (NL)</span>
           </div>
           {isEditing ? (
-            <Input.TextArea
-              rows={4}
+            <MarkdownEditor
               value={editForm.nl_text}
-              onChange={(event) => handleFieldChange('nl_text', event.target.value)}
-              placeholder="请输入需求描述"
+              onChange={(value) => handleFieldChange('nl_text', value)}
+              placeholder="请输入 Markdown 需求描述"
             />
+          ) : displayRequirement.nl_text ? (
+            <div className="text-content">
+              <MarkdownRenderer
+                key={displayRequirement.id}
+                value={displayRequirement.nl_text}
+              />
+            </div>
           ) : (
             <div className="text-content">
-              {displayRequirement.nl_text || <span className="text-placeholder">暂无描述</span>}
+              <span className="text-placeholder">暂无描述</span>
             </div>
           )}
         </div>
@@ -335,12 +521,31 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
         {/* 五维模型列表 */}
         <div className="overview-section">
           <div className="section-header">
-            <span className="section-title">五维模型</span>
+            <span className="section-title">{sectionTitle}</span>
           </div>
           <DimensionList
-            sections={SECTIONS}
-            isSectionDefined={(section) => hasSectionData(section.dslField || section.graphField)}
+            sections={sections}
+            isSectionDefined={isSectionDefined}
             onSectionClick={(section) => handleSectionClick(section.key, section.label)}
+            models={modelItems}
+            editable={!readOnly && hasModelSource}
+            loading={modelsLoading}
+            error={modelsError}
+            onRetry={onRetryModels}
+            isSectionDisabled={(section) => busyDimensions.has(section.dimensionCode as RequirementDimensionCode)}
+            onAddModel={(section) => handleAddModel(section.dimensionCode as RequirementDimensionCode)}
+            onOpenModel={(item, section) => {
+              const model = findModelByItem(item)
+              if (model) onOpenModel?.(getModelIdentity(model), section.key)
+            }}
+            onEditModel={handleEditModel}
+            onDeleteModel={handleDeleteModel}
+            onSetPrimary={(item) => {
+              const model = findModelByItem(item)
+              if (model && !model.is_primary) {
+                void onSetPrimaryModel?.(getModelIdentity(model))
+              }
+            }}
           />
         </div>
 
@@ -368,6 +573,31 @@ function RequirementOverview({ requirement, versions, projectKey, onSectionClick
           </div>
         )}
       </div>
+      {metadataModal && (
+        <RequirementModelMetadataModal
+          open
+          title={metadataModal.mode === 'create' ? '新增模型' : '编辑模型信息'}
+          initialValue={metadataModal.value}
+          existingKeys={allModels
+            .filter(model => model.dimension_code === metadataModal.value.dimensionCode)
+            .map(model => ({
+              identity: getIdentityKey(getModelIdentity(model)),
+              modelKey: model.model_key,
+            }))}
+          contextOptions={allModels
+            .filter((model): model is RequirementModel => model.dimension_code === 'IBD' && !('clientId' in model))
+            .map(model => ({
+              value: model.model_group_id,
+              label: model.name,
+              modelKey: model.model_key,
+            }))}
+          allowPrimaryToggle={metadataModal.mode === 'create'
+            || Boolean(metadataModal.value.identity
+              && modelDrafts.some(model => model.clientId === metadataModal.value.identity))}
+          onCancel={() => setMetadataModal(null)}
+          onSubmit={handleMetadataSubmit}
+        />
+      )}
     </div>
   )
 }

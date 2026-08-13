@@ -1,5 +1,5 @@
 import { Graph as X6Graph } from '@antv/x6'
-import type { Edge, Graph, Node } from '@antv/x6'
+import type { Edge, EdgeView, Graph, Node } from '@antv/x6'
 import type { GraphStrategy } from './strategies/types'
 import { isPreConnectionPreview } from './flowGraph/preConnectionData'
 import { isSequenceConnectionPreview } from './flowGraph/sequenceConnectionData'
@@ -256,10 +256,14 @@ const addPortIfMissing = (node: Node, port: Record<string, any>) => {
 
 const mergePortGroups = (node: Node, groups: Record<string, any>) => {
   const existingGroups = (node.prop('ports/groups') || {}) as Record<string, any>
-  node.prop('ports/groups', {
+  const nextGroups = {
     ...existingGroups,
     ...groups,
-  })
+  }
+
+  if (JSON.stringify(existingGroups) !== JSON.stringify(nextGroups)) {
+    node.prop('ports/groups', nextGroups)
+  }
 }
 
 const normalizeRulePortGroups = (groups: Record<string, any>) => {
@@ -669,16 +673,28 @@ const queueAfterPaint = (callback: () => void) => {
 }
 
 const refreshConnectionViews = (graph: Graph, strategy: GraphStrategy) => {
-  ensureGraphConnectionPorts(graph, strategy)
+  if (!strategy.edgeRules) {
+    graph.getNodes().forEach((node) => {
+      const view = graph.findViewByCell(node)
+      view?.update?.()
+    })
 
-  graph.getNodes().forEach((node) => {
-    const view = graph.findViewByCell(node) as any
-    view?.update?.()
-  })
+    graph.getEdges().forEach((edge) => {
+      const view = graph.findViewByCell(edge)
+      view?.update?.()
+    })
+    return
+  }
 
   graph.getEdges().forEach((edge) => {
-    const view = graph.findViewByCell(edge) as any
-    view?.update?.()
+    const view = graph.findViewByCell(edge) as EdgeView | null
+    if (!view) return
+
+    const sourceReady = view.updateTerminalProperties('source')
+    const targetReady = view.updateTerminalProperties('target')
+    if (sourceReady && targetReady) {
+      view.update()
+    }
   })
 }
 

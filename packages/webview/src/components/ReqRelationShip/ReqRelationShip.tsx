@@ -11,6 +11,8 @@ import { Alert, Button, Card, Select, Spin, TreeSelect } from 'antd'
 import {
   ArrowLeftOutlined,
   DownOutlined,
+  FullscreenExitOutlined,
+  FullscreenOutlined,
   RightOutlined,
 } from '@ant-design/icons'
 import type { GraphData } from '@antv/g6'
@@ -144,6 +146,7 @@ function ReqRelationShip({
     () => buildNodeTypeOptions(initialGraphData.nodes || []),
   )
   const [edgeLabelMode, setEdgeLabelMode] = useState<EdgeLabelMode>('auto')
+  const [isContentFullscreen, setIsContentFullscreen] = useState(false)
   const replaceAbortControllerRef = useRef<AbortController | null>(null)
   const expandAbortControllerRef = useRef<AbortController | null>(null)
   const replaceRequestSequenceRef = useRef(0)
@@ -152,6 +155,7 @@ function ReqRelationShip({
     new Set(initialRoot ? [initialRoot] : []),
   )
   const graphDataRef = useRef(graphData)
+  const contentRef = useRef<HTMLDivElement | null>(null)
 
   graphDataRef.current = graphData
 
@@ -364,6 +368,19 @@ function ReqRelationShip({
     setLayoutAnimating(rendering && animated)
   }, [])
 
+  useEffect(() => {
+    if (!isContentFullscreen) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsContentFullscreen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isContentFullscreen])
+
   const hasGraphData = nodeCount > 0
   const busy = loading || graphRendering
   const showLoadingOverlay = loading || (graphRendering && !layoutAnimating)
@@ -482,7 +499,24 @@ function ReqRelationShip({
         <GraphLegend data={graphLegendData} />
       </div>
 
-      <div className="req-relationship-content">
+      <div
+        ref={contentRef}
+        className={`req-relationship-content${
+          isContentFullscreen ? ' req-relationship-content--fullscreen' : ''
+        }`}
+        role={isContentFullscreen ? 'dialog' : undefined}
+        aria-modal={isContentFullscreen ? true : undefined}
+        aria-label={isContentFullscreen ? '需求间关系全屏视图' : undefined}
+      >
+        <Button
+          className="req-relationship-fullscreen-btn"
+          size="small"
+          icon={isContentFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+          aria-label={isContentFullscreen ? '退出全屏' : '全屏查看'}
+          aria-pressed={isContentFullscreen}
+          title={isContentFullscreen ? '退出全屏（Esc）' : '全屏查看'}
+          onClick={() => setIsContentFullscreen(current => !current)}
+        />
         <Card className="req-relationship-card">
           {hasGraphData ? (
             <Suspense

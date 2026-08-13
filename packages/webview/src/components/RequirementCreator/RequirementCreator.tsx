@@ -14,6 +14,7 @@ import type { DimensionListModelItem } from '../DimensionList/DimensionList'
 import type { SectionKey } from '../DimensionEditor/types'
 import { DIMENSION_CODE_TO_SECTION } from '../DimensionEditor/dimensionEditorConfig'
 import { getRequirementSections } from '../DimensionList/requirementSections'
+import MarkdownEditor from '../Markdown/MarkdownEditor'
 import RequirementModelMetadataModal, {
   type RequirementModelMetadataValue,
 } from '../RequirementModelMetadataModal'
@@ -332,7 +333,11 @@ function RequirementCreator({
         <div className="creator-section">
           <div className="section-header"><span className="section-title">自然语言描述 (NL)</span></div>
           <div className="form-group">
-            <textarea name="nl_text" className="form-textarea" placeholder="请输入详细描述" value={currentFormData.nl_text} onChange={handleChange} />
+            <MarkdownEditor
+              value={currentFormData.nl_text}
+              onChange={(value) => updateFormData({ ...currentFormData, nl_text: value })}
+              placeholder="请输入 Markdown 需求描述"
+            />
           </div>
         </div>
         <div className="creator-section">

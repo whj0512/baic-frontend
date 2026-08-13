@@ -866,6 +866,9 @@ function ProjectWorkSpace() {
     if (centerView === 'create' || centerView === 'create-editor') {
       createDraftViewRef.current = { view: centerView, section: editingSection }
     }
+    if (centerView === 'relationship') {
+      setWorkspaceRouteView('requirements')
+    }
     setSelectedRequirement(reqId)
     setEditingModelIdentity(null)
     setEditingSection(null)

@@ -239,7 +239,7 @@ function AntvG6GraphRenderer({
     }
 
     const renderSequence = renderSequenceRef.current + 1
-    const animateLayout = graph.rendered && !window.matchMedia?.(REDUCED_MOTION_QUERY).matches
+    const animateLayout = !window.matchMedia?.(REDUCED_MOTION_QUERY).matches
     renderSequenceRef.current = renderSequence
     layoutInProgressRef.current = true
     setLayoutRendering(true)
