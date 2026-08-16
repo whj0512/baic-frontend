@@ -65,9 +65,3 @@
   flex-direction: column;
   gap: 6px;
 }
-
-@media (prefers-color-scheme: dark) {
-  .publish-project-dialog__field label {
-    color: #e5e7eb;
-  }
-}

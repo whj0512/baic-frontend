@@ -122,21 +122,3 @@
     overflow-x: auto;
   }
 }
-
-@media (prefers-color-scheme: dark) {
-  .platform-table-footer {
-    border-top-color: #374151;
-  }
-
-  .platform-mono {
-    color: #9ca3af;
-  }
-
-  .platform-delete-confirm-copy {
-    color: #d1d5db;
-  }
-
-  .platform-delete-confirm-copy strong {
-    color: #f9fafb;
-  }
-}

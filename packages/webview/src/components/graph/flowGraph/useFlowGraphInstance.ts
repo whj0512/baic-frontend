@@ -82,7 +82,7 @@ export const useFlowGraphInstance = ({
 
     loadFlowGraphData({ data, graph, scheduler: changeScheduler, strategy })
 
-    registerGraphEventHandlers(graph, {
+    const disposeGraphEventHandlers = registerGraphEventHandlers(graph, {
       strategy,
       sectionKey,
       readOnly,
@@ -102,6 +102,7 @@ export const useFlowGraphInstance = ({
 
       cancelPreConnection(graph)
       cancelSequenceConnection(graph)
+      disposeGraphEventHandlers()
       changeScheduler.flush()
       changeScheduler.dispose()
 

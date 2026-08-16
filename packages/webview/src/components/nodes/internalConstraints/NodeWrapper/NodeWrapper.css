@@ -13,15 +13,6 @@
     --node-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* 深色主题 */
-[data-theme="dark"] {
-    --node-bg-color: #1e1e1e;
-    --node-border-color: #555555;
-    --node-text-color: #cccccc;
-    --node-badge-bg: #2d2d2d;
-    --node-badge-text: #999999;
-    --node-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
 
 /* 容器 */
 .node-wrapper {

@@ -89,27 +89,3 @@
     padding: 0;
   }
 }
-
-@media (prefers-color-scheme: dark) {
-  .platform-layout,
-  .platform-header {
-    background-color: #111827;
-  }
-
-  .platform-header {
-    border-bottom-color: #374151;
-  }
-
-  .platform-brand {
-    color: #f3f4f6;
-  }
-
-  .platform-nav a {
-    color: #9ca3af;
-  }
-
-  .platform-nav a:hover,
-  .platform-nav a.active {
-    color: #60a5fa;
-  }
-}

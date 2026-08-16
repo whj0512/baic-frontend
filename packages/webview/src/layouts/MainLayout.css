@@ -76,33 +76,3 @@
   color: #b91c1c;
   font-size: 0.9rem;
 }
-
-/* Dark mode */
-@media (prefers-color-scheme: dark) {
-  .main-layout {
-    background-color: #111827;
-  }
-
-  .extension-auth-page {
-    background-color: #111827;
-  }
-
-  .extension-auth-panel {
-    background-color: #1f2937;
-    border-color: #374151;
-  }
-
-  .extension-auth-panel h2,
-  .extension-auth-input {
-    color: #f9fafb;
-  }
-
-  .extension-auth-panel p {
-    color: #d1d5db;
-  }
-
-  .extension-auth-input {
-    background-color: #111827;
-    border-color: #4b5563;
-  }
-}

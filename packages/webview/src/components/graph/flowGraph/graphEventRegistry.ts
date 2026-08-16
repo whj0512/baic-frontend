@@ -6,8 +6,6 @@ import {
   ensureNodeConnectionPorts,
   ensureSequenceEdgeVerticesTool,
   finalizeNewEdgeConnection,
-  isSequenceEdgeMode,
-  setNodeConnectionHotAreaVisible,
 } from '../edgeConnection'
 import type { GraphStrategy } from '../strategies/types'
 import type { GraphChangeScheduler } from './changeScheduler'
@@ -23,6 +21,7 @@ import {
   registerSequenceConnection,
 } from './sequenceConnection'
 import { isSequenceConnectionPreview } from './sequenceConnectionData'
+import { registerPointerHitCoordinator } from './pointerHitCoordinator'
 
 export interface FlowGraphContextMenuState {
   visible: boolean
@@ -52,6 +51,11 @@ export const registerGraphEventHandlers = (
   graph: Graph,
   options: RegisterGraphEventHandlersOptions,
 ) => {
+  const disposePointerHitCoordinator = registerPointerHitCoordinator(
+    graph,
+    options.strategy,
+    options.readOnly,
+  )
   if (!options.readOnly && options.strategy.preConnectionRules) {
     registerPreConnectionEvents(graph, options.strategy)
   }
@@ -75,6 +79,8 @@ export const registerGraphEventHandlers = (
     registerPlugins(graph)
     registerKeyboardShortcuts(graph, options.strategy)
   }
+
+  return disposePointerHitCoordinator
 }
 
 const registerPreConnectionEvents = (graph: Graph, strategy: GraphStrategy) => {
@@ -183,44 +189,9 @@ const registerPortEvents = (
   graph: Graph,
   { strategy }: RegisterGraphEventHandlersOptions,
 ) => {
-  const sequenceEdgeMode = isSequenceEdgeMode(strategy)
-  let activeConnectionHotAreaNode: Node | null = null
-
-  const hideActiveConnectionHotArea = (nextNode?: Node) => {
-    if (!activeConnectionHotAreaNode) return
-    if (nextNode && activeConnectionHotAreaNode.id === nextNode.id) return
-
-    setNodeConnectionHotAreaVisible(graph, activeConnectionHotAreaNode, false)
-    activeConnectionHotAreaNode = null
-  }
-
   graph.on('node:added', ({ node }: any) => {
     ensureNodeConnectionPorts(node, strategy)
   })
-
-  if (!sequenceEdgeMode) {
-    const showConnectionHotArea = ({ node }: { node: Node }) => {
-      if (activeConnectionHotAreaNode?.id === node.id) return
-
-      hideActiveConnectionHotArea(node)
-      setNodeConnectionHotAreaVisible(graph, node, true)
-      activeConnectionHotAreaNode = node
-    }
-
-    graph.on('node:mouseenter', showConnectionHotArea)
-    graph.on('node:mouseleave', ({ node }: any) => {
-      setNodeConnectionHotAreaVisible(graph, node, false)
-      if (activeConnectionHotAreaNode?.id === node.id) {
-        activeConnectionHotAreaNode = null
-      }
-    })
-
-    graph.on('node:removed', ({ node }: any) => {
-      if (activeConnectionHotAreaNode?.id === node.id) {
-        activeConnectionHotAreaNode = null
-      }
-    })
-  }
 
   graph.on('edge:connected', ({ edge, isNew }: { edge: Edge; isNew: boolean }) => {
     if (!isNew) return

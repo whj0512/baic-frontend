@@ -11,13 +11,6 @@
     --then-node-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* 深色主题 */
-[data-theme="dark"] {
-    --then-node-bg: #333333;
-    --then-node-border: #cccccc;
-    --then-node-text: #cccccc;
-    --then-node-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
 
 /* 容器 */
 .then-node {

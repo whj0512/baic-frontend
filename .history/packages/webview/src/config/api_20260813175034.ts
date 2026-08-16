@@ -1,0 +1,149 @@
+import { getRuntimeConfig } from './runtime'
+import type { RequirementDimensionCode, RequirementModel } from '../models/RequirementModel'
+import type { Requirement } from '../models/Requirement'
+
+const runtimeConfig = getRuntimeConfig()
+
+export const SERVICE_BASE_URL = runtimeConfig.apiBaseUrl
+export const WS_BASE_URL = runtimeConfig.projectWsBaseUrl
+export const QWENPAW_BASE_URL = runtimeConfig.qwenPawBaseUrl.replace(/\/+$/, '')
+
+export const WS_ENDPOINTS = {
+  projectSync: (projectId: string) => `${WS_BASE_URL}/ws/projects/${projectId}`,
+}
+
+export const API_ENDPOINTS = {
+  rbgToDsl: `${SERVICE_BASE_URL}/rbg-to-dsl`,
+  dslToRbg: `${SERVICE_BASE_URL}/dsl-to-rbg`,
+  rbgToDslIBD: `${SERVICE_BASE_URL}/rbg-to-dsl/IBD`,
+  dslToRbgIBD: `${SERVICE_BASE_URL}/dsl-to-rbg/IBD`,
+  rbgToDslBDD: `${SERVICE_BASE_URL}/rbg-to-dsl/BDD`,
+  dslToRbgBDD: `${SERVICE_BASE_URL}/dsl-to-rbg/BDD`,
+  rbgToDslESD: `${SERVICE_BASE_URL}/rbg-to-dsl/ESD`,
+  dslToRbgESD: `${SERVICE_BASE_URL}/dsl-to-rbg/ESD`,
+  dslToRbgISD: `${SERVICE_BASE_URL}/dsl-to-rbg/ISD`,
+  rbgToDslUI: `${SERVICE_BASE_URL}/rbg-to-dsl/UI`,
+  dslToRbgUI: `${SERVICE_BASE_URL}/dsl-to-rbg/UI`,
+  nlToDsl: `${SERVICE_BASE_URL}/nl-to-dsl`,
+  projects: `${SERVICE_BASE_URL}/projects`,
+  projectById: (projectId: string) =>
+    `${SERVICE_BASE_URL}/projects/${encodeURIComponent(projectId)}`,
+  projectSnapshot: (projectId: string) =>
+    `${SERVICE_BASE_URL}/projects/${encodeURIComponent(projectId)}/snapshot?schema_version=1`,
+  projectTestCases: (projectId: string) =>
+    `${SERVICE_BASE_URL}/projects/${encodeURIComponent(projectId)}/test_cases`,
+  projectRequirements: (projectId: string) =>
+    `${SERVICE_BASE_URL}/projects/${encodeURIComponent(projectId)}/requirements`,
+  requirements: `${SERVICE_BASE_URL}/requirements`,
+  requirementById: (id: string) => `${SERVICE_BASE_URL}/requirements/${encodeURIComponent(id)}`,
+  requirementRollback: (requirementId: string) => (
+    `${SERVICE_BASE_URL}/requirements/${encodeURIComponent(requirementId)}/rollback`
+  ),
+  requirementModels: (requirementId: string, dimension?: RequirementDimensionCode) => {
+    const endpoint = `${SERVICE_BASE_URL}/requirements/${encodeURIComponent(requirementId)}/models`
+    if (!dimension) return endpoint
+
+    const searchParams = new URLSearchParams({ dimension })
+    return `${endpoint}?${searchParams.toString()}`
+  },
+  requirementModel: (requirementId: string, modelGroupId: string) => (
+    `${SERVICE_BASE_URL}/requirements/${encodeURIComponent(requirementId)}/models/${encodeURIComponent(modelGroupId)}`
+  ),
+  requirementModelPrimary: (requirementId: string, modelGroupId: string) => (
+    `${SERVICE_BASE_URL}/requirements/${encodeURIComponent(requirementId)}/models/${encodeURIComponent(modelGroupId)}/primary`
+  ),
+  graphdbGraph: `${SERVICE_BASE_URL}/graphdb/grap`,
+  traceabilityExtract: `${SERVICE_BASE_URL}/traceability/extract`,
+}
+
+export interface RequirementRollbackResponse {
+  requirement_id: string
+  version_id: string
+  version_code: number
+  project_id: string
+  rolled_back_from_version_code: number
+  restored_from_version_code: number
+  requirement: Requirement
+  models: RequirementModel[]
+  diff: Record<string, { before: unknown; after: unknown }>
+}
+
+export interface QwenPawChatFilters {
+  userId?: string
+  channel?: string
+}
+
+export const QWENPAW_ENDPOINTS = {
+  version: `${QWENPAW_BASE_URL}/api/version`,
+  agents: `${QWENPAW_BASE_URL}/api/agents`,
+  agentChats: (agentId: string, filters?: QwenPawChatFilters) => {
+    const endpoint = `${QWENPAW_BASE_URL}/api/agents/${encodeURIComponent(agentId)}/chats`
+    const searchParams = new URLSearchParams()
+
+    if (filters?.userId) {
+      searchParams.set('user_id', filters.userId)
+    }
+    if (filters?.channel) {
+      searchParams.set('channel', filters.channel)
+    }
+
+    const query = searchParams.toString()
+    return query ? `${endpoint}?${query}` : endpoint
+  },
+  agentChat: (agentId: string, chatId: string) =>
+    `${QWENPAW_BASE_URL}/api/agents/${encodeURIComponent(agentId)}/chats/${encodeURIComponent(chatId)}`,
+  chat: `${QWENPAW_BASE_URL}/api/console/chat`,
+  upload: `${QWENPAW_BASE_URL}/api/console/upload`,
+}
+
+// Kept as a stable application-wide request entry point, without auth behavior.
+export async function authFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  return fetch(input, init)
+}
+
+export function getDslToRbgEndpoint(dimensionCode: string): string {
+  switch (dimensionCode) {
+    case 'IBD': return API_ENDPOINTS.dslToRbgIBD
+    case 'BDD': return API_ENDPOINTS.dslToRbgBDD
+    case 'ESD': return API_ENDPOINTS.dslToRbgESD
+    case 'ISD': return API_ENDPOINTS.dslToRbgISD
+    case 'UI': return API_ENDPOINTS.dslToRbgUI
+    default: return API_ENDPOINTS.dslToRbg
+  }
+}
+
+export function createDslToRbgRequest(
+  dimensionCode: string,
+  dsl: string,
+  ibdDsl = '',
+): Pick<RequestInit, 'headers' | 'body'> & { endpoint: string } {
+  const endpoint = getDslToRbgEndpoint(dimensionCode)
+
+  if (dimensionCode === 'ESD' || dimensionCode === 'ISD') {
+    return {
+      endpoint,
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify({ environment_dsl: ibdDsl, scenario_dsl: dsl }),
+    }
+  }
+
+  return {
+    endpoint,
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    body: dsl,
+  }
+}
+
+export function getRbgToDslEndpoint(dimensionCode: string): string {
+  switch (dimensionCode) {
+    case 'IBD': return API_ENDPOINTS.rbgToDslIBD
+    case 'BDD': return API_ENDPOINTS.rbgToDslBDD
+    case 'ESD': return API_ENDPOINTS.rbgToDslESD
+    case 'ISD': return API_ENDPOINTS.rbgToDslESD
+    case 'UI': return API_ENDPOINTS.rbgToDslUI
+    default: return API_ENDPOINTS.rbgToDsl
+  }
+}

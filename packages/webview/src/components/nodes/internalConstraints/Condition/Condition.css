@@ -11,13 +11,6 @@
     --condition-node-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* 深色主题 */
-[data-theme="dark"] {
-    --condition-node-bg: #1e1e1e;
-    --condition-node-border: #555555;
-    --condition-node-text: #cccccc;
-    --condition-node-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
 
 /* 容器 */
 .condition-node {

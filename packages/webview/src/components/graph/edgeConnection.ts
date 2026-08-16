@@ -22,7 +22,7 @@ type SequenceEdgeGeometry = {
 }
 
 const HOT_PORT_PREFIX = 'connection-hot-'
-const HOT_EDGE_THICKNESS = 10
+const HOT_EDGE_THICKNESS = 6
 const CONNECTION_NODE_HIGHLIGHTER = 'baic-connection-node-highlight'
 const CONNECTION_MAGNET_NOOP_HIGHLIGHTER = 'baic-connection-magnet-noop'
 
@@ -97,9 +97,9 @@ const hotPortGroups = {
     attrs: {
       rect: {
         x: -28,
-        y: -4,
+        y: -3,
         width: 56,
-        height: 8,
+        height: 6,
         rx: 0,
         ry: 0,
         magnet: true,
@@ -117,9 +117,9 @@ const hotPortGroups = {
     markup: [{ tagName: 'rect', selector: 'rect' }],
     attrs: {
       rect: {
-        x: -4,
+        x: -3,
         y: -28,
-        width: 8,
+        width: 6,
         height: 56,
         rx: 0,
         ry: 0,
@@ -139,9 +139,9 @@ const hotPortGroups = {
     attrs: {
       rect: {
         x: -28,
-        y: -4,
+        y: -3,
         width: 56,
-        height: 8,
+        height: 6,
         rx: 0,
         ry: 0,
         magnet: true,
@@ -159,9 +159,9 @@ const hotPortGroups = {
     markup: [{ tagName: 'rect', selector: 'rect' }],
     attrs: {
       rect: {
-        x: -4,
+        x: -3,
         y: -28,
-        width: 8,
+        width: 6,
         height: 56,
         rx: 0,
         ry: 0,
@@ -223,13 +223,13 @@ const getHotPortRectAttrs = (node: Node, portId: string, visible: boolean) => {
   let y = -height / 2
 
   if (side === 'top') {
-    y = -HOT_EDGE_THICKNESS
+    y = -HOT_EDGE_THICKNESS / 2
   } else if (side === 'bottom') {
-    y = 0
+    y = -HOT_EDGE_THICKNESS / 2
   } else if (side === 'left') {
-    x = -HOT_EDGE_THICKNESS
+    x = -HOT_EDGE_THICKNESS / 2
   } else if (side === 'right') {
-    x = 0
+    x = -HOT_EDGE_THICKNESS / 2
   }
 
   return {

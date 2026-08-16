@@ -54,25 +54,3 @@
   text-align: center;
   line-height: 1.2;
 }
-
-/* Dark mode */
-@media (prefers-color-scheme: dark) {
-  .leftbar {
-    background-color: #1f2937;
-    border-right-color: #374151;
-  }
-
-  .menu-item {
-    color: #9ca3af;
-  }
-
-  .menu-item:hover {
-    background-color: #374151;
-    color: #f3f4f6;
-  }
-
-  .menu-item.active {
-    background-color: #1e3a8a;
-    color: #93c5fd;
-  }
-}

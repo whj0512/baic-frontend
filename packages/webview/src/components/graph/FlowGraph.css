@@ -129,6 +129,10 @@
   height: 100%;
 }
 
+.flow-graph-container .x6-edge .connection-wrap {
+  stroke-width: 8px;
+}
+
 .graph-help-text {
   position: absolute;
   top: 10px;

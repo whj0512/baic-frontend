@@ -11,13 +11,6 @@
     --state-node-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* 深色主题 */
-[data-theme="dark"] {
-    --state-node-bg: #1e1e1e;
-    --state-node-border: #555555;
-    --state-node-text: #cccccc;
-    --state-node-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
 
 /* 容器 */
 .state-node {
