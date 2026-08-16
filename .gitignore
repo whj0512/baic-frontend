@@ -24,3 +24,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local artifacts and working documents
+/tmp/
+/helps/
+/scripts/
+/验收报告-v2.docx
+/测试用例.xlsx
+/测试用例.xlsx.inspect.ndjson
