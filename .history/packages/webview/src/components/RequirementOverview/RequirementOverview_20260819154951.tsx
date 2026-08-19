@@ -493,10 +493,10 @@ function RequirementOverview({
           </div>
         </div>
 
-        {/* 条目化需求文档 */}
+        {/* 需求条目化描述 */}
         <div className="overview-section">
           <div className="section-header">
-            <span className="section-title">条目化需求文档</span>
+            <span className="section-title">需求条目化描述</span>
           </div>
           {isEditing ? (
             <MarkdownEditor

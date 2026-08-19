@@ -331,7 +331,7 @@ function RequirementCreator({
           </div>
         </div>
         <div className="creator-section">
-          <div className="section-header"><span className="section-title">自然语言描述 (NL)</span></div>
+          <div className="section-header"><span className="section-title">条目化需求文档</span></div>
           <div className="form-group">
             <MarkdownEditor
               value={currentFormData.nl_text}

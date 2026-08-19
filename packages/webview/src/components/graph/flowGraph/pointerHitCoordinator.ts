@@ -1,5 +1,9 @@
 import type { CellView, Edge, EdgeView, Graph, Node } from '@antv/x6'
-import { isSequenceEdgeMode, setNodeConnectionHotAreaVisible } from '../edgeConnection'
+import {
+  ensureNodeConnectionPorts,
+  isSequenceEdgeMode,
+  setNodeConnectionHotAreaVisible,
+} from '../edgeConnection'
 import type { GraphStrategy } from '../strategies/types'
 import { isPreConnectionPreview } from './preConnectionData'
 import { isSequenceConnectionPreview } from './sequenceConnectionData'
@@ -517,17 +521,27 @@ export const registerPointerHitCoordinator = (
   }
   const handleEdgeChanged = ({ edge }: { edge: Edge }) => markEdgeDirty(edge)
   const handleNodeChanged = ({ node }: { node: Node }) => markConnectedEdgesDirty(node)
+  const handleNodeSizeChanged = ({ node }: { node: Node }) => {
+    handleNodeChanged({ node })
+    if (!connectionHotAreasEnabled) return
+
+    ensureNodeConnectionPorts(node, strategy)
+    if (activeHotAreaNode?.id === node.id) {
+      setNodeConnectionHotAreaVisible(graph, node, true)
+    }
+  }
   const handleNodeRemoved = ({ node }: { node: Node }) => {
     if (activeHotAreaNode?.id === node.id) setActiveHotAreaNode(null)
   }
   const handleRenderDone = () => {
     if (!edgeIndexInitialized) {
       buildEdgeIndex()
-      return
+    } else {
+      renderPendingEdgeIds.forEach(edgeId => dirtyEdgeIds.add(edgeId))
+      renderPendingEdgeIds.clear()
+      if (dirtyEdgeIds.size > 0) flushDirtyEdgeIndex()
     }
-    renderPendingEdgeIds.forEach(edgeId => dirtyEdgeIds.add(edgeId))
-    renderPendingEdgeIds.clear()
-    if (dirtyEdgeIds.size > 0) flushDirtyEdgeIndex()
+    if (activeHotAreaNode) setNodeConnectionHotAreaVisible(graph, activeHotAreaNode, true)
     if (activeHotAreaEdgeView) setActiveHotAreaEdge(activeHotAreaEdgeView)
   }
 
@@ -545,7 +559,7 @@ export const registerPointerHitCoordinator = (
   graph.on('edge:change:connector', handleEdgeChanged)
   graph.on('edge:change:visible', handleEdgeChanged)
   graph.on('node:change:position', handleNodeChanged)
-  graph.on('node:change:size', handleNodeChanged)
+  graph.on('node:change:size', handleNodeSizeChanged)
   graph.on('node:change:angle', handleNodeChanged)
   graph.on('node:change:ports', handleNodeChanged)
   graph.on('node:removed', handleNodeRemoved)
@@ -566,7 +580,7 @@ export const registerPointerHitCoordinator = (
     graph.off('edge:change:connector', handleEdgeChanged)
     graph.off('edge:change:visible', handleEdgeChanged)
     graph.off('node:change:position', handleNodeChanged)
-    graph.off('node:change:size', handleNodeChanged)
+    graph.off('node:change:size', handleNodeSizeChanged)
     graph.off('node:change:angle', handleNodeChanged)
     graph.off('node:change:ports', handleNodeChanged)
     graph.off('node:removed', handleNodeRemoved)
