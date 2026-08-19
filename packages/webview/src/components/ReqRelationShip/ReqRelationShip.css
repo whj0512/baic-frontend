@@ -422,17 +422,6 @@
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 }
 
-.operation-label {
-  font-weight: 500;
-  color: #333;
-  white-space: nowrap;
-}
-
-.req-relationship-root-select {
-  flex: 1 1 320px;
-  min-width: 240px;
-}
-
 .req-relationship-operation__field {
   display: flex;
   align-items: center;
@@ -446,17 +435,9 @@
   width: 128px;
 }
 
-.req-relationship-operation__field .req-relationship-node-types-select {
-  width: 220px;
-}
-
 @media (max-width: 900px) {
   .req-relationship-operation {
     align-items: stretch;
-  }
-
-  .req-relationship-root-select {
-    flex-basis: 100%;
   }
 
   .req-relationship-legend__hint {

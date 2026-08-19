@@ -7,8 +7,6 @@ export interface RuntimeConfig {
   qwenPawBaseUrl: string
   qwenPawChatTimeoutMs: number
   qwenPawUploadMaxBytes: number
-  platformApiBaseUrl: string
-  platformWebBaseUrl: string
   lspWs: {
     internalConstraints: string
     environment: string
@@ -45,8 +43,6 @@ const envConfig: RuntimeConfig = {
     import.meta.env.VITE_QWENPAW_UPLOAD_MAX_BYTES,
     20 * 1024 * 1024,
   ),
-  platformApiBaseUrl: import.meta.env.VITE_PLATFORM_API_BASE_URL ?? '',
-  platformWebBaseUrl: import.meta.env.VITE_PLATFORM_WEB_BASE_URL ?? '',
   lspWs: {
     internalConstraints:
       import.meta.env.VITE_LSP_WS_INTERNAL_CONSTRAINTS ?? 'ws://127.0.0.1:3000',

@@ -13,8 +13,6 @@ export interface RuntimeConfig {
   qwenPawBaseUrl: string
   qwenPawChatTimeoutMs: number
   qwenPawUploadMaxBytes: number
-  platformApiBaseUrl: string
-  platformWebBaseUrl: string
   lspWs: LspWsConfig
 }
 

@@ -1,5 +1,8 @@
 import type { Edge, Graph, Node } from '@antv/x6'
-import { finalizeNewEdgeConnection } from '../edgeConnection'
+import {
+  finalizeNewEdgeConnection,
+  scheduleGraphConnectionViewRefresh,
+} from '../edgeConnection'
 import type { GraphStrategy } from '../strategies/types'
 import { PRE_CONNECTION_PREVIEW_DATA_KEY } from './preConnectionData'
 
@@ -527,6 +530,7 @@ export const completePreConnection = (
       const data = { ...(edge.getData() || {}) }
       delete data[PRE_CONNECTION_PREVIEW_DATA_KEY]
       edge.setData(data, { overwrite: true })
+      scheduleGraphConnectionViewRefresh(graph, strategy)
     }
   } catch {
     finalized = false

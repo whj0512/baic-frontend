@@ -58,8 +58,6 @@ export function getRuntimeConfig(
       'qwenPawUploadMaxBytes',
       20 * 1024 * 1024,
     ),
-    platformApiBaseUrl: config.get<string>('platformApiBaseUrl', ''),
-    platformWebBaseUrl: config.get<string>('platformWebBaseUrl', ''),
     lspWs: {
       internalConstraints: override?.lspWs?.internalConstraints ?? config.get<string>(
         'lspWs.internalConstraints',
@@ -90,7 +88,6 @@ export function getConnectSources(config: RuntimeConfig): string[] {
     getOrigin(config.apiBaseUrl),
     getOrigin(config.projectWsBaseUrl),
     getOrigin(config.qwenPawBaseUrl),
-    getOrigin(config.platformApiBaseUrl),
     getOrigin(config.lspWs.internalConstraints),
     getOrigin(config.lspWs.environment),
     getOrigin(config.lspWs.interaction),

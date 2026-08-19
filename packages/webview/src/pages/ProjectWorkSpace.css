@@ -212,16 +212,6 @@
   background-color: #2563eb;
 }
 
-.workspace-publish-button {
-  color: #0f766e;
-  font-weight: 500;
-}
-
-.workspace-publish-button:hover {
-  color: #115e59 !important;
-  background-color: #ccfbf1 !important;
-}
-
 .btn-icon:disabled {
   opacity: 0.5;
   cursor: not-allowed;

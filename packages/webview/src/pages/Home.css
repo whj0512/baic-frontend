@@ -183,15 +183,6 @@
   text-decoration: underline;
 }
 
-.publish-btn {
-  color: #0f766e;
-}
-
-.publish-btn:hover {
-  color: #115e59;
-  text-decoration: underline;
-}
-
 .delete-action-btn {
   color: #ef4444;
 }

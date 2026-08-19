@@ -124,16 +124,6 @@
           "minimum": 1,
           "description": "Maximum QwenPaw attachment size in bytes."
         },
-        "baic.platformApiBaseUrl": {
-          "type": "string",
-          "default": "",
-          "description": "Base URL for publishing local project snapshots to the remote platform."
-        },
-        "baic.platformWebBaseUrl": {
-          "type": "string",
-          "default": "",
-          "description": "Browser URL for opening published projects on the remote platform."
-        },
         "baic.lspWs.internalConstraints": {
           "type": "string",
           "default": "ws://127.0.0.1:3000",

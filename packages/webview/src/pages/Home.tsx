@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { Modal, message, Spin } from 'antd'
 import { API_ENDPOINTS, authFetch } from '../config/api'
 import EntityManagement from './EntityManagement'
-import PublishProjectDialog from '../components/PublishProjectDialog'
 import './Home.css'
 import type { Project } from '../models/Project'
 
@@ -14,7 +13,6 @@ function Home() {
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [showEntityManagement, setShowEntityManagement] = useState(false)
-  const [publishingProject, setPublishingProject] = useState<Project | null>(null)
 
   useEffect(() => {
     fetchProjects()
@@ -152,12 +150,6 @@ function Home() {
                         查看
                       </button>
                       <button
-                        className="action-btn publish-btn"
-                        onClick={() => setPublishingProject(project)}
-                      >
-                        发布
-                      </button>
-                      <button
                         className="action-btn delete-action-btn"
                         onClick={() => showSingleDeleteConfirm(project.id, project.name)}
                       >
@@ -178,11 +170,6 @@ function Home() {
           </table>
         </Spin>
       </div>
-      <PublishProjectDialog
-        open={Boolean(publishingProject)}
-        project={publishingProject}
-        onClose={() => setPublishingProject(null)}
-      />
     </div>
   )
 }

@@ -360,7 +360,6 @@ function OntologyInstancesBrowser({
             )}
           >
             <ReqRelationShip
-              requirements={dataState.requirements}
               initialRequest={graphRequest}
               initialGraph={dataState.graph}
               embedded

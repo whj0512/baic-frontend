@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Button, message, Spin, Badge, Modal, Collapse, Segmented } from 'antd'
 import type { CollapseProps } from 'antd'
-import { ShareAltOutlined, ArrowLeftOutlined, CloudUploadOutlined, UndoOutlined } from '@ant-design/icons'
+import { ShareAltOutlined, ArrowLeftOutlined, UndoOutlined } from '@ant-design/icons'
 import './ProjectWorkSpace.css'
 import type { Requirement } from '../models/Requirement'
 import type { RequirementVersion } from '../models/RequirementVersion'
@@ -11,7 +11,6 @@ import DimensionEditor from '../components/DimensionEditor'
 import RequirementCreator from '../components/RequirementCreator/RequirementCreator'
 import ReqRelationShip from '../components/ReqRelationShip'
 import ProjectTestCaseView from '../components/ProjectTestCaseView/ProjectTestCaseView'
-import PublishProjectDialog from '../components/PublishProjectDialog'
 import { API_ENDPOINTS, authFetch, type RequirementRollbackResponse } from '../config/api'
 import {
   createRequirementModel,
@@ -237,7 +236,6 @@ function ProjectWorkSpace() {
   const [lastRollbackResult, setLastRollbackResult] = useState<RequirementRollbackResponse | null>(null)
 
   const [deleting, setDeleting] = useState(false)
-  const [showPublishDialog, setShowPublishDialog] = useState(false)
 
   const restorePreviousCenterView = useCallback(() => {
     const prev = prevViewStateRef.current
@@ -985,6 +983,9 @@ function ProjectWorkSpace() {
 
   const handleCreateRequirement = () => {
     const draftView = createDraftViewRef.current
+    if (centerView === 'relationship') {
+      setWorkspaceRouteView('requirements')
+    }
     setSelectedRequirement(null)
     setEditingSection(draftView.section)
     setCenterView(draftView.view === 'create-editor' && draftView.section ? 'create-editor' : 'create')
@@ -1350,16 +1351,6 @@ function ProjectWorkSpace() {
             </h3>
           </div>
           <div style={{ display: 'flex', gap: 4 }}>
-            <Button
-              type="text"
-              size="small"
-              icon={<CloudUploadOutlined />}
-              className="workspace-publish-button"
-              disabled={!project}
-              onClick={() => setShowPublishDialog(true)}
-            >
-              发布
-            </Button>
             <button
               className="btn-icon"
               title="新建需求"
@@ -1467,7 +1458,6 @@ function ProjectWorkSpace() {
 
           {centerView === 'relationship' && (
             <ReqRelationShip
-              requirements={requirements}
               onBack={handleCloseRelationshipView}
             />
           )}
@@ -1541,11 +1531,6 @@ function ProjectWorkSpace() {
         ) : null}
       </div>
 
-      <PublishProjectDialog
-        open={showPublishDialog}
-        project={project}
-        onClose={() => setShowPublishDialog(false)}
-      />
     </div>
   )
 }
