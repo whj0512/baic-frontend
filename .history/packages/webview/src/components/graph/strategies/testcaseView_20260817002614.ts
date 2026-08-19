@@ -255,14 +255,13 @@ const testcaseViewStrategy: GraphStrategy = {
         columns: 1,
         columnWidth: 'compact',
         rowHeight: 'compact',
-        dy: 12,
         center: true,
         resizeToFit: false,
-        marginX: 10,
-        marginY: 0,
+        marginX: 5,
+        marginY: 5,
     },
     stencilGraphWidth: 120,
-    stencilGraphHeight: 0,
+    stencilGraphHeight: 1000,
     stencilGraphPadding: 10,
     sidebarItems: [
         {

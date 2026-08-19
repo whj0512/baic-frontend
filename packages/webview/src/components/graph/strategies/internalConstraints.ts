@@ -1035,15 +1035,16 @@ const internalConstraintsStrategy: GraphStrategy = {
   },
   stencilLayoutOptions: {
     columns: 1,
-    columnWidth: 160,
-    rowHeight: 100,
+    columnWidth: 'compact',
+    rowHeight: 'compact',
+    dy: 12,
     center: true,
     resizeToFit: false,
-    marginX: 0,
+    marginX: 30,
     marginY: 0,
   },
   stencilGraphWidth: 180,
-  stencilGraphHeight: 1000,
+  stencilGraphHeight: 0,
   stencilGraphPadding: 10,
 }
 

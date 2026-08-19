@@ -240,8 +240,7 @@ export const createFlowGraphStencil = (
     layoutOptions: strategy.stencilLayoutOptions || {
       columns: 1,
       columnWidth: 'compact',
-      rowHeight: 'compact',
-      center: true,
+      rowHeight: 120,
     },
     ...dragOptions,
   })

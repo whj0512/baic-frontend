@@ -1,4 +1,4 @@
-import { register } from '@antv/x6-react-shape'
+import { register } from '../flowGraph/reactNodeRegistry'
 import type { FormConfig, GraphStrategy } from './types'
 import Device from '../../nodes/environment/Device'
 import Controller from '../../nodes/environment/Controller'
@@ -211,8 +211,8 @@ const formConfig: FormConfig = {
 const environmentStrategy: GraphStrategy = {
   stencilLayoutOptions: {
     columns: 1,
-    columnWidth: 120,
-    rowHeight: 160,
+    columnWidth: 'compact',
+    rowHeight: 'compact',
     center: true,
     resizeToFit: false,
     marginX: 5,
@@ -227,6 +227,7 @@ const environmentStrategy: GraphStrategy = {
       label: 'Device',
       shape: 'device-node',
       color: '#ffffffff',
+      tooltip: '设备实体',
       defaultAttrs: {
         width: 80,
         height: 120,
@@ -239,6 +240,7 @@ const environmentStrategy: GraphStrategy = {
       label: 'Controller',
       shape: 'controller-node',
       color: '#ffffffff',
+      tooltip: '控制器实体',
       defaultAttrs: {
         width: 80,
         height: 120,
@@ -251,6 +253,7 @@ const environmentStrategy: GraphStrategy = {
       label: 'Human',
       shape: 'human-node',
       color: '#ffffffff',
+      tooltip: '人实体',
       defaultAttrs: {
         width: 80,
         height: 120,
@@ -263,6 +266,7 @@ const environmentStrategy: GraphStrategy = {
       label: 'Functional Module',
       shape: 'functional-module-node',
       color: '#ffffffff',
+      tooltip: '功能模块实体',
       defaultAttrs: {
         width: 80,
         height: 120,
@@ -275,6 +279,7 @@ const environmentStrategy: GraphStrategy = {
       label: 'Control Unit',
       shape: 'control-unit-node',
       color: '#ffffffff',
+      tooltip: '控制单元实体',
       defaultAttrs: {
         width: 80,
         height: 120,
@@ -287,6 +292,7 @@ const environmentStrategy: GraphStrategy = {
       label: 'Machine',
       shape: 'machine-node',
       color: '#ffffffff',
+      tooltip: '当前建模的对象',
       defaultAttrs: {
         width: 80,
         height: 120,

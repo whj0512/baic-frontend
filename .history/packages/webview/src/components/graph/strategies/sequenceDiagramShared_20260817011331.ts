@@ -5,7 +5,7 @@
  * 共用相同的节点注册、侧边栏组件、表单配置和画布布局，
  * 将这些公共部分提取到此文件以避免代码冗余。
  */
-import { register } from '@antv/x6-react-shape'
+import { register } from '../flowGraph/reactNodeRegistry'
 import type { FormConfig, SidebarItem } from './types'
 import ObjectNode from '../../nodes/interaction/BaseObject'
 import ActorNode from '../../nodes/interaction/Actor'
@@ -216,14 +216,17 @@ export const sequenceFormConfig: FormConfig = {
 /** 时序图 Stencil 布局配置 */
 export const sequenceStencilLayoutOptions = {
   columns: 1,
-  columnWidth: 200,
-  rowHeight: 300,
+  columnWidth: 220,
+  rowHeight: 'compact',
+  dy: 64,
   center: true,
   resizeToFit: false,
   marginX: 0,
-  marginY: 0,
+  // compact + center 会产生 1.5 * dy 的顶部偏移，抵消后为 Object 保留 8px 顶部留白
+  marginY: -80,
 }
 
 export const sequenceStencilGraphWidth = 220
-export const sequenceStencilGraphHeight = 1000
+// 8px 顶部留白、300px Object、64px 节点间距和 120px Fragment，恰好填满 492px 画布
+export const sequenceStencilGraphHeight = 500
 export const sequenceStencilGraphPadding = 5

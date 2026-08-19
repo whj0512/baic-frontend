@@ -94,6 +94,19 @@ const formConfig: FormConfig = {
 }
 
 const internalCompositionStrategy: GraphStrategy = {
+  stencilLayoutOptions: {
+    columns: 1,
+    columnWidth: 'compact',
+    rowHeight: 'compact',
+    dy: 12,
+    center: true,
+    resizeToFit: false,
+    marginX: 20,
+    marginY: 0,
+  },
+  stencilGraphWidth: 160,
+  stencilGraphHeight: 0,
+  stencilGraphPadding: 10,
   formConfig: formConfig,
   defaultSourceMarker: {
     name: 'circlePlus',

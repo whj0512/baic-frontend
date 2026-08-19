@@ -1,4 +1,4 @@
-import { register } from '@antv/x6-react-shape'
+import { register } from '../flowGraph/reactNodeRegistry'
 import type { FormConfig, GraphStrategy } from './types'
 import Device from '../../nodes/environment/Device'
 import Controller from '../../nodes/environment/Controller'
@@ -212,14 +212,16 @@ const environmentStrategy: GraphStrategy = {
   stencilLayoutOptions: {
     columns: 1,
     columnWidth: 120,
-    rowHeight: 160,
+    rowHeight: 'compact',
+    dy: 12,
     center: true,
     resizeToFit: false,
-    marginX: 5,
-    marginY: 5,
+    marginX: 0,
+    marginY: 0,
   },
   stencilGraphWidth: 120,
-  stencilGraphHeight: 1000,
+  // 6 个 120px 节点、5 个 12px 间距，以及上下各 18px 留白
+  stencilGraphHeight: 832,
   stencilGraphPadding: 10,
   sidebarItems: [
     {
@@ -266,6 +268,7 @@ const environmentStrategy: GraphStrategy = {
       label: 'Functional Module',
       shape: 'functional-module-node',
       color: '#ffffffff',
+      tooltip: '功能模块实体',
       defaultAttrs: {
         width: 80,
         height: 120,
@@ -278,6 +281,7 @@ const environmentStrategy: GraphStrategy = {
       label: 'Control Unit',
       shape: 'control-unit-node',
       color: '#ffffffff',
+      tooltip: '控制单元实体',
       defaultAttrs: {
         width: 80,
         height: 120,
@@ -290,6 +294,7 @@ const environmentStrategy: GraphStrategy = {
       label: 'Machine',
       shape: 'machine-node',
       color: '#ffffffff',
+      tooltip: '当前建模的对象',
       defaultAttrs: {
         width: 80,
         height: 120,

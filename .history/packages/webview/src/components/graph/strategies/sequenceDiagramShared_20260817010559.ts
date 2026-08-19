@@ -222,11 +222,11 @@ export const sequenceStencilLayoutOptions = {
   center: true,
   resizeToFit: false,
   marginX: 0,
-  // compact + center 会产生 1.5 * dy 的顶部偏移，抵消后为 Object 保留 8px 顶部留白
-  marginY: -64,
+  // compact + center 会产生 1.5 * dy 的顶部偏移，抵消后将剩余高度全部留给节点间距
+  marginY: -48,
 }
 
 export const sequenceStencilGraphWidth = 220
-// 8px 顶部留白、300px Object、64px 节点间距和 120px Fragment，恰好填满 492px 画布
-export const sequenceStencilGraphHeight = 516
+// 300px Object、120px Fragment 和 32px 节点间距，恰好填满 452px 画布
+export const sequenceStencilGraphHeight = 452
 export const sequenceStencilGraphPadding = 5

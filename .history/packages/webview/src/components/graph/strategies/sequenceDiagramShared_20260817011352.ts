@@ -5,18 +5,23 @@
  * 共用相同的节点注册、侧边栏组件、表单配置和画布布局，
  * 将这些公共部分提取到此文件以避免代码冗余。
  */
-import { register } from '@antv/x6-react-shape'
+import { register } from '../flowGraph/reactNodeRegistry'
 import type { FormConfig, SidebarItem } from './types'
 import ObjectNode from '../../nodes/interaction/BaseObject'
+import ActorNode from '../../nodes/interaction/Actor'
 import CombinedFragmentNode from '../../nodes/interaction/CombinedFragment'
-import Params from '../../form-panel/controls/interaction/Params'
-import Conditions from '../../form-panel/controls/interaction/Conditions'
+import Params from '../form-panel/controls/interaction/Params'
+import Conditions from '../form-panel/controls/interaction/Conditions'
 
 /** 注册时序图节点（多次调用安全） */
 export const registerSequenceNodes = () => {
   register({
     shape: 'seq-object-node',
     component: ObjectNode,
+  })
+  register({
+    shape: 'seq-actor-node',
+    component: ActorNode,
   })
   register({
     shape: 'seq-fragment-node',
@@ -31,6 +36,7 @@ export const sequenceSidebarItems: SidebarItem[] = [
     label: '对象',
     shape: 'seq-object-node',
     color: '#ffffffff',
+    tooltip: '参与者',
     defaultAttrs: {
       width: 120,
       height: 300,
@@ -43,6 +49,7 @@ export const sequenceSidebarItems: SidebarItem[] = [
     label: '组合片段',
     shape: 'seq-fragment-node',
     color: '#ffffffff',
+    tooltip: '用于表示条件分支、循环、并行等交互逻辑',
     defaultAttrs: {
       width: 200,
       height: 120,
@@ -209,14 +216,17 @@ export const sequenceFormConfig: FormConfig = {
 /** 时序图 Stencil 布局配置 */
 export const sequenceStencilLayoutOptions = {
   columns: 1,
-  columnWidth: 200,
-  rowHeight: 300,
+  columnWidth: 220,
+  rowHeight: 'compact',
+  dy: 64,
   center: true,
   resizeToFit: false,
   marginX: 0,
-  marginY: 0,
+  // compact + center 会产生 1.5 * dy 的顶部偏移，抵消后为 Object 保留 8px 顶部留白
+  marginY: -64,
 }
 
 export const sequenceStencilGraphWidth = 220
-export const sequenceStencilGraphHeight = 1000
+// 8px 顶部留白、300px Object、64px 节点间距和 120px Fragment，恰好填满 492px 画布
+export const sequenceStencilGraphHeight = 516
 export const sequenceStencilGraphPadding = 5

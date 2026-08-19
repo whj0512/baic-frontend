@@ -241,7 +241,7 @@ export const createFlowGraphStencil = (
       columns: 1,
       columnWidth: 'compact',
       rowHeight: 'compact',
-      center: true,
+      
     },
     ...dragOptions,
   })

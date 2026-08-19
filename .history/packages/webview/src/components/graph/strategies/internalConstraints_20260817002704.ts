@@ -1,4 +1,4 @@
-import { register } from '@antv/x6-react-shape'
+import { register } from '../flowGraph/reactNodeRegistry'
 import type { GraphStrategy, FormConfig } from './types'
 import { ensureInternalConstraintsRequiredNodes } from './internalConstraintsRequiredNodes'
 import Call from '../../nodes/internalConstraints/Call';
@@ -51,6 +51,16 @@ const DISABLED_TARGET_SHAPES = new Set([
   'call-node',
   'start-node',
 ])
+
+export const internalConstraintsCanvasLayout = {
+  originX: 100,
+  originY: 100,
+  nodesPerBand: 5,
+  nodeGap: 100,
+  layerGap: 120,
+  bandGap: 180,
+  componentGap: 180,
+} as const
 
 // 表单配置
 const formConfig: FormConfig = {
@@ -823,7 +833,7 @@ const internalConstraintsStrategy: GraphStrategy = {
       label: 'graph',
       shape: 'graph-node',
       color: '#e6f7ff',
-      tooltip: '引用或封装一段子图流程',
+      tooltip: '允许在当前图中引用其他状态图',
       defaultAttrs: {
         width: 120,
         height: 60,
@@ -838,7 +848,7 @@ const internalConstraintsStrategy: GraphStrategy = {
       label: 'start',
       shape: 'start-node',
       color: '#e6f7ff',
-      tooltip: '流程起点节点',
+      tooltip: '表示流程的起点',
       defaultAttrs: {
         data: {
           stroke: '#333',
@@ -851,7 +861,7 @@ const internalConstraintsStrategy: GraphStrategy = {
       label: 'state',
       shape: 'state-node',
       color: '#e6f7ff',
-      tooltip: '表示流程中的状态或阶段',
+      tooltip: '表示流程中的一个状态',
       defaultAttrs: {
         width: 120,
         height: 80,
@@ -866,7 +876,7 @@ const internalConstraintsStrategy: GraphStrategy = {
       label: 'then',
       shape: 'then-node',
       color: '#e6f7ff',
-      tooltip: '承接上一条件或动作后的后续流程',
+      tooltip: '这是一个中转节点',
       defaultAttrs: {
         data: {
           stroke: '#333',
@@ -879,7 +889,7 @@ const internalConstraintsStrategy: GraphStrategy = {
       label: 'truth table',
       shape: 'truth-node',
       color: '#e6f7ff',
-      tooltip: '使用真值表定义条件组合和期望结果',
+      tooltip: '用于定义输入与输出之间的逻辑关系',
       defaultAttrs: {
         width: 120,
         height: 60,
@@ -1025,8 +1035,8 @@ const internalConstraintsStrategy: GraphStrategy = {
   },
   stencilLayoutOptions: {
     columns: 1,
-    columnWidth: 160,
-    rowHeight: 100,
+    columnWidth: 'compact',
+    rowHeight: 'compact',
     center: true,
     resizeToFit: false,
     marginX: 0,

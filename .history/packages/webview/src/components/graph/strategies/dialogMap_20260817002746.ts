@@ -280,15 +280,14 @@ const dialogMapStrategy: GraphStrategy = {
   },
   stencilLayoutOptions: {
     columns: 1,
-    columnWidth: 180,
+    columnWidth: 'compact',
     rowHeight: 'compact',
     center: true,
     resizeToFit: false,
     marginX: 0,
-    marginY: 10,
+    marginY: 0,
   },
   stencilGraphWidth: 180,
-  // 80px Page 节点及上下各 10px 留白
   stencilGraphHeight: 120,
   stencilGraphPadding: 10,
 }

@@ -212,14 +212,16 @@ const environmentStrategy: GraphStrategy = {
   stencilLayoutOptions: {
     columns: 1,
     columnWidth: 120,
-    rowHeight: 160,
+    rowHeight: 'compact',
+    dy: 12,
     center: true,
     resizeToFit: false,
-    marginX: 5,
-    marginY: 5,
+    marginX: 0,
+    marginY: 0,
   },
   stencilGraphWidth: 120,
-  stencilGraphHeight: 1000,
+  // 6 个 120px 节点、5 个 12px 间距，以及 52px 上下安全留白
+  stencilGraphHeight: 832,
   stencilGraphPadding: 10,
   sidebarItems: [
     {
