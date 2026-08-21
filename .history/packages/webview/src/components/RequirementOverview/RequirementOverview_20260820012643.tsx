@@ -7,10 +7,7 @@ import { API_ENDPOINTS, authFetch } from '../../config/api'
 import DimensionList from '../DimensionList'
 import type { DimensionListModelItem } from '../DimensionList/DimensionList'
 import type { SectionKey } from '../DimensionEditor/types'
-import {
-  getIncompatibleRequirementDimensionCodes,
-  getRequirementSections,
-} from '../DimensionList/requirementSections'
+import { getLegacySnapshotSections, getRequirementSections } from '../DimensionList/requirementSections'
 import { DIMENSION_CODE_TO_SECTION } from '../DimensionEditor/dimensionEditorConfig'
 import RequirementModelMetadataModal, {
   type RequirementModelMetadataValue,
@@ -28,8 +25,9 @@ import './RequirementOverview.css'
 const CUSTOM_TYPE_KEY = '__custom__'
 
 const PRESET_REQ_TYPES = [
-  { value: 'component', label: '部件级' },
-  { value: 'system', label: '系统级' },
+  { value: '部件级', label: '部件级' },
+  { value: '系统级', label: '系统级' },
+  { value: 'UI级', label: 'UI级' },
   { value: CUSTOM_TYPE_KEY, label: '自定义...' },
 ]
 
@@ -126,12 +124,14 @@ function RequirementOverview({
   }, [requirement, isEditing])
 
   const displayRequirement = localRequirement || requirement
+  const sections = readOnly
+    ? getLegacySnapshotSections(isEditing ? editForm.req_type : displayRequirement?.type)
+    : getRequirementSections()
   const allModels = useMemo(() => [...(models ?? []), ...modelDrafts], [modelDrafts, models])
-  const sections = getRequirementSections(
-    isEditing ? editForm.req_type : displayRequirement?.type,
-  )
   const hasModelSource = models !== undefined
-  const sectionTitle = '模型定义'
+  const sectionTitle = readOnly && sections.length === 1 && sections[0].key === 'dialogMap'
+    ? '会话图'
+    : readOnly ? '五维模型' : '六维模型'
   // 格式化日期
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -315,22 +315,6 @@ function RequirementOverview({
     setEditForm(prev => ({ ...prev, [field]: value }))
   }
 
-  const ensureRequirementTypeCompatible = (reqType: string, action: string) => {
-    const incompatibleCodes = getIncompatibleRequirementDimensionCodes(
-      reqType,
-      allModels.map(model => model.dimension_code),
-    )
-    if (!incompatibleCodes.length) return true
-    message.error(`当前存在与目标需求类型不兼容的模型（${incompatibleCodes.join('、')}），请先删除后再${action}`)
-    return false
-  }
-
-  const tryUpdateRequirementType = (reqType: string) => {
-    if (!ensureRequirementTypeCompatible(reqType, '切换需求类型')) return false
-    handleFieldChange('req_type', reqType)
-    return true
-  }
-
   const handleSave = async () => {
     if (!displayRequirement || readOnly) return
 
@@ -346,8 +330,6 @@ function RequirementOverview({
       message.error('请输入需求描述')
       return
     }
-    const originalReqType = (displayRequirement.type || '').trim()
-    if (reqType !== originalReqType && !ensureRequirementTypeCompatible(reqType, '保存需求')) return
 
     setSaving(true)
     try {
@@ -459,14 +441,15 @@ function RequirementOverview({
                   <Space.Compact style={{ width: '100%' }}>
                     <Input
                       value={editForm.req_type}
-                      onChange={(event) => tryUpdateRequirementType(event.target.value)}
+                      onChange={(event) => handleFieldChange('req_type', event.target.value)}
                       placeholder="请输入自定义需求类型"
                       autoFocus
                     />
                     <Button
                       icon={<CloseOutlined />}
                       onClick={() => {
-                        if (tryUpdateRequirementType('')) setIsCustomType(false)
+                        setIsCustomType(false)
+                        handleFieldChange('req_type', '')
                       }}
                       title="返回选择"
                     />
@@ -480,10 +463,14 @@ function RequirementOverview({
                     value={editForm.req_type || undefined}
                     onChange={(val: string | undefined) => {
                       if (val === CUSTOM_TYPE_KEY) {
-                        if (tryUpdateRequirementType('')) setIsCustomType(true)
+                        setIsCustomType(true)
+                        handleFieldChange('req_type', '')
                       } else {
-                        tryUpdateRequirementType(val ?? '')
+                        handleFieldChange('req_type', val ?? '')
                       }
+                    }}
+                    onClear={() => {
+                      handleFieldChange('req_type', '')
                     }}
                   />
                 )
@@ -531,7 +518,7 @@ function RequirementOverview({
           )}
         </div>
 
-        {/* 模型定义列表 */}
+        {/* 六维模型列表 */}
         <div className="overview-section">
           <div className="section-header">
             <span className="section-title">{sectionTitle}</span>

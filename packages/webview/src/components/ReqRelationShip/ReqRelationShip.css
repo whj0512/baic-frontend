@@ -262,6 +262,35 @@
   line-height: 1.5;
 }
 
+.g6-properties-panel__lookup-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 6px;
+  background: #f5faff;
+  color: #595959;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.g6-properties-panel__lookup-alert {
+  padding: 8px;
+}
+
+.g6-properties-panel__lookup-alert .ant-alert-content {
+  min-width: 0;
+}
+
+.g6-properties-panel__lookup-alert .ant-alert-message {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.g6-properties-panel__lookup-alert .ant-alert-action {
+  margin-inline-start: 4px;
+}
+
 .empty-tip {
   position: absolute;
   top: 50%;

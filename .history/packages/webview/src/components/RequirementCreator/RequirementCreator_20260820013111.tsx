@@ -13,10 +13,7 @@ import DimensionList from '../DimensionList'
 import type { DimensionListModelItem } from '../DimensionList/DimensionList'
 import type { SectionKey } from '../DimensionEditor/types'
 import { DIMENSION_CODE_TO_SECTION } from '../DimensionEditor/dimensionEditorConfig'
-import {
-  getIncompatibleRequirementDimensionCodes,
-  getRequirementSections,
-} from '../DimensionList/requirementSections'
+import { getRequirementSections } from '../DimensionList/requirementSections'
 import MarkdownEditor from '../Markdown/MarkdownEditor'
 import RequirementModelMetadataModal, {
   type RequirementModelMetadataValue,
@@ -28,7 +25,7 @@ const CUSTOM_TYPE_KEY = '__custom__'
 
 const PRESET_REQ_TYPES = [
   { value: 'component', label: '部件级' },
-  { value: 'system', label: '系统级' },
+  { value: '系统级', label: '系统级' },
   { value: CUSTOM_TYPE_KEY, label: '自定义...' },
 ]
 
@@ -68,29 +65,13 @@ function RequirementCreator({
   } | null>(null)
 
   const currentFormData = formData || localFormData
-  const sections = getRequirementSections(currentFormData.req_type)
-  const sectionTitle = '模型定义'
+  const sections = getRequirementSections()
+  const sectionTitle = '六维模型定义'
   const dimensionModels = currentFormData.dimensionModels
 
   const updateFormData = (newData: CreateRequirementFormData) => {
     if (onChange) onChange(newData)
     else setLocalFormData(newData)
-  }
-
-  const ensureRequirementTypeCompatible = (reqType: string, action: string) => {
-    const incompatibleCodes = getIncompatibleRequirementDimensionCodes(
-      reqType,
-      dimensionModels.map(model => model.dimension_code),
-    )
-    if (!incompatibleCodes.length) return true
-    message.error(`当前存在与目标需求类型不兼容的模型（${incompatibleCodes.join('、')}），请先删除后再${action}`)
-    return false
-  }
-
-  const tryUpdateRequirementType = (reqType: string) => {
-    if (!ensureRequirementTypeCompatible(reqType, '切换需求类型')) return false
-    updateFormData({ ...currentFormData, req_type: reqType })
-    return true
   }
 
   const updateDimensionModels = (updater: (models: RequirementModelDraft[]) => RequirementModelDraft[]) => {
@@ -261,7 +242,6 @@ function RequirementCreator({
     if (!projectKey) return void message.error('项目标识尚未加载，请稍后重试')
     if (!name) return void message.error('请输入需求名称')
     if (!nlText) return void message.error('请输入需求描述')
-    if (!ensureRequirementTypeCompatible(currentFormData.req_type, '创建需求')) return
 
     const modelError = validateModels()
     if (modelError) return void message.error(modelError)
@@ -329,25 +309,8 @@ function RequirementCreator({
           <div className="form-group">
             {isCustomType ? (
               <div className="req-type-custom-row">
-                <input
-                  type="text"
-                  name="req_type"
-                  className="form-input"
-                  placeholder="请输入自定义需求类型"
-                  value={currentFormData.req_type}
-                  onChange={(event) => tryUpdateRequirementType(event.target.value)}
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  className="req-type-back-btn"
-                  onClick={() => {
-                    if (tryUpdateRequirementType('')) setIsCustomType(false)
-                  }}
-                  title="返回选择"
-                >
-                  ✕
-                </button>
+                <input type="text" name="req_type" className="form-input" placeholder="请输入自定义需求类型" value={currentFormData.req_type} onChange={handleChange} autoFocus />
+                <button type="button" className="req-type-back-btn" onClick={() => { setIsCustomType(false); updateFormData({ ...currentFormData, req_type: '' }) }} title="返回选择">✕</button>
               </div>
             ) : (
               <Select
@@ -358,10 +321,9 @@ function RequirementCreator({
                 value={currentFormData.req_type || undefined}
                 onChange={(nextValue: string | undefined) => {
                   if (nextValue === CUSTOM_TYPE_KEY) {
-                    if (tryUpdateRequirementType('')) setIsCustomType(true)
-                  } else {
-                    tryUpdateRequirementType(nextValue ?? '')
-                  }
+                    setIsCustomType(true)
+                    updateFormData({ ...currentFormData, req_type: '' })
+                  } else updateFormData({ ...currentFormData, req_type: nextValue ?? '' })
                 }}
               />
             )}

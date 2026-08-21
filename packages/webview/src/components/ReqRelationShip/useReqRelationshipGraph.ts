@@ -36,6 +36,7 @@ import {
 } from './relationshipGraphModel'
 
 interface UseReqRelationshipGraphOptions {
+  projectId: string
   initialRequest?: GraphDBGraphRequest
   initialGraph?: GraphDBGraphResponse
 }
@@ -63,6 +64,7 @@ type RelationshipGraphAction =
   | { type: 'errorDismissed' }
 
 export function useReqRelationshipGraph({
+  projectId,
   initialRequest,
   initialGraph,
 }: UseReqRelationshipGraphOptions) {
@@ -109,6 +111,7 @@ export function useReqRelationshipGraph({
 
     try {
       const snapshot = await loadRelationshipGraph(
+        projectId,
         request,
         controller.signal,
         resolveNodeColor,
@@ -129,7 +132,7 @@ export function useReqRelationshipGraph({
         replaceAbortControllerRef.current = null
       }
     }
-  }, [cancelExpansion, resolveNodeColor])
+  }, [cancelExpansion, projectId, resolveNodeColor])
 
   const runExpandQuery = useCallback(async (root: string) => {
     expandAbortControllerRef.current?.abort()
@@ -142,6 +145,7 @@ export function useReqRelationshipGraph({
 
     try {
       const expansion = await loadRelationshipGraphExpansion(
+        projectId,
         baseGraphRequest,
         root,
         controller.signal,
@@ -162,7 +166,7 @@ export function useReqRelationshipGraph({
         expandAbortControllerRef.current = null
       }
     }
-  }, [baseGraphRequest, resolveNodeColor])
+  }, [baseGraphRequest, projectId, resolveNodeColor])
 
   useEffect(() => {
     // 延迟到当前任务结束，避免 React StrictMode 在开发环境重复发起首屏请求。

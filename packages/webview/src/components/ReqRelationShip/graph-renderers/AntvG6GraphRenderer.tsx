@@ -5,6 +5,7 @@ import { PushpinFilled, PushpinOutlined } from '@ant-design/icons'
 import { Button } from 'antd'
 import G6PropertiesPanel, { createPanelData } from './G6PropertiesPanel'
 import type { GraphElementPanelData } from './G6PropertiesPanel'
+import type { RequirementNodeLookupState } from '../requirementNodeLookup'
 import {
   createG6GraphOptions,
   createG6RelationshipLayoutOptions,
@@ -18,7 +19,11 @@ interface AntvG6GraphRendererProps {
   focusNode: string | null
   layoutRevision: number
   expandingNodeId?: string | null
+  requirementLookupState: RequirementNodeLookupState
   onNodeDoubleClick?: (nodeId: string) => void
+  onPanelDataChange?: (panelData: GraphElementPanelData | null) => void
+  onOpenRequirement?: (requirementId: string) => void
+  onRetryRequirementLookup?: () => void
   onRenderStateChange?: (rendering: boolean, animated: boolean) => void
 }
 
@@ -68,7 +73,11 @@ function AntvG6GraphRenderer({
   focusNode,
   layoutRevision,
   expandingNodeId = null,
+  requirementLookupState,
   onNodeDoubleClick,
+  onPanelDataChange,
+  onOpenRequirement,
+  onRetryRequirementLookup,
   onRenderStateChange,
 }: AntvG6GraphRendererProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -81,6 +90,7 @@ function AntvG6GraphRenderer({
   const layoutRevisionRef = useRef(layoutRevision)
   const expandingNodeIdRef = useRef(expandingNodeId)
   const onNodeDoubleClickRef = useRef(onNodeDoubleClick)
+  const onPanelDataChangeRef = useRef(onPanelDataChange)
   const appliedEdgeLabelsVisibleRef = useRef(edgeLabelsVisible)
   const appliedLayoutRevisionRef = useRef(layoutRevision)
   const renderFrameRef = useRef<number | null>(null)
@@ -100,29 +110,35 @@ function AntvG6GraphRenderer({
   layoutRevisionRef.current = layoutRevision
   expandingNodeIdRef.current = expandingNodeId
   onNodeDoubleClickRef.current = onNodeDoubleClick
+  onPanelDataChangeRef.current = onPanelDataChange
   layoutPinnedRef.current = layoutPinned
+
+  const updatePanelData = useCallback((nextPanelData: GraphElementPanelData | null) => {
+    setPanelData(nextPanelData)
+    onPanelDataChangeRef.current?.(nextPanelData)
+  }, [])
 
   const handleElementClick = useCallback((event: IPointerEvent) => {
     if (event.targetType !== 'node' && event.targetType !== 'edge') {
-      setPanelData(null)
+      updatePanelData(null)
       return
     }
 
     const targetId = 'id' in event.target && typeof event.target.id === 'string' ? event.target.id : undefined
     const graph = graphRef.current
     if (!targetId || !graph || graph.destroyed) {
-      setPanelData(null)
+      updatePanelData(null)
       return
     }
 
     const datum = graph.getElementData(targetId)
     if (!datum) {
-      setPanelData(null)
+      updatePanelData(null)
       return
     }
 
-    setPanelData(createPanelData(event.targetType, datum))
-  }, [])
+    updatePanelData(createPanelData(event.targetType, datum))
+  }, [updatePanelData])
 
   const handleNodeDoubleClick = useCallback((event: IPointerEvent) => {
     const targetId = 'id' in event.target && typeof event.target.id === 'string'
@@ -422,7 +438,7 @@ function AntvG6GraphRenderer({
     const graph = graphRef.current
     if (!graph || graph.destroyed) return
 
-    setPanelData(null)
+    updatePanelData(null)
     if (appliedLayoutRevisionRef.current !== layoutRevision) {
       appliedLayoutRevisionRef.current = layoutRevision
       renderGraphData(graph)
@@ -430,7 +446,13 @@ function AntvG6GraphRenderer({
     }
 
     void updateGraphDataWithoutLayout(graph, graphData)
-  }, [graphData, layoutRevision, renderGraphData, updateGraphDataWithoutLayout])
+  }, [
+    graphData,
+    layoutRevision,
+    renderGraphData,
+    updateGraphDataWithoutLayout,
+    updatePanelData,
+  ])
 
   useEffect(() => {
     const graph = graphRef.current
@@ -479,7 +501,12 @@ function AntvG6GraphRenderer({
           <span className="antv-g6-node-loading-indicator__ring" />
         </div>
       </div>
-      <G6PropertiesPanel panelData={panelData} />
+      <G6PropertiesPanel
+        panelData={panelData}
+        requirementLookupState={requirementLookupState}
+        onOpenRequirement={onOpenRequirement}
+        onRetryRequirementLookup={onRetryRequirementLookup}
+      />
     </div>
   )
 }

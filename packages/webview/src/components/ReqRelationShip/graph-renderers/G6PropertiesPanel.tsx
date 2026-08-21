@@ -1,4 +1,11 @@
 import type { ElementDatum } from '@antv/g6'
+import { Alert, Button, Spin } from 'antd'
+import { FileSearchOutlined, ReloadOutlined } from '@ant-design/icons'
+import { getRequirementNodeLookupTarget } from '../requirementNodeLookup'
+import type {
+  RequirementNodeLookupState,
+  RequirementNodeLookupTarget,
+} from '../requirementNodeLookup'
 
 export type SelectableElementType = 'node' | 'edge'
 
@@ -8,6 +15,14 @@ export interface GraphElementPanelData {
   targetType: SelectableElementType
   title: string
   entries: PanelEntry[]
+  requirementLookupTarget: RequirementNodeLookupTarget | null
+}
+
+interface G6PropertiesPanelProps {
+  panelData: GraphElementPanelData | null
+  requirementLookupState: RequirementNodeLookupState
+  onOpenRequirement?: (requirementId: string) => void
+  onRetryRequirementLookup?: () => void
 }
 
 const NODE_PRIMARY_PANEL_KEYS = [
@@ -56,11 +71,24 @@ export function createPanelData(targetType: SelectableElementType, datum: Elemen
     targetType,
     title: getPanelTitle(targetType, data, datum.id),
     entries,
+    requirementLookupTarget: targetType === 'node'
+      ? getRequirementNodeLookupTarget(datum.id, datum.data)
+      : null,
   }
 }
 
-function G6PropertiesPanel({ panelData }: { panelData: GraphElementPanelData | null }) {
+function G6PropertiesPanel({
+  panelData,
+  requirementLookupState,
+  onOpenRequirement,
+  onRetryRequirementLookup,
+}: G6PropertiesPanelProps) {
   const hasEntries = panelData && panelData.entries.length > 0
+  const lookupTarget = panelData?.requirementLookupTarget ?? null
+  const showRequirementLookup = lookupTarget
+    && requirementLookupState.status !== 'idle'
+    && requirementLookupState.target.nodeId === lookupTarget.nodeId
+    && requirementLookupState.target.name === lookupTarget.name
 
   return (
     <aside className="g6-properties-panel">
@@ -82,9 +110,70 @@ function G6PropertiesPanel({ panelData }: { panelData: GraphElementPanelData | n
             <PanelSection title={PANEL_PRIMARY_SECTION_TITLE} entries={panelData.entries} />
           )}
           {!hasEntries && <div className="g6-properties-panel__empty">{PANEL_EMPTY_DATA_TEXT}</div>}
+          {showRequirementLookup ? (
+            <section className="g6-properties-panel__section">
+              <div className="g6-properties-panel__section-title">关联需求</div>
+              <RequirementLookupContent
+                state={requirementLookupState}
+                onOpenRequirement={onOpenRequirement}
+                onRetry={onRetryRequirementLookup}
+              />
+            </section>
+          ) : null}
         </>
       )}
     </aside>
+  )
+}
+
+function RequirementLookupContent({
+  state,
+  onOpenRequirement,
+  onRetry,
+}: {
+  state: Exclude<RequirementNodeLookupState, { status: 'idle' }>
+  onOpenRequirement?: (requirementId: string) => void
+  onRetry?: () => void
+}) {
+  if (state.status === 'loading') {
+    return (
+      <div className="g6-properties-panel__lookup-loading" aria-live="polite">
+        <Spin size="small" />
+        <span>正在查询当前项目中的需求</span>
+      </div>
+    )
+  }
+
+  if (state.status === 'error') {
+    return (
+      <Alert
+        className="g6-properties-panel__lookup-alert"
+        type="error"
+        message={state.message}
+        showIcon
+        action={onRetry ? (
+          <Button
+            type="text"
+            size="small"
+            icon={<ReloadOutlined />}
+            onClick={onRetry}
+          >
+            重试
+          </Button>
+        ) : undefined}
+      />
+    )
+  }
+
+  return (
+    <Button
+      type="primary"
+      block
+      icon={<FileSearchOutlined />}
+      onClick={() => onOpenRequirement?.(state.requirementId)}
+    >
+      查看需求详情
+    </Button>
   )
 }
 

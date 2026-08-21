@@ -43,13 +43,6 @@ const DIALOG_MAP_SECTION: RequirementDimensionSection = {
   desc: '描述UI页面间的跳转关系。',
 }
 
-export const DEFAULT_REQUIREMENT_SECTIONS: RequirementDimensionSection[] = [
-  ENVIRONMENT_SECTION,
-  INTERACTION_SECTION,
-  INTERNAL_CONSTRAINTS_SECTION,
-  DIALOG_MAP_SECTION,
-]
-
 const COMPONENT_REQUIREMENT_SECTIONS: RequirementDimensionSection[] = [
   INTERNAL_CONSTRAINTS_SECTION,
 ]

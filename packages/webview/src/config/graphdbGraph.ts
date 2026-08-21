@@ -20,10 +20,11 @@ export class GraphDBGraphRequestError extends Error {
 }
 
 export async function fetchGraphDBGraph(
+  projectId: string,
   request: GraphDBGraphRequest,
   signal?: AbortSignal,
 ): Promise<GraphDBGraphResponse> {
-  const response = await authFetch(API_ENDPOINTS.graphdbGraph, {
+  const response = await authFetch(API_ENDPOINTS.graphdbGraph(projectId), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

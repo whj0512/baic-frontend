@@ -24,7 +24,7 @@ import DimensionList, {
   type DimensionListModelItem,
 } from '../../../../DimensionList'
 import {
-  getRequirementSections,
+  DEFAULT_REQUIREMENT_SECTIONS,
   type RequirementDimensionSection,
 } from '../../../../DimensionList/requirementSections'
 import RequirementModelMetadataModal, {
@@ -257,7 +257,7 @@ export default function RequirementDslModelsBrowser({
     : metadataModel
       ? modelMetadataValue(metadataModel, allModels)
       : createMetadataValue('IBD', allModels)
-  const sectionList = getRequirementSections()
+  const sectionList = DEFAULT_REQUIREMENT_SECTIONS
   const contextDsl = activeModel
     ? resolveContextDsl(activeModel, allModels, envelope)
     : undefined

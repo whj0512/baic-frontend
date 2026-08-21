@@ -30,12 +30,13 @@ export interface RelationshipGraphExpansion {
 }
 
 export async function loadRelationshipGraph(
+  projectId: string,
   request: GraphDBGraphRequest,
   signal: AbortSignal,
   resolveNodeColor: NodeTypeColorResolver,
 ): Promise<RelationshipGraphSnapshot> {
   if (request.root) {
-    const response = await fetchGraphDBGraph(request, signal)
+    const response = await fetchGraphDBGraph(projectId, request, signal)
     const focusNode = response.meta.root || request.root
 
     return {
@@ -46,12 +47,20 @@ export async function loadRelationshipGraph(
     }
   }
 
-  const discoveryResponse = await fetchGraphDBGraph(DEFAULT_GRAPH_REQUEST, signal)
+  const discoveryResponse = await fetchGraphDBGraph(
+    projectId,
+    DEFAULT_GRAPH_REQUEST,
+    signal,
+  )
   const overviewRoots = getRequirementRootIds(discoveryResponse.nodes)
   const rootResponses = await mapWithConcurrency(
     overviewRoots,
     ROOT_QUERY_CONCURRENCY,
-    root => fetchGraphDBGraph(buildRootGraphRequest(request, root), signal),
+    root => fetchGraphDBGraph(
+      projectId,
+      buildRootGraphRequest(request, root),
+      signal,
+    ),
   )
   const graphData = rootResponses.reduce<GraphData>(
     (merged, response) => mergeGraphData(
@@ -70,12 +79,14 @@ export async function loadRelationshipGraph(
 }
 
 export async function loadRelationshipGraphExpansion(
+  projectId: string,
   request: GraphDBGraphRequest,
   root: string,
   signal: AbortSignal,
   resolveNodeColor: NodeTypeColorResolver,
 ): Promise<RelationshipGraphExpansion> {
   const response = await fetchGraphDBGraph(
+    projectId,
     buildRootGraphRequest(request, root),
     signal,
   )

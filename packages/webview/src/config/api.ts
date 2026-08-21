@@ -36,6 +36,13 @@ export const API_ENDPOINTS = {
     `${SERVICE_BASE_URL}/projects/${encodeURIComponent(projectId)}/requirements`,
   requirements: `${SERVICE_BASE_URL}/requirements`,
   requirementById: (id: string) => `${SERVICE_BASE_URL}/requirements/${encodeURIComponent(id)}`,
+  requirementByName: (projectId: string, name: string) => {
+    const searchParams = new URLSearchParams({
+      project_id: projectId,
+      name,
+    })
+    return `${SERVICE_BASE_URL}/requirements/by-name?${searchParams.toString()}`
+  },
   requirementRollback: (requirementId: string) => (
     `${SERVICE_BASE_URL}/requirements/${encodeURIComponent(requirementId)}/rollback`
   ),
@@ -52,7 +59,9 @@ export const API_ENDPOINTS = {
   requirementModelPrimary: (requirementId: string, modelGroupId: string) => (
     `${SERVICE_BASE_URL}/requirements/${encodeURIComponent(requirementId)}/models/${encodeURIComponent(modelGroupId)}/primary`
   ),
-  graphdbGraph: `${SERVICE_BASE_URL}/graphdb/graph`,
+  graphdbGraph: (projectId: string) => (
+    `${SERVICE_BASE_URL}/graphdb/graph?project_id=${encodeURIComponent(projectId)}`
+  ),
   traceabilityExtract: `${SERVICE_BASE_URL}/traceability/extract`,
 }
 

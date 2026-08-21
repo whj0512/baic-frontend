@@ -186,7 +186,7 @@ function OntologyInstancesBrowser({
 
     void Promise.all([
       fetchProjectRequirements(projectId, controller.signal),
-      fetchGraphDBGraph(graphRequest, controller.signal),
+      fetchGraphDBGraph(projectId, graphRequest, controller.signal),
     ]).then(([requirements, graph]) => {
       if (!controller.signal.aborted) {
         setDataState({ state: 'ready', requirements, graph })
@@ -360,6 +360,7 @@ function OntologyInstancesBrowser({
             )}
           >
             <ReqRelationShip
+              projectId={projectId}
               initialRequest={graphRequest}
               initialGraph={dataState.graph}
               embedded

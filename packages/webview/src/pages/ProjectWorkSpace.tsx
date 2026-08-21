@@ -1456,9 +1456,11 @@ function ProjectWorkSpace() {
             />
           )}
 
-          {centerView === 'relationship' && (
+          {centerView === 'relationship' && project && (
             <ReqRelationShip
+              projectId={project.id}
               onBack={handleCloseRelationshipView}
+              onRequirementSelect={handleRequirementSelect}
             />
           )}
 

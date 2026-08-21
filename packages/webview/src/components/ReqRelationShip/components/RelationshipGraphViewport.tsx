@@ -11,6 +11,8 @@ import {
   FullscreenOutlined,
 } from '@ant-design/icons'
 import type { GraphData } from '@antv/g6'
+import type { GraphElementPanelData } from '../graph-renderers/G6PropertiesPanel'
+import type { RequirementNodeLookupState } from '../requirementNodeLookup'
 
 const AntvG6GraphRenderer = lazy(
   () => import('../graph-renderers/AntvG6GraphRenderer'),
@@ -23,10 +25,14 @@ interface RelationshipGraphViewportProps {
   focusNode: string | null
   layoutRevision: number
   expandingNodeId: string | null
+  requirementLookupState: RequirementNodeLookupState
   loading: boolean
   queryError: string | null
   hasMeta: boolean
   onNodeDoubleClick: (nodeId: string) => void
+  onPanelDataChange: (panelData: GraphElementPanelData | null) => void
+  onOpenRequirement?: (requirementId: string) => void
+  onRetryRequirementLookup: () => void
   onDismissError: () => void
 }
 
@@ -37,10 +43,14 @@ function RelationshipGraphViewport({
   focusNode,
   layoutRevision,
   expandingNodeId,
+  requirementLookupState,
   loading,
   queryError,
   hasMeta,
   onNodeDoubleClick,
+  onPanelDataChange,
+  onOpenRequirement,
+  onRetryRequirementLookup,
   onDismissError,
 }: RelationshipGraphViewportProps) {
   const [isContentFullscreen, setIsContentFullscreen] = useState(false)
@@ -105,7 +115,11 @@ function RelationshipGraphViewport({
               focusNode={focusNode}
               layoutRevision={layoutRevision}
               expandingNodeId={expandingNodeId}
+              requirementLookupState={requirementLookupState}
               onNodeDoubleClick={onNodeDoubleClick}
+              onPanelDataChange={onPanelDataChange}
+              onOpenRequirement={onOpenRequirement}
+              onRetryRequirementLookup={onRetryRequirementLookup}
               onRenderStateChange={handleGraphRenderStateChange}
             />
           </Suspense>

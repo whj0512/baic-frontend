@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Button } from 'antd'
 import { ArrowLeftOutlined } from '@ant-design/icons'
 import type {
@@ -9,12 +9,16 @@ import RelationshipGraphStatus from './components/RelationshipGraphStatus'
 import RelationshipGraphToolbar from './components/RelationshipGraphToolbar'
 import type { EdgeLabelMode } from './components/RelationshipGraphToolbar'
 import RelationshipGraphViewport from './components/RelationshipGraphViewport'
+import type { GraphElementPanelData } from './graph-renderers/G6PropertiesPanel'
 import { useReqRelationshipGraph } from './useReqRelationshipGraph'
+import { useRequirementNodeLookup } from './useRequirementNodeLookup'
 
 import './ReqRelationShip.css'
 
 interface ReqRelationShipProps {
+  projectId: string
   onBack?: () => void
+  onRequirementSelect?: (requirementId: string) => void
   initialRequest?: GraphDBGraphRequest
   initialGraph?: GraphDBGraphResponse
   embedded?: boolean
@@ -23,20 +27,29 @@ interface ReqRelationShipProps {
 const DENSE_GRAPH_EDGE_LIMIT = 120
 
 function ReqRelationShip({
+  projectId,
   onBack,
+  onRequirementSelect,
   initialRequest,
   initialGraph,
   embedded = false,
 }: ReqRelationShipProps) {
   const relationshipGraph = useReqRelationshipGraph({
+    projectId,
     initialRequest,
     initialGraph,
   })
+  const requirementLookup = useRequirementNodeLookup(projectId)
   const [edgeLabelMode, setEdgeLabelMode] = useState<EdgeLabelMode>('auto')
   const isDenseGraph = relationshipGraph.edgeCount > DENSE_GRAPH_EDGE_LIMIT
   const edgeLabelsVisible = edgeLabelMode === 'show'
     || (edgeLabelMode === 'auto' && !isDenseGraph)
   const hasMeta = relationshipGraph.latestMeta !== null
+  const handlePanelDataChange = useCallback((panelData: GraphElementPanelData | null) => {
+    requirementLookup.selectTarget(
+      onRequirementSelect ? panelData?.requirementLookupTarget ?? null : null,
+    )
+  }, [onRequirementSelect, requirementLookup.selectTarget])
 
   return (
     <div
@@ -93,10 +106,14 @@ function ReqRelationShip({
         focusNode={relationshipGraph.focusNode}
         layoutRevision={relationshipGraph.layoutRevision}
         expandingNodeId={relationshipGraph.expandingNodeId}
+        requirementLookupState={requirementLookup.state}
         loading={relationshipGraph.loading}
         queryError={relationshipGraph.queryError}
         hasMeta={hasMeta}
         onNodeDoubleClick={relationshipGraph.toggleNodeExpansion}
+        onPanelDataChange={handlePanelDataChange}
+        onOpenRequirement={onRequirementSelect}
+        onRetryRequirementLookup={requirementLookup.retry}
         onDismissError={relationshipGraph.dismissError}
       />
     </div>
