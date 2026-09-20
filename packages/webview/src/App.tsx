@@ -12,9 +12,15 @@ import { getRuntimeConfig } from './config/runtime'
 import { PlatformMockProvider } from './platform/PlatformMockProvider'
 import './App.css'
 
+// Vite's development server supports SPA history fallback, so pathname routes
+// such as /agent/store should remain directly addressable while developing.
+// Packaged Webviews still need hash routing because their host URL cannot serve
+// arbitrary pathnames.
+const LocalRouter = import.meta.env.DEV ? BrowserRouter : HashRouter
+
 function LocalApp() {
   return (
-    <HashRouter>
+    <LocalRouter>
       <Routes>
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
@@ -25,7 +31,7 @@ function LocalApp() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </HashRouter>
+    </LocalRouter>
   )
 }
 
@@ -40,6 +46,7 @@ function PlatformApp() {
             <Route path="/projects/:projectId/versions/:versionId" element={<PlatformProjectDetail />} />
             <Route path="/uploads" element={<PlatformUploads />} />
           </Route>
+          <Route path="/agent/store" element={<AgentStore />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </PlatformMockProvider>

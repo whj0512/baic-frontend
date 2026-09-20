@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "test:relationship-graph": "node --test tests/relationship-graph.test.mjs",
     "dev": "vite",
     "dev:demo": "vite --mode demo",
     "dev:platform": "vite --mode platform",
@@ -15,6 +16,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@antv/g-canvas": "2.2.0",
+    "d3-force": "3.0.0",
     "@ant-design/icons": "^6.1.0",
     "@antv/g6": "^5.1.1",
     "@antv/x6": "^3.1.4",
@@ -39,6 +42,7 @@
     "vscode-ws-jsonrpc": "^3.5.0"
   },
   "devDependencies": {
+    "@types/d3-force": "^3.0.10",
     "@eslint/js": "^9.39.1",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",

@@ -20,6 +20,7 @@ import { fetchGraphDBGraph } from '../../../../../config/graphdbGraph'
 import { fetchProjectRequirements } from '../../../../../config/projectRequirements'
 import type { GraphDBGraphResponse } from '../../../../../models/GraphDBGraph'
 import type { Requirement } from '../../../../../models/Requirement'
+import { isQwenPawDemoMode } from '../../../qwenPaw/qwenPawMode'
 import type { ToolPanelProps } from '../types'
 import type {
   OntologyInstancesEnvelope,
@@ -28,6 +29,8 @@ import type {
 import './OntologyInstancesPanel.css'
 
 const ReqRelationShip = lazy(() => import('../../../../ReqRelationShip'))
+const DEMO_PROJECT_ID = '8b8d51c9-d45e-4147-a840-061173800a9a'
+const QWENPAW_DEMO_MODE = isQwenPawDemoMode()
 
 const FOCUSABLE_SELECTOR = [
   'button:not([disabled])',
@@ -79,6 +82,10 @@ function OntologyInstancesPanel({
   payload,
   context,
 }: ToolPanelProps<OntologyInstancesPanelPayload>) {
+  const projectId = QWENPAW_DEMO_MODE
+    ? DEMO_PROJECT_ID
+    : context.projectId
+
   if (payload.state === 'loading') {
     return (
       <PanelState
@@ -99,7 +106,7 @@ function OntologyInstancesPanel({
     )
   }
 
-  if (!context.projectId) {
+  if (!projectId) {
     return (
       <PanelState
         kind="error"
@@ -112,7 +119,7 @@ function OntologyInstancesPanel({
   return (
     <OntologyInstancesBrowser
       envelope={payload.envelope}
-      projectId={context.projectId}
+      projectId={projectId}
       assistantName={context.assistantName}
     />
   )

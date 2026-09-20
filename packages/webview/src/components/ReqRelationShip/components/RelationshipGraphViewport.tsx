@@ -55,11 +55,9 @@ function RelationshipGraphViewport({
 }: RelationshipGraphViewportProps) {
   const [isContentFullscreen, setIsContentFullscreen] = useState(false)
   const [graphRendering, setGraphRendering] = useState(false)
-  const [layoutAnimating, setLayoutAnimating] = useState(false)
 
-  const handleGraphRenderStateChange = useCallback((rendering: boolean, animated: boolean) => {
+  const handleGraphRenderStateChange = useCallback((rendering: boolean) => {
     setGraphRendering(rendering)
-    setLayoutAnimating(rendering && animated)
   }, [])
 
   useEffect(() => {
@@ -77,7 +75,7 @@ function RelationshipGraphViewport({
 
   const hasGraphData = (graphData.nodes?.length || 0) > 0
   const busy = loading || graphRendering
-  const showLoadingOverlay = loading || (graphRendering && !layoutAnimating)
+  const showLoadingOverlay = loading
   const emptyText = queryError && !hasMeta ? '关系图加载失败' : '没有符合条件的关系数据'
 
   return (

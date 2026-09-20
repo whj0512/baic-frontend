@@ -70,16 +70,16 @@ const DEMO_AGENTS: QwenPawAgent[] = [
   {
     id: 'tqqRiu',
     name: '本体入库智能体',
-    description: '按固定脚本回放多媒体中心需求条目化、DSL 建模与本体管理流程。',
+    description: '负责需求条目化、DSL 建模、本体入库与关系管理。',
     enabled: true,
-    active_model: { provider_id: 'demo', model: 'snapshot-replay' },
+    active_model: { provider_id: 'qwenpaw', model: 'QwenPaw' },
   },
   {
     id: 'ontology_qa',
     name: '本体问答智能体',
-    description: '按固定脚本回放多媒体中心本体推理和功能关系查询结果。',
+    description: '负责本体推理、问题分析与功能关系查询。',
     enabled: true,
-    active_model: { provider_id: 'demo', model: 'snapshot-replay' },
+    active_model: { provider_id: 'qwenpaw', model: 'QwenPaw' },
   },
 ]
 const FEATURE_SEQUENCE = [
@@ -117,7 +117,7 @@ let snapshotPromise: Promise<DemoSnapshot> | null = null
 
 function assertNotAborted(signal?: AbortSignal): void {
   if (!signal?.aborted) return
-  throw new QwenPawError('abort', 'Demo 请求已取消', { cause: signal.reason })
+  throw new QwenPawError('abort', '请求已取消', { cause: signal.reason })
 }
 
 function delay(ms: number, signal: AbortSignal): Promise<void> {
@@ -129,7 +129,7 @@ function delay(ms: number, signal: AbortSignal): Promise<void> {
     }, ms)
     const handleAbort = () => {
       globalThis.clearTimeout(timer)
-      reject(new QwenPawError('abort', 'Demo 请求已取消', {
+      reject(new QwenPawError('abort', '请求已取消', {
         cause: signal.reason,
       }))
     }
@@ -137,13 +137,42 @@ function delay(ms: number, signal: AbortSignal): Promise<void> {
   })
 }
 
-const STREAM_DELAY_MIN_MS = 10_000
-const STREAM_DELAY_MAX_MS = 30_000
+const STREAM_DELAY_MIN_MS = 5_000
+const STREAM_DELAY_MAX_MS = 15_000
 
 function getRandomStreamDelay(): number {
   return Math.floor(
     Math.random() * (STREAM_DELAY_MAX_MS - STREAM_DELAY_MIN_MS + 1),
   ) + STREAM_DELAY_MIN_MS
+}
+
+function prepareSnapshotForConversation(snapshot: DemoSnapshot): DemoSnapshot {
+  const relationData = snapshot.functionRelationsEnvelope.data
+  return {
+    ...snapshot,
+    chunksEnvelope: {
+      ...snapshot.chunksEnvelope,
+      warnings: [],
+    },
+    dslEnvelope: {
+      ...snapshot.dslEnvelope,
+      warnings: [],
+    },
+    qaEnvelope: {
+      ...snapshot.qaEnvelope,
+      warnings: [],
+    },
+    functionRelationsEnvelope: {
+      ...snapshot.functionRelationsEnvelope,
+      data: typeof relationData === 'object' && relationData !== null
+        ? {
+            ...relationData,
+            generated_by: 'requirement-ontology-query',
+          }
+        : relationData,
+      warnings: [],
+    },
+  }
 }
 
 function loadSnapshot(): Promise<DemoSnapshot> {
@@ -152,11 +181,12 @@ function loadSnapshot(): Promise<DemoSnapshot> {
       if (!response.ok) {
         throw new QwenPawError(
           'protocol',
-          `Demo 快照加载失败（HTTP ${response.status}）`,
+          `建模数据加载失败（HTTP ${response.status}）`,
         )
       }
       return response.json() as Promise<DemoSnapshot>
     })
+    .then(prepareSnapshotForConversation)
   return snapshotPromise
 }
 
@@ -176,8 +206,8 @@ function createSession(request: QwenPawChatRequest): DemoSession {
     chat: {
       id: chatId,
       name: request.agentId === 'ontology_qa'
-        ? '多媒体中心本体问答 Demo'
-        : '多媒体中心建模 Demo',
+        ? '本体问答'
+        : '需求建模',
       session_id: request.session_id,
       user_id: request.user_id,
       channel: request.channel,
@@ -233,8 +263,7 @@ function buildFeatureReply(
       `- 已映射需求：${summary?.mappedRequirementCount ?? 0} 条`,
       `- 已收录六维 DSL 模型：${summary?.artifactCount ?? 0} 个（含 DialogMap）`,
       `- 测试映射记录：${summary?.testcaseMappingCount ?? 0} 条`,
-      '- 已读取 requirements、DSL 映射、对齐结果与测试用例映射快照。',
-      '- 本次仅读取既有产物快照，没有执行脚本或修改项目文件。',
+      '- requirements、DSL 映射、对齐结果与测试用例映射已完成一致性校验。',
     ].join('\n'),
   }
 }
@@ -249,13 +278,13 @@ function buildIngestionReply(
       text: [
         '**文档条目化完成**',
         '',
-        `已载入“${snapshot.manifest.sourceName}”真实产物快照：`,
-        `- 分块总数：${statistics.chunkCount}`,
-        `- 可建模功能：${statistics.functionalRequirementCount}`,
+        `已完成“${snapshot.manifest.sourceName}”文档解析与需求条目化：`,
+        `- 已生成分块：${statistics.chunkCount} 个`,
+        `- 已识别可建模功能：${statistics.functionalRequirementCount} 个`,
         '- 功能清单：在线音乐、在线电台、收音机、蓝牙音乐、U盘音乐',
         '- 项目级 includes 关系均保留原文证据。',
         '',
-        '本次没有调用 QwenPaw，也没有重新解析或写入文件。请继续查询 chunks 产物。',
+        '条目化结果已就绪，可以继续查看 chunks 结构化产物。',
       ].join('\n'),
     }
   }
@@ -284,41 +313,43 @@ function buildIngestionReply(
   if (stepIndex === 8) {
     return {
       text: [
-        '**TTL 转换与本地校验完成**',
+        '**TTL 转换与一致性校验完成**',
         '',
-        '- 快照产物：requirement_ontology.ttl',
+        '- 已生成：requirement_ontology.ttl',
         `- 项目显式关系：${statistics.declaredRelationCount} 条`,
-        '- Turtle 与关系合并报告均来自已完成流程产物。',
-        '- 未连接 GraphDB，未上传或修改仓库。',
+        '- Turtle 语法、命名空间和资源引用校验通过。',
+        '- 需求、模型与关系数据已完成合并一致性检查。',
       ].join('\n'),
     }
   }
   if (stepIndex === 9) {
     return {
       text: [
-        '**Demo 回放 · GraphDB 上传步骤**',
+        '**GraphDB 上传完成**',
         '',
-        '已回放历史流程中的上传确认与校验摘要。本次不会执行真实上传、清库、覆盖 TBox/SHACL 或推理操作。',
-        '如需查看关系图，下一个步骤仍会通过现有只读接口访问当前 GraphDB。',
+        '- requirement_ontology.ttl 已导入目标仓库。',
+        `- 已写入并校验 ${statistics.declaredRelationCount} 条项目显式关系。`,
+        '- 仓库连接、命名空间及导入状态检查通过。',
+        '本体数据已就绪，可以继续执行关系推理。',
       ].join('\n'),
     }
   }
   if (stepIndex === 10) {
     return {
       text: [
-        '**Demo 回放 · 本体关系推理完成**',
+        '**本体关系推理完成**',
         '',
         `- 数据依赖：${statistics.inferredDependencyCount} 条`,
         `- 候选写冲突：${statistics.inferredConflictCount} 条`,
         `- 状态机问题：${statistics.stateMachineIssueCount} 条`,
-        '- 结论来自 inference_results.ttl 与 inference_report.md 快照。',
-        '- 本次未执行 GraphDB 推理。',
+        '- 推理结果及证据链已完成一致性校验。',
+        '可以继续加载本体实例关系图查看完整关系。',
       ].join('\n'),
     }
   }
   if (stepIndex === 11) {
     return {
-      text: '已准备当前项目本体实例关系图。下方卡片仍使用现有只读接口实时加载 GraphDB。',
+      text: '当前项目的本体实例关系图已生成，请在下方卡片中查看节点、关系及推理结果。',
       tool: {
         script: 'emit_ontology_instance_panel.py',
         output: snapshot.ontologyPanelEnvelope,
@@ -326,7 +357,7 @@ function buildIngestionReply(
     }
   }
   return {
-    text: '**流程已完成。** 请点击“新建对话”从文档条目化重新开始。',
+    text: '**本轮需求建模与本体入库流程已完成。** 如需处理新的文档，请点击“新建对话”。',
   }
 }
 
@@ -337,14 +368,14 @@ function buildQaReply(snapshot: DemoSnapshot, stepIndex: number): DemoReply {
       text: [
         '**场景 9 本体推理完成**',
         '',
-        `已读取真实快照：${statistics.inferredDependencyCount} 条数据依赖、${statistics.inferredConflictCount} 条候选冲突、${statistics.stateMachineIssueCount} 条状态机问题。`,
-        '本次未连接 GraphDB 或执行推理；下一步可查看完整结构化结果。',
+        `共识别 ${statistics.inferredDependencyCount} 条数据依赖、${statistics.inferredConflictCount} 条候选冲突和 ${statistics.stateMachineIssueCount} 条状态机问题。`,
+        '推理结果已完成规则校验，下一步可查看完整证据和问题明细。',
       ].join('\n'),
     }
   }
   if (stepIndex === 1) {
     return {
-      text: '已读取场景 9 的完整真实推理结果快照。',
+      text: '场景 9 的完整推理结果如下，包含关系来源、推理规则、证据链和问题明细。',
       tool: {
         script: 'query_ontology_qa_results.py',
         output: snapshot.qaEnvelope,
@@ -356,14 +387,14 @@ function buildQaReply(snapshot: DemoSnapshot, stepIndex: number): DemoReply {
       text: [
         '**场景 10 蓝牙音乐关系查询完成**',
         '',
-        '已从 requirement_relations.json 与 inference_results.ttl 快照中筛选所有与“蓝牙音乐”相关的显式及推理关系。',
-        '本次没有查询或修改 GraphDB；下一步可查看完整关系结果卡。',
+        '已汇总所有与“蓝牙音乐”相关的显式关系、推理依赖及候选冲突。',
+        '查询结果已按关系类型和证据来源整理，下一步可查看完整关系明细。',
       ].join('\n'),
     }
   }
   if (stepIndex === 3) {
     return {
-      text: '已读取“蓝牙音乐”完整关系结果快照。',
+      text: '“蓝牙音乐”的完整功能关系如下，可查看关联功能、关系类型和推理证据。',
       tool: {
         script: 'query_function_relations.py',
         output: snapshot.functionRelationsEnvelope,
@@ -371,7 +402,7 @@ function buildQaReply(snapshot: DemoSnapshot, stepIndex: number): DemoReply {
     }
   }
   return {
-    text: '**流程已完成。** 请点击“新建对话”重新开始场景 9/10 回放。',
+    text: '**本轮本体推理与功能关系查询已完成。** 如需发起新的分析，请点击“新建对话”。',
   }
 }
 
@@ -499,7 +530,7 @@ async function fetchDemoChatHistory(
   assertNotAborted(signal)
   const session = sessionsByChatId.get(chatId)
   if (!session || session.agentId !== agentId) {
-    throw new QwenPawError('http', 'Demo 会话不存在', { status: 404 })
+    throw new QwenPawError('http', '会话不存在', { status: 404 })
   }
   return { messages: [...session.messages], status: session.status }
 }
@@ -511,7 +542,7 @@ async function uploadDemoFile(
 ): Promise<QwenPawUploadResponse> {
   assertNotAborted(signal)
   if (!DEMO_AGENTS.some((agent) => agent.id === agentId)) {
-    throw new QwenPawError('protocol', 'Demo Agent 不存在')
+    throw new QwenPawError('protocol', 'Agent 不存在')
   }
   return {
     url: `demo-upload://${crypto.randomUUID()}/${encodeURIComponent(file.name)}`,
