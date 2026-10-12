@@ -2,6 +2,7 @@ import { API_ENDPOINTS, authFetch } from '../../config/api'
 
 export const REQUIREMENT_EXPLICIT_TYPE_IRI = 'http://example.org/requirement-ontology#Requirement'
 export const ROOT_REQUIREMENT_EXPLICIT_TYPE_IRI = 'http://example.org/requirement-ontology#RootRequirement'
+export const COMPONENT_REQUIREMENT_EXPLICIT_TYPE_IRI = 'http://example.org/requirement-ontology#ComponentRequirement'
 
 export interface RequirementNodeLookupTarget {
   nodeId: string
@@ -48,6 +49,7 @@ export function getRequirementNodeLookupTarget(
   if (
     !explicitTypes.includes(REQUIREMENT_EXPLICIT_TYPE_IRI)
     || explicitTypes.includes(ROOT_REQUIREMENT_EXPLICIT_TYPE_IRI)
+    || explicitTypes.includes(COMPONENT_REQUIREMENT_EXPLICIT_TYPE_IRI)
   ) return null
 
   const name = typeof data.name === 'string' ? data.name.trim() : ''
